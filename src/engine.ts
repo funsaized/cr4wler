@@ -27,7 +27,7 @@ const MARGIN = 150;
 const darkColors = ['#66eaff', '#ff8ccc', '#bd9bff', '#ffb273', '#8effd1'];
 const lightColors = ['#00768c', '#ad256a', '#6541b8', '#ae4a15', '#117153'];
 const clamp = (x: number, a: number, b: number) => Math.max(a, Math.min(b, x));
-type Mode = 'arrive' | 'scan' | 'lock' | 'strike' | 'aftermath';
+type Mode = 'arrive' | 'scan' | 'lock' | 'strike' | 'aftermath' | 'recover';
 interface Fragment extends Projection {
   documentX: number;
   documentY: number;
@@ -102,6 +102,7 @@ export class Cr4wler {
   private destination: Point = { x: innerWidth * 0.62, y: innerHeight * 0.38 };
   private pointer: Point = { x: -1000, y: -1000 };
   private nextFollow = 0;
+  private pointerSurfaceOffset: Point = { x: scrollX, y: scrollY };
   private nextTelemetry = 0;
   private surfaceOffset: Point = { x: scrollX, y: scrollY };
   private lastSpiderOptions: SpiderOptions | null = null;
@@ -136,8 +137,19 @@ export class Cr4wler {
   }
   configure(value: Partial<Settings>) {
     const followed = this.settings.followMouse;
+    const previousType = this.settings.personality;
     this.settings = settingsFrom({ ...this.settings, ...value });
     if (followed !== this.settings.followMouse) this.clearFollowIntent();
+    if (
+      previousType !== this.settings.personality &&
+      this.spider &&
+      this.lastSpiderOptions &&
+      (this.paused || this.reduced.matches)
+    ) {
+      this.lastSpiderOptions = { ...this.lastSpiderOptions, ...this.settings };
+      this.spider.update(0, this.time, this.spider.position, this.lastSpiderOptions);
+      this.spider.render();
+    }
     this.updateActivity();
     return this.status();
   }
@@ -678,7 +690,7 @@ export class Cr4wler {
   private syncRestingSurface() {
     if (!this.spider || !this.lastSpiderOptions) return;
     const surfaceDelta = this.takeSurfaceDelta();
-    if (!surfaceDelta.x && !surfaceDelta.y) return;
+    if (!surfaceDelta.x && !surfaceDelta.y && !this.spider.needsRecovery()) return;
     const record = this.current;
     const target = record?.target ?? this.candidate;
     this.spider.update(0, this.time, this.spider.position, {
@@ -686,7 +698,7 @@ export class Cr4wler {
       surfaceDelta,
       grip: record ? this.strikeGrip(record) : undefined,
       selector:
-        target && this.lastSpiderOptions.selector
+        target && fresh(target) && this.lastSpiderOptions.selector
           ? { ...this.lastSpiderOptions.selector, rect: target.rect }
           : undefined,
       attention: undefined,
@@ -743,9 +755,19 @@ export class Cr4wler {
   private targetDestination(target: Target) {
     const centerX = target.rect.x + target.rect.width / 2;
     const right = centerX < innerWidth * 0.55;
+    const compact = this.settings.personality === 'feral';
+    const orb = this.settings.personality === 'dreamy';
     this.destination = {
-      x: clamp(centerX + (right ? 96 : -96), 75, Math.max(75, innerWidth - 75)),
-      y: clamp(target.rect.y - 75, 105, Math.max(105, innerHeight - 145)),
+      x: clamp(
+        centerX + (right ? 1 : -1) * (compact ? 62 : orb ? 84 : 96),
+        75,
+        Math.max(75, innerWidth - 75),
+      ),
+      y: clamp(
+        target.rect.y - (compact ? 46 : orb ? 65 : 75),
+        105,
+        Math.max(105, innerHeight - 145),
+      ),
     };
   }
   private strike() {
@@ -821,9 +843,9 @@ export class Cr4wler {
     if (this.candidateSource === 'hover') this.cancelCandidate();
     this.updateActivity();
   }
-  private manualNavigation() {
+  private manualNavigation(explicit = true) {
     this.clearFollowIntent();
-    this.manualUntil = performance.now() + 850;
+    this.manualUntil = Math.max(this.manualUntil, performance.now() + (explicit ? 850 : 0));
     this.manualAnchor = { ...this.pointer };
     this.updateActivity();
   }
@@ -836,6 +858,7 @@ export class Cr4wler {
   }
   private onPointer(x: number, y: number) {
     this.pointer = { x, y };
+    this.pointerSurfaceOffset = { x: scrollX, y: scrollY };
     if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) {
       this.clearFollowIntent();
       return;
@@ -976,6 +999,7 @@ export class Cr4wler {
     if (
       !intent ||
       this.current ||
+      this.mode === 'recover' ||
       this.limitReached ||
       !this.highlight ||
       this.occupied(intent.target)
@@ -1069,17 +1093,42 @@ export class Cr4wler {
             ? 'quiet visitor · highlights unavailable'
             : this.edgeVelocity
               ? 'edge crawl · move inward to stop'
-              : this.mode === 'arrive'
-                ? 'coming down…'
-                : this.mode === 'lock'
-                  ? 'target locked · considering…'
-                  : this.mode === 'strike'
-                    ? `${this.current?.effect ?? 'type'} in progress`
-                    : this.candidate
-                      ? 'scanning the type…'
-                      : this.settings.followMouse
-                        ? `${this.fragments.length} marks · hover to choose`
-                        : `${this.fragments.length} marks · exploring`;
+              : this.mode === 'recover'
+                ? 'finding its feet…'
+                : this.mode === 'arrive'
+                  ? 'coming down…'
+                  : this.mode === 'lock'
+                    ? 'target locked · considering…'
+                    : this.mode === 'strike'
+                      ? `${this.current?.effect ?? 'type'} in progress`
+                      : this.candidate
+                        ? 'scanning the type…'
+                        : this.settings.followMouse
+                          ? `${this.fragments.length} marks · hover to choose`
+                          : `${this.fragments.length} marks · exploring`;
+  }
+  private beginRecovery(delta: Point) {
+    if (!this.spider) return;
+    this.cancelCandidate();
+    this.hover = null;
+    this.selection?.clear();
+    if (this.current) {
+      // Finish the already committed mark in place; release its offscreen contact.
+      this.current.progress = 1;
+      paint(this.current);
+      this.current = null;
+    }
+    this.mode = 'recover';
+    this.phaseTime = 0;
+    this.invalidateScan();
+    this.nextChoice = this.time + 0.12;
+    const p = this.spider.position;
+    this.destination = {
+      x: clamp(p.x, 110, Math.max(110, innerWidth - 110)),
+      y: clamp(p.y + Math.sign(delta.y) * 90, 125, Math.max(125, innerHeight - 160)),
+    };
+    this.spider.recover(this.destination, this.paused || this.reduced.matches);
+    this.updateActivity();
   }
   private frame = (now: number) => {
     if (!this.host || !this.spider || this.hidden || (this.paused && !this.reduced.matches)) return;
@@ -1106,12 +1155,38 @@ export class Cr4wler {
     )
       void this.scan();
     const profile = huntProfiles[this.settings.personality];
+    const externalDelta = this.takeSurfaceDelta();
+    // All movement observed before our own bounded edge step is external intent.
+    // Programmatic scroll, scrollbar drags and browser navigation yield just like wheel/touch.
+    if (
+      (externalDelta.x || externalDelta.y) &&
+      !quiet &&
+      !this.paused &&
+      !(
+        this.pointerActive &&
+        this.pointerMoved &&
+        this.pointerSurfaceOffset.x === scrollX &&
+        this.pointerSurfaceOffset.y === scrollY
+      )
+    )
+      this.manualNavigation(false);
+    let surfaceDelta = externalDelta;
     let grip: SpiderOptions['grip'];
     let selector: SpiderOptions['selector'];
     if (!quiet && !this.paused) {
       this.updateHover();
       this.scrollEdge(dt);
+      const ownDelta = this.takeSurfaceDelta();
+      surfaceDelta = { x: externalDelta.x + ownDelta.x, y: externalDelta.y + ownDelta.y };
       if (this.geometryDirty) this.refreshGeometry();
+      if (this.spider.needsRecovery(surfaceDelta) || (this.current && !fresh(this.current.target)))
+        this.beginRecovery(surfaceDelta);
+      if (this.mode === 'recover' && !this.spider.recovering) {
+        this.mode = 'scan';
+        this.phaseTime = 0;
+        this.nextScan = this.time;
+        this.updateActivity();
+      }
       if (this.mode === 'arrive' && this.phaseTime > profile.arrive) {
         this.mode = 'scan';
         this.phaseTime = 0;
@@ -1136,16 +1211,17 @@ export class Cr4wler {
         this.candidateAge += dt;
         if (
           this.mode === 'scan' &&
+          !this.spider.recovering &&
           this.candidateAge > profile.approachMin &&
           (Math.hypot(
             this.spider.position.x - this.destination.x,
             this.spider.position.y - this.destination.y,
-          ) < 55 ||
+          ) < (this.settings.personality === 'feral' ? 26 : 55) ||
             (this.candidateAge > profile.approachMax &&
               Math.hypot(
                 this.spider.position.x - this.destination.x,
                 this.spider.position.y - this.destination.y,
-              ) < 105))
+              ) < (this.settings.personality === 'feral' ? 48 : 105)))
         ) {
           this.mode = 'lock';
           this.phaseTime = 0;
@@ -1215,7 +1291,7 @@ export class Cr4wler {
     this.lastSpiderOptions = spiderOptions;
     this.spider.update(quiet ? 0 : dt, this.time, destination, {
       ...spiderOptions,
-      surfaceDelta: this.takeSurfaceDelta(),
+      surfaceDelta,
     });
     this.spider.render();
     if (this.time >= this.nextTelemetry || quiet) {

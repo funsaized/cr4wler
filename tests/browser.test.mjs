@@ -789,3 +789,252 @@ test(
     assert.ok(observations.curious.strike + 40 < observations.dreamy.strike);
   },
 );
+
+async function auditRig(page) {
+  await page.evaluate(() => {
+    globalThis.rigAudit = {
+      samples: 0,
+      maxReachRatio: 0,
+      maxBoneRatio: 0,
+      finite: true,
+      phases: [],
+      types: [],
+    };
+    function sample() {
+      const canvas = document
+        .querySelector('[data-cr4wler-root]')
+        ?.shadowRoot?.querySelector('canvas.visitor');
+      if (canvas?.dataset.rig) {
+        const d = JSON.parse(canvas.dataset.rig),
+          a = rigAudit;
+        a.samples++;
+        a.finite &&= d.finite;
+        a.maxReachRatio = Math.max(a.maxReachRatio, d.maxReach / d.reachLimit);
+        a.maxBoneRatio = Math.max(a.maxBoneRatio, d.maxBoneLength / d.boneLimit);
+        if (a.phases.at(-1) !== d.recovery) a.phases.push(d.recovery);
+        if (!a.types.includes(d.type)) a.types.push(d.type);
+      }
+      if (rigAudit.samples < 5000) requestAnimationFrame(sample);
+    }
+    requestAnimationFrame(sample);
+  });
+}
+async function rig(page) {
+  return page.locator(`${root} canvas.visitor`).evaluate((el) => JSON.parse(el.dataset.rig));
+}
+async function assertRecovered(page) {
+  await page.waitForFunction(
+    () => {
+      const c = document
+        .querySelector('[data-cr4wler-root]')
+        ?.shadowRoot?.querySelector('canvas.visitor');
+      if (!c?.dataset.rig) return false;
+      const r = JSON.parse(c.dataset.rig);
+      return (
+        r.recovery === 'none' &&
+        r.body.x >= 25 &&
+        r.body.x <= innerWidth - 25 &&
+        r.body.y >= 30 &&
+        r.body.y <= innerHeight - 30
+      );
+    },
+    null,
+    { timeout: 2500 },
+  );
+}
+function assertBounded(a) {
+  assert.ok(a.samples > 10);
+  assert.equal(a.finite, true, 'all joint coordinates remain finite');
+  assert.ok(a.maxReachRatio <= 1.001, `contact reach ratio ${a.maxReachRatio}`);
+  assert.ok(a.maxBoneRatio <= 1.001, `fixed bone ratio ${a.maxBoneRatio}`);
+}
+
+test(
+  'all three spider anatomies recover from rapid wheel, flings, reversals and document jumps',
+  { timeout: 45000 },
+  async () => {
+    for (const personality of ['curious', 'dreamy', 'feral']) {
+      const page = await fixture({ path: '/reference.html?theme=night' });
+      try {
+        await page.evaluate(() => document.querySelector('#reference-volume-8').scrollIntoView());
+        const originalY = await page.evaluate(() => scrollY);
+        const original = await page.locator('main').innerHTML();
+        await page.locator('#demo-personality').selectOption(personality);
+        await start(page);
+        await waitForPiece(page);
+        await auditRig(page);
+        const records = await page
+          .locator(`${root} .piece`)
+          .evaluateAll((ns) => ns.map((n) => n.dataset.recordId));
+        await page.mouse.move(600, 500);
+        await page.mouse.wheel(0, 1800);
+        await page.waitForTimeout(120);
+        for (const delta of [240, 240, -320, 400, -460, 360]) {
+          await page.mouse.wheel(0, delta);
+          await page.waitForTimeout(55);
+        }
+        await page.keyboard.press('PageDown');
+        await page.waitForTimeout(150);
+        await page.keyboard.press('Home');
+        await page.waitForTimeout(150);
+        await page.keyboard.press('End');
+        await page.waitForTimeout(150);
+        await page.setViewportSize({ width: 1100, height: 720 });
+        await page.evaluate(() => scrollTo(0, 3500));
+        await assertRecovered(page);
+        const restingY = await page.evaluate(() => scrollY);
+        await page.waitForTimeout(300);
+        assert.equal(
+          await page.evaluate(() => scrollY),
+          restingY,
+          'recovery never moves the document',
+        );
+        await page.locator(`${root} .pause`).click();
+        await page.setViewportSize({ width: 1440, height: 1000 });
+        await page.evaluate((y) => scrollTo(0, y), originalY);
+        await page.waitForTimeout(180);
+        const returned = await page
+          .locator(`${root} .piece`)
+          .evaluateAll((ns) => ns.map((n) => n.dataset.recordId));
+        for (const id of records)
+          assert.ok(returned.includes(id), 'committed damage survives all navigation');
+        const a = await page.evaluate(() => rigAudit);
+        assertBounded(a);
+        assert.ok(a.phases.includes('flight') && a.phases.includes('land'));
+        assert.deepEqual(a.types, [
+          personality === 'curious'
+            ? 'widow'
+            : personality === 'dreamy'
+              ? 'orb-weaver'
+              : 'jumping spider',
+        ]);
+        await page.keyboard.press('Escape');
+        assert.equal(await page.locator('main').innerHTML(), original);
+        assert.equal(await page.locator(root).count(), 0);
+      } finally {
+        await page.close();
+      }
+    }
+  },
+);
+
+test(
+  'scrolling mid-strike releases an offscreen grip and preserves the committed mark',
+  { timeout: 16000 },
+  async () => {
+    const page = await fixture({ path: '/reference.html' });
+    try {
+      await page.evaluate(() => document.querySelector('#reference-volume-8').scrollIntoView());
+      const originalY = await page.evaluate(() => scrollY),
+        html = await page.locator('main').innerHTML();
+      await page.locator('#demo-personality').selectOption('dreamy');
+      await page.locator('#demo-follow').check();
+      await start(page);
+      await auditRig(page);
+      await page.locator('#reference-target-8-9').hover();
+      await page.waitForFunction(
+        () => document.querySelector('[data-cr4wler-root]')?.dataset.phase === 'strike',
+      );
+      const id = await page.locator(root).getAttribute('data-strike-record');
+      await page.evaluate(() => scrollBy(0, 6000));
+      await assertRecovered(page);
+      assert.ok((await rig(page)).recoveries > 0);
+      const y = await page.evaluate(() => scrollY);
+      await page.waitForTimeout(1000);
+      assert.equal(
+        await page.evaluate(() => scrollY),
+        y,
+        'follow mode cannot fight external scrolling',
+      );
+      await page.locator(`${root} .pause`).click();
+      await page.evaluate((y) => scrollTo(0, y), originalY);
+      await page.waitForTimeout(200);
+      assert.ok(
+        await page
+          .locator(`${root} .piece`)
+          .evaluateAll((ns, id) => ns.some((n) => n.dataset.recordId === id), id),
+      );
+      assertBounded(await page.evaluate(() => rigAudit));
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator('main').innerHTML(), html);
+    } finally {
+      await page.close();
+    }
+  },
+);
+
+test(
+  'paused and reduced-motion rapid scrolling use calm finite poses across resize and type changes',
+  { timeout: 20000 },
+  async () => {
+    const page = await fixture({ path: '/reference.html?theme=night' });
+    try {
+      await start(page);
+      await waitForPiece(page);
+      await page.locator(`${root} .pause`).click();
+      await auditRig(page);
+      for (const personality of ['feral', 'dreamy', 'curious']) {
+        await page.locator('#demo-personality').selectOption(personality);
+        for (const y of [32000, 3000, 60000, 0]) {
+          await page.evaluate((y) => scrollTo(0, y), y);
+          await page.waitForTimeout(60);
+        }
+        await page.setViewportSize({ width: 900, height: 600 });
+        await page.waitForTimeout(80);
+        const r = await rig(page);
+        assert.equal(r.recovery, 'none');
+        assert.ok(r.maxReach <= r.reachLimit + 0.01);
+        await page.setViewportSize({ width: 1440, height: 1000 });
+      }
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.waitForTimeout(100);
+      const count = await page.locator(root).getAttribute('data-fragments');
+      for (const y of [32000, 80000, 2000, 0]) {
+        await page.evaluate((y) => scrollTo(0, y), y);
+        await page.waitForTimeout(100);
+      }
+      const a = await rig(page);
+      assert.equal(a.recovery, 'none');
+      await page.waitForTimeout(200);
+      assert.deepEqual(await rig(page), a, 'quiet rig has no ongoing animation');
+      assert.equal(await page.locator(root).getAttribute('data-fragments'), count);
+      assertBounded(await page.evaluate(() => rigAudit));
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator(root).count(), 0);
+    } finally {
+      await page.close();
+    }
+  },
+);
+
+test(
+  'external programmatic scrolling disarms edge intent through follow toggles, blur and recovery',
+  { timeout: 14000 },
+  async () => {
+    const page = await fixture({ path: '/reference.html' });
+    try {
+      await page.evaluate(() => scrollTo(0, 3500));
+      await page.locator('#demo-follow').check();
+      await start(page);
+      await page.mouse.move(600, 995);
+      await page.waitForTimeout(900);
+      await page.evaluate(() => scrollTo(0, 24000));
+      await page.waitForTimeout(100);
+      const y = await page.evaluate(() => scrollY);
+      await page.waitForTimeout(1200);
+      assert.equal(await page.evaluate(() => scrollY), y);
+      assert.equal(await page.locator(root).getAttribute('data-edge-velocity'), '0.0');
+      await page.locator('#demo-follow').uncheck();
+      await page.locator('#demo-follow').check();
+      await page.evaluate(() => dispatchEvent(new Event('blur')));
+      await page.evaluate(() => dispatchEvent(new Event('focus')));
+      await page.waitForTimeout(350);
+      assert.equal(await page.evaluate(() => scrollY), y);
+      await assertRecovered(page);
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator(root).count(), 0);
+    } finally {
+      await page.close();
+    }
+  },
+);

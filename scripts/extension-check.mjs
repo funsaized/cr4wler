@@ -52,7 +52,7 @@ try {
       for (const event of Object.keys(siteActions))
         document.querySelector('main').addEventListener(event, () => siteActions[event]++, true);
     });
-    await preparePointerSession(page);
+    await preparePointerSession(page, { surface: 'Installed extension' });
     const denied = await worker.evaluate(async () => {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       try {
@@ -103,7 +103,7 @@ try {
   evidence.viewport = { width: 1440, height: 1000 };
   evidence.passed = true;
   console.log(
-    'ACTUAL EXTENSION PASS: light/night exact hover preemption, responsive pointer hunts, three temperaments, bidirectional edge scrolling and immediate stops, persistent deep-scroll return, real activeTab/popup APIs, exact restore, protected inputs, no observed site actions/network/navigation.',
+    'ACTUAL EXTENSION PASS: light/night exact hover preemption, responsive pointer hunts, three distinct spider anatomies, rapid-scroll recovery, bidirectional edge scrolling and immediate stops, persistent deep-scroll return, real activeTab/popup APIs, exact restore, protected inputs, no observed site actions/network/navigation.',
   );
 } catch (error) {
   evidence.error = error.message;

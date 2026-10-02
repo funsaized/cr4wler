@@ -1,4 +1,15 @@
 export type Personality = 'curious' | 'feral' | 'dreamy';
+export const spiderTypes: Record<Personality, { name: string; description: string }> = {
+  curious: { name: 'Widow', description: 'Long-legged stalker. Round abdomen, precise locks.' },
+  dreamy: {
+    name: 'Orb-weaver',
+    description: 'Soft round body. Gentle steps and buoyant landings.',
+  },
+  feral: {
+    name: 'Jumping spider',
+    description: 'Big front eyes. Compact scuttles and quick pounces.',
+  },
+};
 export interface Settings {
   personality: Personality;
   intensity: number;
@@ -11,7 +22,16 @@ export interface Status extends Settings {
   fragments: number;
   visibleFragments?: number;
   recordLimitReached?: boolean;
-  phase?: 'arrive' | 'scan' | 'lock' | 'strike' | 'aftermath' | 'limit' | 'quiet' | 'paused';
+  phase?:
+    | 'arrive'
+    | 'scan'
+    | 'lock'
+    | 'strike'
+    | 'aftermath'
+    | 'limit'
+    | 'quiet'
+    | 'paused'
+    | 'recover';
 }
 export type Command = {
   type: 'CR4WLER';

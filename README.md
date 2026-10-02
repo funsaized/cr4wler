@@ -51,11 +51,13 @@ Hold near the top or bottom edge for a deliberate crawl. Speed increases toward 
 
 | Temperament | How it feels                                                      | Stable hover / lock / strike |
 | ----------- | ----------------------------------------------------------------- | ---------------------------- |
-| Dreamy      | Patient flowing steps, relaxed posture, deliberate peeling        | 140 / 460 / 420ms            |
-| Curious     | Attentive eyes, playful pivots, varied text experiments           | 75 / 200 / 300ms             |
-| Feral       | Compact stance, sharp turns, quick scuttle bursts and brief holds | 35 / 75 / 180ms              |
+| Dreamy      | Orb-weaver: rounded and tufted, buoyant steps, deliberate peeling | 140 / 460 / 420ms            |
+| Curious     | Widow: round abdomen, narrow waist, long purposeful stalking legs | 75 / 200 / 300ms             |
+| Feral       | Jumping spider: compact body, large front eyes, short pounces     | 35 / 75 / 180ms              |
 
-These are intended timing budgets. Body approach and browser frame cadence also affect completion time. A strike already in progress is briefly atomic; moving during it queues your latest target. Temperament changes physical movement, posture, acquisition, effect ordering and rhythm.
+These are intended timing budgets. Body approach and browser frame cadence also affect completion time. A strike already in progress is briefly atomic; moving during it queues your latest target. Each temperament is a different procedural spider type, with its own anatomy, gait, acquisition, effect ordering and rhythm. Curious is a widow with a round abdomen, narrow waist and long stalking legs. Dreamy is a rounded, gently tufted orb-weaver with slow buoyant steps. Feral is a compact jumping spider with large front eyes, quick scuttles and short crouched pounces.
+
+Rapid scrolling releases planted contacts before they exceed their fixed leg reach. The spider crouches, tucks its feet for a short hop, lands on the new visible surface, and chooses nearby text. An offscreen strike keeps its committed mark while releasing its grip. Repeated scrolls cannot drag airborne feet or restart a hop indefinitely. Reduced motion and paused geometry use a calm bounded reset. Recovery never scrolls the page.
 
 ## A guest, not a wrecking ball
 
@@ -79,7 +81,7 @@ npm run package
 
 `npm test` runs real Chromium DOM/interaction tests, a packaged content-script harness with mocked messaging, and popup tests with mocked Chrome APIs. `test:extension` separately loads the actual extension, verifies denial before a gesture, triggers Chrome’s toolbar action, and exercises the real popup page and isolated-world controller with unmodified permissions and real Chrome APIs. It records pointer-controlled videos and screenshots on dense light and dark pages and fails loudly if browser policy blocks installation. See [the validation record](docs/TESTING.md), including the remaining manual compatibility checklist.
 
-`npm run package` creates `artifacts/cr4wler-0.3.0.zip` and its SHA-256 digest. ZIP entry order, timestamps, and modes are fixed. With the lockfile and the same toolchain, repeated builds produce identical bytes. Unzip before selecting **Load unpacked**. This has not been submitted to the Chrome Web Store.
+`npm run package` creates `artifacts/cr4wler-0.4.0.zip` and its SHA-256 digest. ZIP entry order, timestamps, and modes are fixed. With the lockfile and the same toolchain, repeated builds produce identical bytes. Unzip before selecting **Load unpacked**. This has not been submitted to the Chrome Web Store.
 
 Useful files:
 

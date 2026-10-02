@@ -1,4 +1,5 @@
-import { defaults, type Command, type Settings, type Status } from './types';
+import { Spider } from './spider';
+import { spiderTypes, defaults, type Command, type Settings, type Status } from './types';
 const settings: Settings = { ...defaults };
 let targetId: number | undefined;
 const summon = document.querySelector<HTMLButtonElement>('#summon')!,
@@ -30,7 +31,14 @@ function paint(s: Status) {
   slider.value = String(Math.round(s.intensity * 100));
   paintSettings();
 }
+const preview = new Spider(document.querySelector<HTMLCanvasElement>('#specimen-preview')!);
+preview.resize(318, 132, devicePixelRatio);
 function paintSettings() {
+  const type = spiderTypes[settings.personality];
+  document.querySelector('#specimen-type')!.textContent = type.name.toUpperCase();
+  document.querySelector('#type-description')!.textContent = type.description;
+  preview.update(0, 0, { x: 185, y: 57 }, { ...settings, reducedMotion: true });
+  preview.render();
   document
     .querySelectorAll<HTMLButtonElement>('[data-personality]')
     .forEach((b) =>
@@ -75,6 +83,7 @@ follow.addEventListener('change', () => {
   settings.followMouse = follow.checked;
   void send('configure');
 });
+paintSettings();
 void chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
   targetId = tab?.id;
   return send('status');
