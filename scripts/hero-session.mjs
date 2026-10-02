@@ -31,8 +31,8 @@ function fixture() {
     .number{font:14px monospace;color:#596782;width:40px}a{font-size:27px;color:#bcd2ff;text-decoration:none}
     article p{font:13px system-ui;color:#708098;margin:13px 0 0}
     #protected{margin-top:100px}input{display:block;margin:12px 0}
-    .guide{position:fixed;left:0;right:0;bottom:0;padding:15px;text-align:center;background:#10131bee;
-      border-top:1px solid #33415a;color:#a7b6d0;font:15px system-ui;z-index:2147483645}
+    .guide{position:fixed;left:0;right:0;top:44px;padding:12px;text-align:center;background:#10131bee;
+      color:#a7b6d0;font:15px system-ui;z-index:2147483645;pointer-events:none}
     </style></head><body><main><header><h1>A small appetite for words.</h1>
     <p>THE OPEN FIELD GUIDE · ALL CONTENT IS FICTIONAL · REAL PAGE INTERACTION</p></header>
     ${rows}<section id="protected" data-cr4wler-ignore><form>
