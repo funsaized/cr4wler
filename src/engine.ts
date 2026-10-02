@@ -101,7 +101,6 @@ export class Cr4wler {
   private movedScrollers = new Set<EventTarget>();
   private destination: Point = { x: innerWidth * 0.62, y: innerHeight * 0.38 };
   private pointer: Point = { x: -1000, y: -1000 };
-  private nextFollow = 0;
   private pointerSurfaceOffset: Point = { x: scrollX, y: scrollY };
   private nextTelemetry = 0;
   private surfaceOffset: Point = { x: scrollX, y: scrollY };
@@ -161,7 +160,7 @@ export class Cr4wler {
     this.hidden = document.hidden;
     this.time = this.phaseTime = this.previous = 0;
     this.mode = 'arrive';
-    this.nextScan = this.nextChoice = this.nextFollow = this.nextTelemetry = 0;
+    this.nextScan = this.nextChoice = this.nextTelemetry = 0;
     this.nextId = 1;
     this.limitReached = false;
     this.blurred = false;
@@ -731,7 +730,7 @@ export class Cr4wler {
   }
   private choose() {
     this.nextChoice = this.time + huntProfiles[this.settings.personality].choice;
-    if (this.limitReached || !this.highlight) return;
+    if (this.settings.followMouse || this.limitReached || !this.highlight) return;
     const body = this.spider?.position ?? this.destination;
     const focus = body;
     // Use cached scan geometry for ranking. Only a bounded shortlist is remeasured.
@@ -957,7 +956,7 @@ export class Cr4wler {
   private updateHover() {
     if (!this.pointerActive || !this.followAvailable()) return;
     const profile = huntProfiles[this.settings.personality];
-    if (this.pointerDirty && this.time >= this.nextHoverProbe) {
+    if (this.time >= this.nextHoverProbe) {
       this.pointerDirty = false;
       this.nextHoverProbe = this.time + 0.035;
       const freshPointer = this.pointerMoved;
@@ -965,7 +964,10 @@ export class Cr4wler {
       const hit = document.elementFromPoint(this.pointer.x, this.pointer.y);
       const safe = hit instanceof HTMLElement && eligible(hit);
       this.updateEdgeIntent(freshPointer, safe);
-      const resolved = safe ? targetAtPoint(this.pointer.x, this.pointer.y, () => true) : null;
+      // Resolve the exact hit before checking occupancy: destroyed text must not
+      // redirect attention to another nearby, still-available range.
+      const hitTarget = safe ? targetAtPoint(this.pointer.x, this.pointer.y, () => true) : null;
+      const resolved = hitTarget && !this.occupied(hitTarget) ? hitTarget : null;
       const previous = this.hover;
       if (!resolved) {
         this.hover = null;
@@ -980,14 +982,14 @@ export class Cr4wler {
           Math.hypot(
             Math.max(rect.left - this.pointer.x, 0, this.pointer.x - rect.right),
             Math.max(rect.top - this.pointer.y, 0, this.pointer.y - rect.bottom),
-          ) < 90;
+          ) === 0;
         const target = same && close && valid(previous!.target) ? previous!.target : resolved;
         target.rect = target.range.getBoundingClientRect();
         if (!same || !close) {
           this.scanRevision++;
           this.hover = { target, at: performance.now() };
           // New attention cancels any uncommitted hunt before it can strike.
-          if (this.candidate && this.candidate.element !== target.element) this.cancelCandidate();
+          if (this.candidate && this.candidate !== target) this.cancelCandidate();
         } else this.hover = previous;
       }
       this.selection?.clear();
@@ -1005,11 +1007,7 @@ export class Cr4wler {
       this.occupied(intent.target)
     )
       return;
-    if (
-      this.candidate === intent.target ||
-      (this.candidate?.element === intent.target.element && this.candidateSource === 'hover')
-    )
-      return;
+    if (this.candidate === intent.target) return;
     if (
       performance.now() - intent.at < profile.hoverDwell * 1000 ||
       performance.now() - this.hoverCommittedAt < profile.retarget * 1000
@@ -1021,28 +1019,6 @@ export class Cr4wler {
     }
     this.hoverCommittedAt = performance.now();
     this.selectCandidate(intent.target, 'hover');
-  }
-  private followPointer() {
-    if (
-      !this.settings.followMouse ||
-      this.time < this.nextFollow ||
-      !this.pointerActive ||
-      !this.spider
-    )
-      return;
-    this.nextFollow = this.time + 0.16;
-    const position = this.spider.position;
-    const dx = this.pointer.x - position.x;
-    const dy = this.pointer.y - position.y;
-    const distance = Math.hypot(dx, dy);
-    if (distance < 125) return;
-    // It approaches a comfortable stand-off, with spring acceleration in Spider.
-    // Target acquisition owns movement while a scan/lock/strike is under way.
-    const side = Math.sin(this.time * 0.35) * 18;
-    this.destination = {
-      x: clamp(this.pointer.x - (dx / distance) * 102 + side, 70, Math.max(70, innerWidth - 70)),
-      y: clamp(this.pointer.y - (dy / distance) * 102, 105, Math.max(105, innerHeight - 145)),
-    };
   }
   private updateActivity() {
     if (this.host) {
@@ -1198,9 +1174,9 @@ export class Cr4wler {
         this.updateActivity();
       }
       if (this.mode === 'scan' && !this.candidate && !this.limitReached) {
-        this.followPointer();
-        if (!this.hover && this.phaseTime > profile.choice && this.time >= this.nextChoice)
-          this.choose();
+        if (this.settings.followMouse) {
+          if (!this.hover) this.destination = { ...this.spider.position };
+        } else if (this.phaseTime > profile.choice && this.time >= this.nextChoice) this.choose();
       }
       if (this.candidate) {
         if (!fresh(this.candidate)) this.cancelCandidate();
@@ -1279,7 +1255,7 @@ export class Cr4wler {
       grip,
       selector,
       surface: this.surface,
-      pointer: this.pointerActive ? this.pointer : undefined,
+      pointer: this.pointerActive && this.hover ? this.pointer : undefined,
       attention: this.hover
         ? {
             x: this.hover.target.rect.x + this.hover.target.rect.width / 2,

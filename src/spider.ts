@@ -169,6 +169,7 @@ export class Spider {
   private gestureAge = 0;
   private gestureLeg = -1;
   private gaitStep = 0;
+  private stepCooldown = 0;
   private headAngle = 0;
   private recovery: {
     reason: 'scroll' | 'hunt';
@@ -721,8 +722,9 @@ export class Spider {
       }
       if (leg.stepping) {
         leg.progress = Math.min(1, leg.progress + dt / leg.duration);
-        const t = smooth(leg.progress);
-        const lift = Math.sin(Math.PI * leg.progress) ** 2;
+        const p = leg.progress;
+        const t = p * p * p * (p * (p * 6 - 15) + 10);
+        const lift = Math.sin(Math.PI * p) ** 2;
         leg.lift = lift;
         // The swing arcs through local space; both endpoints stay fixed in page space.
         const arcSide = leg.side * lift * (feral ? 5 : dreamy ? 6 : 11) * this.scale;
@@ -748,8 +750,13 @@ export class Spider {
     }
 
     if (!entering && !opts.descending) {
-      const budget =
-        (speed > (feral ? 130 : 240) ? 4 : dreamy ? 2 : 3) - (this.gripLeg >= 0 ? 1 : 0);
+      const budget = (speed > 80 ? 4 : dreamy ? 2 : 3) - (this.gripLeg >= 0 ? 1 : 0);
+      // Shorten the swing before body travel exhausts planted contacts.
+      const stepTime = Math.min(
+        profile.stepTime,
+        (profile.stepDrift * this.scale * 2.4) / Math.max(1, speed),
+      );
+      this.stepCooldown = Math.max(0, this.stepCooldown - dt);
       this.gestureAge += dt;
       // An occasional single front-foot feeler is an articulated gesture, not a body wander.
       const gestureInterval = feral
@@ -759,7 +766,7 @@ export class Spider {
           : 1.05 + (this.gaitStep % 3) * 0.17;
       const gesture =
         speed < 22 && remaining < 30 && this.gestureAge > gestureInterval && this.gripLeg < 0;
-      while (movingFeet < budget) {
+      while (movingFeet < budget && this.stepCooldown === 0) {
         let next = -1;
         let best = -Infinity;
         for (let i = 0; i < this.legs.length; i++) {
@@ -798,12 +805,11 @@ export class Spider {
           leg.row === 0 &&
           distance(leg.foot, leg.ideal) < profile.stepDrift * this.scale;
         Object.assign(leg.from, leg.foot);
-        const lead = profile.stepTime * (feral ? 0.9 : 0.75);
+        const lead = stepTime * 0.65;
         leg.to.x = leg.ideal.x + walkingVX * lead;
         leg.to.y = leg.ideal.y + walkingVY * lead;
         Object.assign(leg.to, this.bounded(leg.to, this.reachLimit * 0.9));
-        leg.duration =
-          profile.stepTime * (1.1 - intensity * 0.18 + ((next + this.gaitStep) % 3) * 0.055);
+        leg.duration = stepTime * (1.1 - intensity * 0.18 + ((next + this.gaitStep) % 3) * 0.055);
         if (feeler) {
           this.gestureLeg = next;
           this.gestureAge = 0;
@@ -816,6 +822,7 @@ export class Spider {
         leg.stepping = true;
         this.lastStep = next;
         this.gaitStep++;
+        this.stepCooldown = leg.duration / 4;
         movingFeet++;
       }
     }
@@ -891,23 +898,33 @@ export class Spider {
       const localHipY = (-10 + leg.row * 7) * profile.torso * s;
       leg.hip.x = this.body.x + localHipX * torsoCos - localHipY * torsoSin;
       leg.hip.y = this.body.y + offset + localHipX * torsoSin + localHipY * torsoCos;
-      const ankleX = -leg.side * (6 - leg.lift * 2) * s;
-      const ankleY = -(gripping ? 7 : 9 - leg.lift * 3) * s;
+      // The distal joint tucks toward the body during swing; the toe remains
+      // the contact endpoint rather than dragging the entire rigid leg around.
+      const tuck = gripping ? 0 : leg.lift;
+      const ankleX = -leg.side * (6 + tuck * 15) * s;
+      const ankleY = (-(gripping ? 7 : 9) + tuck * (leg.row - 1.5) * 7) * s;
       leg.ankle.x = leg.foot.x + ankleX * torsoCos - ankleY * torsoSin;
       leg.ankle.y = leg.foot.y + ankleX * torsoSin + ankleY * torsoCos;
       const dx = leg.ankle.x - leg.hip.x;
       const dy = leg.ankle.y - leg.hip.y;
       const actual = Math.max(0.01, Math.hypot(dx, dy));
-      // Bone lengths are fixed. Contact ownership must release before this solver reaches its limit.
-      const fold = 1 - this.crouch * 0.055 + leg.lift * 0.035;
-      const upper = (profile.upper + (leg.row % 2) * 5) * fold * s;
+      // Solve in a raised bend plane, then project onto the page. A flat IK
+      // elbow can only scissor sideways; elevation lets the knee fold upward
+      // at mid-swing without stretching bones or changing planted contacts.
+      const upper = (profile.upper + (leg.row % 2) * 5) * s;
       const lower = (profile.lower - leg.row * 2) * s;
-      const length = clamp(actual, Math.abs(upper - lower) + 0.01, upper + lower - 0.01);
+      const height = (tuck * profile.stepLift - 16 * (1 - this.crouch * 0.3)) * s;
+      const chord = Math.hypot(actual, height);
+      const length = clamp(chord, Math.abs(upper - lower) + 0.01, upper + lower - 0.01);
       const along = (upper * upper - lower * lower + length * length) / (2 * length);
       const perpendicular = Math.sqrt(Math.max(0, upper * upper - along * along));
       const bend = leg.side * (leg.row < 2 ? 1 : -1);
-      leg.knee.x = leg.hip.x + (dx / actual) * along - (dy / actual) * perpendicular * bend;
-      leg.knee.y = leg.hip.y + (dy / actual) * along + (dx / actual) * perpendicular * bend;
+      const elevation = 0.45 + tuck * 0.85;
+      const lateral = Math.cos(elevation) * perpendicular * bend;
+      const raised = Math.sin(elevation) * perpendicular;
+      const radial = (actual / chord) * along - (height / chord) * raised;
+      leg.knee.x = leg.hip.x + (dx / actual) * radial - (dy / actual) * lateral;
+      leg.knee.y = leg.hip.y + (dy / actual) * radial + (dx / actual) * lateral;
     }
     // Opaque local edging preserves the thin colored cores even on white or busy pages.
     // Light comes from short active struts and pin joints, never a full-rig blur.

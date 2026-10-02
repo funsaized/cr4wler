@@ -152,18 +152,8 @@ export function targetAtPoint(
 ): Target | null {
   const hit = document.elementFromPoint(x, y);
   if (!(hit instanceof HTMLElement) || !eligible(hit)) return null;
-  const semantic = hit.closest('p,h1,h2,h3,h4,h5,h6,a,li,dt,dd,blockquote,figcaption');
-  let root = semantic instanceof HTMLElement && eligible(semantic) ? semantic : hit;
+  const root = hit;
   if (root === document.body || root === document.documentElement) return null;
-  // Small inline/image hits can borrow nearby text from a safe local parent.
-  if (
-    (!root.firstChild || root.tagName === 'IMG') &&
-    root.parentElement &&
-    eligible(root.parentElement) &&
-    root.parentElement !== document.body &&
-    root.parentElement !== document.documentElement
-  )
-    root = root.parentElement;
   const caret = document.caretRangeFromPoint?.(x, y);
   const caretNode = caret?.startContainer;
   let best: Target | null = null;
@@ -178,14 +168,14 @@ export function targetAtPoint(
       Math.max(r.left - x, 0, x - r.right),
       Math.max(r.top - y, 0, y - r.bottom),
     );
-    if (distance <= 90 && distance < bestDistance) {
+    if (distance === 0 && distance < bestDistance) {
       best = target;
       bestDistance = distance;
     }
   };
   if (caretNode?.nodeType === Node.TEXT_NODE && root.contains(caretNode))
     offer(caretNode as Text, caret!.startOffset);
-  if (bestDistance <= 12) return best;
+  if (bestDistance === 0) return best;
   let node: Node | null = root;
   for (let seen = 0; node && seen < 100 && ranges < 12; seen++) {
     const current: Node = node;

@@ -482,45 +482,45 @@ test(
   },
 );
 
-test('mouse following is opt-in, bounded and can be disabled', { timeout: 14000 }, async () => {
-  const page = await fixture();
-  try {
-    await page.locator('main').evaluate((el) => (el.dataset.cr4wlerIgnore = ''));
-    await start(page);
-    await page.waitForTimeout(2100);
-    const visitor = page.locator(`${root} canvas.visitor`);
-    await page.mouse.move(340, 650, { steps: 10 });
-    await page.waitForTimeout(250);
-    assert.equal(await visitor.getAttribute('data-motion'), 'explore');
-    const initial = await visitor.evaluate((el) => ({
-      x: +el.dataset.bodyX,
-      y: +el.dataset.bodyY,
-    }));
-    await page.locator('#demo-follow').check();
-    await page.mouse.move(340, 650, { steps: 10 });
-    await page.waitForTimeout(1700);
-    assert.equal(await visitor.getAttribute('data-motion'), 'follow');
-    const followed = await visitor.evaluate((el) => ({
-      x: +el.dataset.bodyX,
-      y: +el.dataset.bodyY,
-    }));
-    assert.ok(
-      Math.hypot(followed.x - 340, followed.y - 650) <
-        Math.hypot(initial.x - 340, initial.y - 650) - 100,
-    );
-    assert.ok(
-      Math.hypot(followed.x - 340, followed.y - 650) > 55,
-      'spider maintains space around pointer',
-    );
-    await page.locator('#demo-follow').uncheck();
-    await page.mouse.move(900, 200, { steps: 10 });
-    await page.waitForTimeout(300);
-    assert.equal(await visitor.getAttribute('data-motion'), 'explore');
-    await page.keyboard.press('Escape');
-  } finally {
-    await page.close();
-  }
-});
+test(
+  'cursor hunting is opt-in, ignores ineligible space and can be disabled',
+  { timeout: 14000 },
+  async () => {
+    const page = await fixture();
+    try {
+      await page.locator('main').evaluate((el) => (el.dataset.cr4wlerIgnore = ''));
+      await start(page);
+      await page.waitForTimeout(2100);
+      const visitor = page.locator(`${root} canvas.visitor`);
+      await page.mouse.move(340, 650, { steps: 10 });
+      await page.waitForTimeout(250);
+      assert.equal(await visitor.getAttribute('data-motion'), 'explore');
+      const initial = await visitor.evaluate((el) => ({
+        x: +el.dataset.bodyX,
+        y: +el.dataset.bodyY,
+      }));
+      await page.locator('#demo-follow').check();
+      await page.mouse.move(340, 650, { steps: 10 });
+      await page.waitForTimeout(1700);
+      assert.equal(await visitor.getAttribute('data-motion'), 'follow');
+      const followed = await visitor.evaluate((el) => ({
+        x: +el.dataset.bodyX,
+        y: +el.dataset.bodyY,
+      }));
+      assert.ok(
+        Math.hypot(followed.x - initial.x, followed.y - initial.y) < 35,
+        'ineligible space must not pull the spider toward the pointer',
+      );
+      await page.locator('#demo-follow').uncheck();
+      await page.mouse.move(900, 200, { steps: 10 });
+      await page.waitForTimeout(300);
+      assert.equal(await visitor.getAttribute('data-motion'), 'explore');
+      await page.keyboard.press('Escape');
+    } finally {
+      await page.close();
+    }
+  },
+);
 
 async function hoverFixture(personality = 'curious') {
   const page = await fixture();
@@ -565,6 +565,84 @@ async function bodyPoint(page) {
     .locator(`${root} canvas.visitor`)
     .evaluate((el) => ({ x: +el.dataset.bodyX, y: +el.dataset.bodyY }));
 }
+
+test(
+  'cursor mode ignores blank space and stops after destroying the hovered element',
+  { timeout: 20000 },
+  async () => {
+    const page = await hoverFixture('feral');
+    try {
+      const box = await page.locator('#aim-b').boundingBox();
+      // Inside the same link's padding, but not over its text.
+      await page.locator('#aim-b').evaluate((el) => {
+        el.style.paddingBottom = '60px';
+      });
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height + 25);
+      await page.waitForTimeout(2200);
+      assert.deepEqual(await maskedAims(page), []);
+      assert.equal(await page.locator(root).getAttribute('data-candidate'), '');
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await selectedAim(page, 'aim-b');
+      await page.waitForFunction(
+        () =>
+          [...CSS.highlights].some(
+            ([name, h]) =>
+              !name.endsWith('-selection') &&
+              [...h].some((r) => r.startContainer.parentElement?.id === 'aim-b'),
+          ),
+        null,
+        { timeout: 8000 },
+      );
+      await page.waitForTimeout(2200);
+      assert.deepEqual(await maskedAims(page), ['aim-b']);
+      assert.equal(await page.locator(root).getAttribute('data-candidate'), '');
+      await page.mouse.move(box.x + box.width / 2, box.y - 20);
+      await page.waitForTimeout(1200);
+      assert.deepEqual(await maskedAims(page), ['aim-b']);
+    } finally {
+      await page.close();
+    }
+  },
+);
+
+test('cursor can destroy adjacent text in the same element', { timeout: 16000 }, async () => {
+  const page = await hoverFixture('feral');
+  try {
+    await page.locator('#aim-b').evaluate((el) => {
+      el.replaceChildren(
+        document.createTextNode('First untouched line'),
+        document.createElement('br'),
+        document.createTextNode('Second untouched line'),
+      );
+    });
+    const points = await page.locator('#aim-b').evaluate((el) =>
+      [...el.childNodes]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => {
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          const rect = range.getBoundingClientRect();
+          return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+        }),
+    );
+    for (let i = 0; i < points.length; i++) {
+      await page.mouse.move(points[i].x, points[i].y);
+      await page.waitForFunction(
+        (count) =>
+          [...CSS.highlights]
+            .filter(([name]) => !name.endsWith('-selection'))
+            .flatMap(([, h]) => [...h])
+            .filter((r) => r.startContainer.parentElement?.id === 'aim-b').length === count,
+        i + 1,
+        { timeout: 6000 },
+      );
+      await page.waitForTimeout(700);
+    }
+    assert.deepEqual(await maskedAims(page), ['aim-b', 'aim-b']);
+  } finally {
+    await page.close();
+  }
+});
 
 test(
   'stable hover B preempts approach to A and becomes the next committed target',
