@@ -1275,15 +1275,16 @@ async function auditRig(page) {
 async function rig(page) {
   return page.locator(`${root} canvas.visitor`).evaluate((el) => JSON.parse(el.dataset.rig));
 }
-async function assertRecovered(page) {
+async function assertRecovered(page, minRecoveries = 0) {
   await page.waitForFunction(
-    () => {
+    (minRecoveries) => {
       const c = document
         .querySelector('[data-cr4wler-root]')
         ?.shadowRoot?.querySelector('canvas.visitor');
       if (!c?.dataset.rig) return false;
       const r = JSON.parse(c.dataset.rig);
       return (
+        r.recoveries >= minRecoveries &&
         r.recovery === 'none' &&
         r.body.x >= 25 &&
         r.body.x <= innerWidth - 25 &&
@@ -1291,7 +1292,7 @@ async function assertRecovered(page) {
         r.body.y <= innerHeight - 30
       );
     },
-    null,
+    minRecoveries,
     { timeout: 2500 },
   );
 }
@@ -1389,8 +1390,10 @@ test(
         () => document.querySelector('[data-cr4wler-root]')?.dataset.phase === 'strike',
       );
       const id = await page.locator(root).getAttribute('data-strike-record');
+      const recoveries = (await rig(page)).recoveries;
       await page.evaluate(() => scrollBy(0, 6000));
-      await assertRecovered(page);
+      // The pre-scroll canvas pose also looks settled until the next animation frame.
+      await assertRecovered(page, recoveries + 1);
       assert.ok((await rig(page)).recoveries > 0);
       const y = await page.evaluate(() => scrollY);
       await page.waitForTimeout(1000);

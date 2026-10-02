@@ -166,8 +166,8 @@ export class Spider {
   private burstAge = 0;
   private burstCount = 0;
   private holding = false;
-  private gestureAge = 0;
-  private gestureLeg = -1;
+  private weightShift: Point = { x: 0, y: 0 };
+  private lean: Point = { x: 0, y: 0 };
   private gaitStep = 0;
   private stepCooldown = 0;
   private headAngle = 0;
@@ -280,6 +280,17 @@ export class Spider {
       body: this.position,
       feet: this.feet,
       knees: this.legs.map((l) => ({ ...l.knee })),
+      legs: this.legs.map((l, i) => ({
+        phase: this.recovery
+          ? this.recoveryPhase
+          : i === this.gripLeg
+            ? 'grip'
+            : l.stepping
+              ? 'swing'
+              : 'stance',
+        role: l.row === 0 ? 'reach' : l.row === 3 ? 'push' : 'support',
+        lift: l.lift,
+      })),
       maxBoneLength: Math.max(
         ...this.legs.flatMap((l) => [distance(l.hip, l.knee), distance(l.knee, l.ankle)]),
       ),
@@ -331,7 +342,9 @@ export class Spider {
       x: clamp(anchor.x, 65, Math.max(65, this.width - 65)),
       y: clamp(anchor.y, 95, Math.max(95, this.height - 115)),
     };
-    this.gripLeg = this.gestureLeg = -1;
+    this.gripLeg = -1;
+    this.weightShift = { x: 0, y: 0 };
+    this.lean = { x: 0, y: 0 };
     this.gripCaptured = false;
     this.velocity.x = this.velocity.y = 0;
     this.holding = false;
@@ -424,8 +437,19 @@ export class Spider {
     const x = point.x * this.scale;
     const y = point.y * this.scale;
     return {
-      x: this.body.x + x * Math.cos(this.angle) - y * Math.sin(this.angle),
-      y: this.body.y + this.bodyOffset() + x * Math.sin(this.angle) + y * Math.cos(this.angle),
+      x:
+        this.body.x +
+        this.weightShift.x +
+        this.lean.x +
+        x * Math.cos(this.angle) -
+        y * Math.sin(this.angle),
+      y:
+        this.body.y +
+        this.weightShift.y +
+        this.lean.y +
+        this.bodyOffset() +
+        x * Math.sin(this.angle) +
+        y * Math.cos(this.angle),
     };
   }
 
@@ -534,10 +558,12 @@ export class Spider {
       this.velocity.x = this.velocity.y = this.angle = this.headAngle = 0;
       this.suspension = this.crouch = this.alert = this.silkAmount = 0;
       this.look.x = this.look.y = 0;
-      this.gripLeg = this.gestureLeg = -1;
+      this.gripLeg = -1;
+      this.weightShift = { x: 0, y: 0 };
+      this.lean = { x: 0, y: 0 };
       this.gripCaptured = false;
       this.holding = false;
-      this.burstAge = this.gestureAge = 0;
+      this.burstAge = 0;
       for (const leg of this.legs) {
         if (!wasInitialized || !wasQuiet) {
           const pose = this.idealFoot(leg);
@@ -579,7 +605,6 @@ export class Spider {
       this.alert = 1;
       this.holding = false;
       this.burstAge = 0;
-      this.gestureAge = 0;
     } else this.alert = Math.max(0, this.alert - dt * (feral ? 3.5 : 1.6));
 
     const enterProgress = smooth(clamp(this.age / 1.45, 0, 1));
@@ -628,10 +653,49 @@ export class Spider {
     const acceleration =
       (braking ? profile.braking * (this.holding ? 3.2 : 1) : profile.acceleration) * urgency;
     const velocityMix = deltaSpeed > 0 ? Math.min(1, (acceleration * dt) / deltaSpeed) : 1;
+    const previousVelocity = { ...this.velocity };
     this.velocity.x += deltaX * velocityMix;
     this.velocity.y += deltaY * velocityMix;
-    this.body.x += this.velocity.x * dt;
-    this.body.y += this.velocity.y * dt;
+    // Contacts constrain travel, rather than being dragged inward when the body outruns them.
+    let travel = 1;
+    const moveX = this.velocity.x * dt,
+      moveY = this.velocity.y * dt;
+    const moveSquared = moveX * moveX + moveY * moveY;
+    if (!entering && !opts.descending && moveSquared > 0) {
+      for (const leg of this.legs) {
+        // A committed landing must still be reachable after a reversal mid-swing.
+        const contact = leg.stepping ? leg.to : leg.foot;
+        const x = this.body.x - contact.x,
+          y = this.body.y - contact.y;
+        const dot = x * moveX + y * moveY;
+        const room = (this.reachLimit * 0.97) ** 2 - x * x - y * y;
+        travel = Math.min(
+          travel,
+          clamp(
+            (-dot + Math.sqrt(Math.max(0, dot * dot + moveSquared * room))) / moveSquared,
+            0,
+            1,
+          ),
+        );
+      }
+    }
+    this.body.x += moveX * travel;
+    this.body.y += moveY * travel;
+    const poseMix = 1 - Math.exp(-dt * 10);
+    this.lean.x = mix(
+      this.lean.x,
+      clamp((this.velocity.x - previousVelocity.x) / dt / profile.acceleration, -1, 1) *
+        3 *
+        this.scale,
+      poseMix,
+    );
+    this.lean.y = mix(
+      this.lean.y,
+      clamp((this.velocity.y - previousVelocity.y) / dt / profile.acceleration, -1, 1) *
+        3 *
+        this.scale,
+      poseMix,
+    );
     const walkingVX = this.velocity.x - surfaceVX;
     const walkingVY = this.velocity.y - surfaceVY;
     const speed = Math.hypot(walkingVX, walkingVY);
@@ -640,7 +704,8 @@ export class Spider {
     const lookDY = lookAt.y - this.body.y;
     const lookDistance = Math.max(1, Math.hypot(lookDX, lookDY));
     const heading = lookDistance > 12 ? Math.atan2(lookDX, -lookDY) : this.angle;
-    const turn = angleDelta(heading, this.angle);
+    const travelHeading = speed > 25 ? Math.atan2(walkingVX, -walkingVY) : heading;
+    const turn = angleDelta(travelHeading, this.angle);
     const turnStep = clamp(
       turn * (1 - Math.exp(-dt * profile.turnResponse)),
       -profile.turnRate * dt,
@@ -673,13 +738,15 @@ export class Spider {
       ? (opts.grip.point.x - this.body.x) * Math.cos(this.angle) +
         (opts.grip.point.y - this.body.y) * Math.sin(this.angle)
       : 0;
-    const nextGrip = opts.grip
-      ? this.gripLeg >= 0
-        ? this.gripLeg
-        : contactLocalX < 0
-          ? 0
-          : 4
-      : -1;
+    let nextGrip = opts.grip ? (this.gripLeg >= 0 ? this.gripLeg : contactLocalX < 0 ? 0 : 4) : -1;
+    if (nextGrip >= 0 && nextGrip !== this.gripLeg) {
+      const supports = this.legs.filter((leg, i) => i !== nextGrip && !leg.stepping);
+      if (
+        supports.length < 4 ||
+        supports.filter((leg) => leg.side === this.legs[nextGrip]!.side).length < 2
+      )
+        nextGrip = -1;
+    }
     if (this.gripLeg !== nextGrip) {
       if (this.gripLeg >= 0) this.legs[this.gripLeg]!.rested = 4;
       this.gripCaptured = false;
@@ -726,17 +793,17 @@ export class Spider {
         const t = p * p * p * (p * (p * 6 - 15) + 10);
         const lift = Math.sin(Math.PI * p) ** 2;
         leg.lift = lift;
-        // The swing arcs through local space; both endpoints stay fixed in page space.
-        const arcSide = leg.side * lift * (feral ? 5 : dreamy ? 6 : 11) * this.scale;
-        const arcForward = -lift * profile.stepLift * this.scale;
-        leg.foot.x =
-          mix(leg.from.x, leg.to.x, t) +
-          arcSide * Math.cos(this.angle) -
-          arcForward * Math.sin(this.angle);
-        leg.foot.y =
-          mix(leg.from.y, leg.to.y, t) +
-          arcSide * Math.sin(this.angle) +
-          arcForward * Math.cos(this.angle);
+        // Page-space endpoints never chase the body. Elevation reads as lift, not a sideways wave.
+        Object.assign(
+          leg.foot,
+          this.bounded(
+            {
+              x: mix(leg.from.x, leg.to.x, t),
+              y: mix(leg.from.y, leg.to.y, t) - lift * profile.stepLift * this.scale * 0.35,
+            },
+            this.reachLimit * 0.97,
+          ),
+        );
         if (leg.progress >= 1) {
           // Exact contact assignment, never velocity-driven dragging of a planted foot.
           Object.assign(leg.foot, leg.to);
@@ -744,54 +811,55 @@ export class Spider {
           leg.rested = 0;
           leg.lift = 0;
           movingFeet--;
-          if (this.gestureLeg === i) this.gestureLeg = -1;
         }
       }
     }
 
     if (!entering && !opts.descending) {
-      const budget = (speed > 80 ? 4 : dreamy ? 2 : 3) - (this.gripLeg >= 0 ? 1 : 0);
-      // Shorten the swing before body travel exhausts planted contacts.
-      const stepTime = Math.min(
-        profile.stepTime,
-        (profile.stepDrift * this.scale * 2.4) / Math.max(1, speed),
-      );
+      const budget = this.gripLeg >= 0 ? 3 : 4;
+      const pace = clamp(speed / profile.speed, 0, 1);
+      const stride = profile.stepDrift * this.scale * mix(0.55, 1, pace);
+      const stepTime = clamp((stride * 1.4) / Math.max(1, speed), 0.055, profile.stepTime);
+      const turning = turnStep / dt;
       this.stepCooldown = Math.max(0, this.stepCooldown - dt);
-      this.gestureAge += dt;
-      // An occasional single front-foot feeler is an articulated gesture, not a body wander.
-      const gestureInterval = feral
-        ? 0.4 + (this.gaitStep % 3) * 0.09
-        : dreamy
-          ? 3.4
-          : 1.05 + (this.gaitStep % 3) * 0.17;
-      const gesture =
-        speed < 22 && remaining < 30 && this.gestureAge > gestureInterval && this.gripLeg < 0;
       while (movingFeet < budget && this.stepCooldown === 0) {
         let next = -1;
         let best = -Infinity;
         for (let i = 0; i < this.legs.length; i++) {
           const leg = this.legs[i]!;
           if (i === this.gripLeg || leg.stepping || leg.rested <= profile.stepRest) continue;
-          const drift = distance(leg.foot, leg.ideal);
-          const needsStep = drift > profile.stepDrift * this.scale;
-          const adjustment = leg.rested > (dreamy ? 3.5 : 1.7) + ((i * 0.71) % 2.3) && drift > 6;
-          const feeler = gesture && this.gestureLeg < 0 && i === (this.gaitStep % 2 ? 0 : 4);
-          if (!needsStep && !adjustment && !feeler) continue;
-          let sameSideMoving = 0;
-          for (const other of this.legs) {
-            if (other.side === leg.side && (other.stepping || other === this.legs[this.gripLeg]))
-              sameSideMoving++;
-          }
-          if (sameSideMoving >= 2) continue;
+          // Compare against the same reachable pose used for landing, or short rigs
+          // can endlessly re-step toward a rest position just beyond that limit.
+          const drift = distance(leg.foot, this.bounded(leg.ideal, this.reachLimit * 0.86));
+          const trail =
+            ((leg.ideal.x - leg.foot.x) * walkingVX + (leg.ideal.y - leg.foot.y) * walkingVY) /
+            Math.max(1, speed);
+          const reach = distance(leg.foot, this.body) / this.reachLimit;
+          const lateral =
+            Math.abs(
+              (leg.ideal.x - leg.foot.x) * walkingVY - (leg.ideal.y - leg.foot.y) * walkingVX,
+            ) / Math.max(1, speed);
+          const needsStep = trail > stride || lateral > stride * 1.5 || (reach > 0.88 && trail > 0);
+          const adjustment = speed < 12 && leg.rested > 0.15 && drift > 5 * this.scale;
+          if (!needsStep && !adjustment) continue;
+          // Adjacent ipsilateral feet never swing together; each side retains two supports.
+          const unavailable = this.legs.filter(
+            (other, index) => other.side === leg.side && (other.stepping || index === this.gripLeg),
+          );
+          if (
+            unavailable.length >= 2 ||
+            unavailable.some((other) => other.stepping && Math.abs(other.row - leg.row) === 1)
+          )
+            continue;
           const opposite = this.lastStep >= 0 && this.legs[this.lastStep]!.side !== leg.side;
           // Alternating diagonal contacts supply rhythm without locking every limb in phase.
           const diagonal = (leg.row + (leg.side > 0 ? 1 : 0)) % 2 === this.gaitStep % 2;
           const score =
-            drift +
+            Math.max(trail, drift * 0.7) +
+            Math.max(0, reach - 0.82) * 500 +
             Math.min(leg.rested, 3) * 2 +
             (opposite ? 9 : 0) +
-            (diagonal ? 6 : 0) +
-            (feeler ? 20 : 0);
+            (diagonal ? 6 : 0);
           if (score > best) {
             next = i;
             best = score;
@@ -799,37 +867,37 @@ export class Spider {
         }
         if (next < 0) break;
         const leg = this.legs[next]!;
-        const feeler =
-          gesture &&
-          this.gestureLeg < 0 &&
-          leg.row === 0 &&
-          distance(leg.foot, leg.ideal) < profile.stepDrift * this.scale;
         Object.assign(leg.from, leg.foot);
-        const lead = stepTime * 0.65;
-        leg.to.x = leg.ideal.x + walkingVX * lead;
-        leg.to.y = leg.ideal.y + walkingVY * lead;
-        Object.assign(leg.to, this.bounded(leg.to, this.reachLimit * 0.9));
-        leg.duration = stepTime * (1.1 - intensity * 0.18 + ((next + this.gaitStep) % 3) * 0.055);
-        if (feeler) {
-          this.gestureLeg = next;
-          this.gestureAge = 0;
-          leg.duration *= dreamy ? 1.65 : 1.35;
-          const reach = (feral ? 14 : 19) * this.scale * (this.gaitStep % 2 ? -0.65 : 1);
-          leg.to.x += Math.sin(this.angle) * reach;
-          leg.to.y -= Math.cos(this.angle) * reach;
-        }
+        // Front feet catch the path, middle feet redirect, rear feet keep a longer push-off.
+        const lead = stepTime * (1.5 - leg.row * 0.15);
+        const rotation = clamp(turning * lead, -0.35, 0.35);
+        const localX = leg.ideal.x - this.body.x,
+          localY = leg.ideal.y - this.body.y;
+        const outside = clamp(1 - leg.side * turning * 0.09, 0.55, 1.45);
+        leg.to.x =
+          this.body.x +
+          localX * Math.cos(rotation) -
+          localY * Math.sin(rotation) +
+          walkingVX * lead * outside;
+        leg.to.y =
+          this.body.y +
+          localX * Math.sin(rotation) +
+          localY * Math.cos(rotation) +
+          walkingVY * lead * outside;
+        Object.assign(leg.to, this.bounded(leg.to, this.reachLimit * 0.86));
+        leg.duration = stepTime;
         leg.progress = 0;
         leg.stepping = true;
         this.lastStep = next;
         this.gaitStep++;
-        this.stepCooldown = leg.duration / 4;
+        this.stepCooldown = leg.duration / 8;
         movingFeet++;
       }
     }
     for (const leg of this.legs) {
       if (!this.withinReach(leg.foot)) {
-        // A moving body can exhaust one contact between frames. Release it into
-        // a short lift from the nearest reachable point; do not jump it to a new plant.
+        // Surface displacement or silk arrival can invalidate a contact independently
+        // of walking. Release into a short lift; normal travel is constrained above.
         this.releasedContacts++;
         Object.assign(leg.foot, this.bounded(leg.foot, this.reachLimit * 0.995));
         Object.assign(leg.from, leg.foot);
@@ -842,7 +910,26 @@ export class Spider {
       }
     }
     let liftLoad = 0;
-    for (const leg of this.legs) liftLoad += leg.lift;
+    const support = { x: 0, y: 0 };
+    let contacts = 0;
+    for (const [i, leg] of this.legs.entries()) {
+      liftLoad += leg.lift;
+      if (!leg.stepping && i !== this.gripLeg) {
+        support.x += leg.foot.x - this.body.x;
+        support.y += leg.foot.y - this.body.y;
+        contacts++;
+      }
+    }
+    this.weightShift.x = mix(
+      this.weightShift.x,
+      clamp((support.x / Math.max(1, contacts)) * 0.08, -3 * this.scale, 3 * this.scale),
+      poseMix,
+    );
+    this.weightShift.y = mix(
+      this.weightShift.y,
+      clamp((support.y / Math.max(1, contacts)) * 0.08, -3 * this.scale, 3 * this.scale),
+      poseMix,
+    );
     this.suspension = mix(
       this.suspension,
       liftLoad * (feral ? 1.1 : dreamy ? 0.35 : 0.7),
@@ -896,8 +983,19 @@ export class Spider {
       const gripping = i === this.gripLeg;
       const localHipX = leg.side * (leg.row === 0 ? 7 : 5) * s;
       const localHipY = (-10 + leg.row * 7) * profile.torso * s;
-      leg.hip.x = this.body.x + localHipX * torsoCos - localHipY * torsoSin;
-      leg.hip.y = this.body.y + offset + localHipX * torsoSin + localHipY * torsoCos;
+      leg.hip.x =
+        this.body.x +
+        this.weightShift.x +
+        this.lean.x +
+        localHipX * torsoCos -
+        localHipY * torsoSin;
+      leg.hip.y =
+        this.body.y +
+        this.weightShift.y +
+        this.lean.y +
+        offset +
+        localHipX * torsoSin +
+        localHipY * torsoCos;
       // The distal joint tucks toward the body during swing; the toe remains
       // the contact endpoint rather than dragging the entire rigid leg around.
       const tuck = gripping ? 0 : leg.lift;
@@ -964,7 +1062,10 @@ export class Spider {
     }
     ctx.globalAlpha = 1;
     ctx.save();
-    ctx.translate(this.body.x, this.body.y + offset);
+    ctx.translate(
+      this.body.x + this.weightShift.x + this.lean.x,
+      this.body.y + this.weightShift.y + this.lean.y + offset,
+    );
     ctx.rotate(this.angle);
     ctx.scale(s, s);
     const torso = profile.torso;
