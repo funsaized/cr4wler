@@ -314,14 +314,14 @@ export class Spider {
         this.body.y < 30 ||
         this.body.y > this.height - 30);
     const moved = Math.hypot(delta.x, delta.y);
+    const threatened = this.legs.filter(
+      (l) =>
+        distance({ x: l.foot.x + delta.x, y: l.foot.y + delta.y }, this.body) > this.reachLimit,
+    ).length;
     return (
       outside ||
       moved > this.reachLimit * 0.42 ||
-      (moved > 0 &&
-        this.legs.some(
-          (l) =>
-            distance({ x: l.foot.x + delta.x, y: l.foot.y + delta.y }, this.body) > this.reachLimit,
-        ))
+      (moved > this.reachLimit * 0.2 && threatened >= 4)
     );
   }
   /** Release contacts before any page delta can turn into an impossible reach. */

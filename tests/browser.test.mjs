@@ -657,6 +657,7 @@ test(
         (await page.evaluate(() => scrollY)) > initial + 60,
         'bottom edge should advance the document',
       );
+      assert.ok((await rig(page)).recoveries <= 2, 'ordinary edge movement keeps a climbing gait');
       await page.mouse.move(600, 500);
       await page.waitForTimeout(40);
       const stopped = await page.evaluate(() => scrollY);
