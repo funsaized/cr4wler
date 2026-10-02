@@ -58,8 +58,13 @@ async function movePointer(page, x, y, duration = 450) {
 
 async function feed(page, id) {
   const point = await page.locator(`#${id}`).evaluate((node) => {
-    const r = node.getBoundingClientRect();
-    return { x: r.x + r.width * 0.52, y: r.y + r.height / 2 };
+    const text = node.firstChild;
+    const start = text.textContent.search(/\S/);
+    const character = document.createRange();
+    character.setStart(text, start);
+    character.setEnd(text, start + 1);
+    const r = character.getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
   });
   assert.ok(point.y > 90 && point.y < 940, 'chosen word must be visibly inside the habitat');
   await page.evaluate(
