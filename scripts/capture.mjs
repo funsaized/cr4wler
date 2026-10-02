@@ -46,22 +46,36 @@ try {
   });
   page.on('request', (r) => requests.push(r.url()));
   const started = Date.now();
+  await page.locator('#demo-personality').selectOption('feral');
+  await page.locator('#demo-intensity').fill('85');
+  await page.locator('#demo-intensity').dispatchEvent('input');
   await page.locator('#demo-summon').click();
   await page.waitForTimeout(6500);
   await page.mouse.move(600, 500, { steps: 10 });
   await page.locator('#demo-personality').selectOption('feral');
   await page.locator('#demo-intensity').fill('76');
   await page.locator('#demo-intensity').dispatchEvent('input');
-  await page.waitForTimeout(6000);
+  await page.waitForTimeout(11500);
   await page.screenshot({ caret: 'initial', path: 'docs/playground.png' });
   const fragmentCount = await page.locator('[data-cr4wler-root] .piece').count();
-  await page.waitForTimeout(2500);
+  await page.locator('#demo-follow').check();
+  await page.mouse.move(500, 680, { steps: 24 });
+  await page.waitForTimeout(1800);
+  await page.mouse.move(740, 280, { steps: 24 });
+  await page.waitForTimeout(1800);
+  await page.locator('#demo-follow').uncheck();
   await page.locator('[data-cr4wler-root] .pause').click();
   await page.waitForTimeout(600);
   await page.locator('[data-cr4wler-root] .pause').click();
   await page.evaluate(() => scrollTo({ top: 580, behavior: 'smooth' }));
   await page.waitForTimeout(5500);
   await page.screenshot({ caret: 'initial', path: 'docs/playground-scrolled.png' });
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.waitForTimeout(900);
+  await page.screenshot({ caret: 'initial', path: 'docs/playground-returned.png' });
+  const effects = await page
+    .locator('[data-cr4wler-root] .piece')
+    .evaluateAll((nodes) => [...new Set(nodes.map((n) => n.dataset.effect))]);
   await page.keyboard.press('Escape');
   const after = await page.locator('main').innerHTML();
   const restoreExact = after === before;
@@ -107,6 +121,7 @@ try {
     viewport,
     elapsedMs: Date.now() - started,
     fragmentCount,
+    effects,
     restoreExact,
     pageRequestsAfterActivation: requests,
     pageErrors: errors,

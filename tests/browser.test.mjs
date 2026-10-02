@@ -15,8 +15,12 @@ after(async () => {
 });
 const root = '[data-cr4wler-root]';
 async function fixture(options = {}) {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, ...options });
-  await page.goto(base);
+  const { path = '', ...contextOptions } = options;
+  const page = await browser.newPage({
+    viewport: { width: 1440, height: 1000 },
+    ...contextOptions,
+  });
+  await page.goto(base + path);
   return page;
 }
 async function pieces(page) {
@@ -26,7 +30,7 @@ async function waitForPiece(page) {
   await page.waitForFunction(
     () => document.querySelector('[data-cr4wler-root]')?.shadowRoot?.querySelector('.piece'),
     {},
-    { timeout: 10000 },
+    { timeout: 14000 },
   );
 }
 async function start(page) {
@@ -174,8 +178,9 @@ test(
       });
       await start(page);
       await waitForPiece(page);
-      const texts = await page.locator(`${root} .piece`).allTextContents();
-      assert.deepEqual(texts, ['A wonderfully eligible phrase']);
+      const text = (await page.locator(`${root} .piece`).allTextContents()).join('');
+      assert.ok(text.includes('wonderfully') || text.includes('eligible'));
+      assert.doesNotMatch(text, /PRIVATE/);
       await page.evaluate(() =>
         document.querySelector('#safe').setAttribute('contenteditable', 'true'),
       );
@@ -187,9 +192,10 @@ test(
             '<p style="margin-top:150px">A fresh page after navigation</p>'),
       );
       await waitForPiece(page);
-      assert.deepEqual(await page.locator(`${root} .piece`).allTextContents(), [
-        'A fresh page after navigation',
-      ]);
+      assert.match(
+        (await page.locator(`${root} .piece`).allTextContents()).join(''),
+        /fresh|navigation/,
+      );
       await page.keyboard.press('Escape');
       assert.equal(await page.locator(root).count(), 0);
     } finally {
@@ -199,26 +205,140 @@ test(
 );
 
 test(
-  'scroll and resize release fragments; reduced motion stays still',
-  { timeout: 18000 },
+  'persistent aftermath survives scrolling away, back and reflow while paused',
+  { timeout: 30000 },
   async () => {
-    const page = await fixture();
+    const page = await fixture({ path: '/reference.html' });
     try {
+      const before = await page.locator('main').innerHTML();
       await start(page);
       await waitForPiece(page);
-      await page.evaluate(() => scrollTo(0, 450));
-      await page.waitForTimeout(100);
-      assert.equal(await pieces(page), 0);
-      await page.setViewportSize({ width: 1100, height: 900 });
-      assert.equal(await pieces(page), 0);
+      await page.waitForTimeout(2200);
+      await page.locator('#demo-pause').click();
+      const ids = await page
+        .locator(`${root} .piece`)
+        .evaluateAll((nodes) => nodes.map((n) => n.dataset.recordId));
+      assert.ok(ids.length > 0);
+      const highlights = await page.evaluate(() =>
+        [...CSS.highlights]
+          .filter(([n]) => n.startsWith('cr4wler-') && !n.endsWith('-selection'))
+          .map(([name, h]) => ({ name, text: [...h].map((r) => r.toString()) })),
+      );
+      await page.evaluate(() => document.querySelector('#reference-volume-30').scrollIntoView());
+      await page.waitForTimeout(250);
+      assert.equal(await pieces(page), 0, 'offscreen marks should be virtualized');
+      assert.deepEqual(
+        await page.evaluate(() =>
+          [...CSS.highlights]
+            .filter(([n]) => n.startsWith('cr4wler-') && !n.endsWith('-selection'))
+            .map(([name, h]) => ({ name, text: [...h].map((r) => r.toString()) })),
+        ),
+        highlights,
+        'scroll must not discard source masks',
+      );
+      await page.evaluate(() => scrollTo(0, 0));
+      await page.waitForTimeout(250);
+      assert.deepEqual(
+        await page
+          .locator(`${root} .piece`)
+          .evaluateAll((nodes) => nodes.map((n) => n.dataset.recordId)),
+        ids,
+      );
+      await page.setViewportSize({ width: 1200, height: 1000 });
+      await page.waitForTimeout(250);
+      assert.deepEqual(
+        await page
+          .locator(`${root} .piece`)
+          .evaluateAll((nodes) => nodes.map((n) => n.dataset.recordId)),
+        ids,
+      );
+      assert.equal(await page.locator('main').innerHTML(), before);
       await page.keyboard.press('Escape');
-      await page.emulateMedia({ reducedMotion: 'reduce' });
+      assert.equal(await page.locator(root).count(), 0);
+      assert.equal(await page.locator('main').innerHTML(), before);
+    } finally {
+      await page.close();
+    }
+  },
+);
+
+test(
+  'progressive discovery reaches distant reference sections and reset clears the whole document',
+  { timeout: 30000 },
+  async () => {
+    const page = await fixture({ path: '/reference.html' });
+    try {
+      assert.ok((await page.locator('main *').count()) > 10000);
+      const before = await page.locator('main').innerHTML();
+      await page.evaluate(() => document.querySelector('#reference-volume-60').scrollIntoView());
+      await start(page);
+      await waitForPiece(page);
+      const deepText = await page.evaluate(() =>
+        [...CSS.highlights]
+          .filter(([n]) => n.startsWith('cr4wler-') && !n.endsWith('-selection'))
+          .flatMap(([, h]) =>
+            [...h].map((r) => r.startContainer.parentElement.closest('section')?.id),
+          ),
+      );
+      assert.ok(
+        deepText.includes('reference-volume-60'),
+        'must find current viewport beyond the first scanning chunk',
+      );
+      await page.evaluate(() => scrollTo(0, 0));
+      await waitForPiece(page);
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator(root).count(), 0);
+      assert.equal(await page.locator('main').innerHTML(), before);
+      assert.equal(
+        await page.evaluate(
+          () => [...CSS.highlights.keys()].filter((n) => n.startsWith('cr4wler-')).length,
+        ),
+        0,
+      );
+    } finally {
+      await page.close();
+    }
+  },
+);
+
+test(
+  'reduced motion stays still and changing preference preserves existing aftermath',
+  { timeout: 24000 },
+  async () => {
+    const page = await fixture({ reducedMotion: 'reduce' });
+    try {
       await start(page);
       await page.waitForTimeout(700);
       assert.equal(await pieces(page), 0);
-      const first = await page.locator(`${root} canvas`).evaluate((c) => c.toDataURL());
-      await page.waitForTimeout(300);
-      assert.equal(await page.locator(`${root} canvas`).evaluate((c) => c.toDataURL()), first);
+      const first = await page
+        .locator(`${root} canvas.visitor`)
+        .first()
+        .evaluate((c) => c.toDataURL());
+      await page.waitForTimeout(350);
+      assert.equal(
+        await page
+          .locator(`${root} canvas.visitor`)
+          .first()
+          .evaluate((c) => c.toDataURL()),
+        first,
+      );
+      await page.keyboard.press('Escape');
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      await start(page);
+      await waitForPiece(page);
+      await page.waitForTimeout(2000);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.waitForTimeout(200);
+      const ids = await page
+        .locator(`${root} .piece`)
+        .evaluateAll((nodes) => nodes.map((n) => n.dataset.recordId));
+      await page.waitForTimeout(1500);
+      assert.deepEqual(
+        await page
+          .locator(`${root} .piece`)
+          .evaluateAll((nodes) => nodes.map((n) => n.dataset.recordId)),
+        ids,
+      );
       await page.keyboard.press('Escape');
       assert.equal(await page.locator(root).count(), 0);
     } finally {
@@ -258,12 +378,17 @@ test('popup controls dispatch settings and handle restricted pages', async () =>
       'popup must fit Chrome without hidden controls',
     );
     await page.getByRole('button', { name: 'Feral' }).click();
+    await page.locator('#follow-mouse').check();
     await page.locator('#summon').click();
     assert.equal(await page.locator('#summon').isDisabled(), true);
     assert.equal(await page.locator('#pause').isDisabled(), false);
     assert.equal(
       (await page.evaluate(() => sent.find((x) => x.action === 'summon'))).settings.personality,
       'feral',
+    );
+    assert.equal(
+      (await page.evaluate(() => sent.find((x) => x.action === 'summon'))).settings.followMouse,
+      true,
     );
     await page.locator('#restore').click();
     await page.evaluate(
@@ -308,6 +433,90 @@ test('restore preserves existing highlights and concurrent page edits', async ()
     assert.deepEqual(await page.evaluate(() => [...CSS.highlights.keys()]), [
       'site-owned-highlight',
     ]);
+  } finally {
+    await page.close();
+  }
+});
+
+test(
+  'a visible lock precedes mutation and committed marks do not expire',
+  { timeout: 40000 },
+  async () => {
+    const page = await fixture();
+    try {
+      await page.evaluate(() => {
+        globalThis.huntTrace = [];
+        function tick() {
+          const host = document.querySelector('[data-cr4wler-root]');
+          if (host && huntTrace.at(-1)?.phase !== host.dataset.phase)
+            huntTrace.push({
+              phase: host.dataset.phase,
+              at: performance.now(),
+              count: Number(host.dataset.fragments),
+            });
+          if (huntTrace.length < 100) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      });
+      await start(page);
+      await waitForPiece(page);
+      await page.waitForFunction(() => huntTrace.some((t) => t.phase === 'strike'));
+      const trace = await page.evaluate(() => huntTrace);
+      const lock = trace.find((t) => t.phase === 'lock');
+      const strike = trace.find((t) => t.phase === 'strike');
+      assert.ok(lock && strike, 'scan/lock/strike must be observable');
+      assert.equal(lock.count, 0, 'no source is committed before the first lock');
+      assert.ok(strike.at - lock.at >= 550, 'Curious must hold its lock for an anticipation pause');
+      const firstId = await page.locator(`${root} .piece`).first().getAttribute('data-record-id');
+      // Beyond the previous version's 26 second expiry; keep the session running.
+      await page.waitForTimeout(27500);
+      assert.equal(await page.locator(`${root} .piece[data-record-id="${firstId}"]`).count(), 1);
+      const effects = await page
+        .locator(`${root} .piece`)
+        .evaluateAll((nodes) => new Set(nodes.map((n) => n.dataset.effect)).size);
+      assert.ok(effects >= 4, 'the growing composition should contain distinct treatments');
+      await page.keyboard.press('Escape');
+    } finally {
+      await page.close();
+    }
+  },
+);
+
+test('mouse following is opt-in, bounded and can be disabled', { timeout: 14000 }, async () => {
+  const page = await fixture();
+  try {
+    await page.locator('main').evaluate((el) => (el.dataset.cr4wlerIgnore = ''));
+    await start(page);
+    await page.waitForTimeout(2100);
+    const visitor = page.locator(`${root} canvas.visitor`);
+    await page.mouse.move(340, 650, { steps: 10 });
+    await page.waitForTimeout(250);
+    assert.equal(await visitor.getAttribute('data-motion'), 'explore');
+    const initial = await visitor.evaluate((el) => ({
+      x: +el.dataset.bodyX,
+      y: +el.dataset.bodyY,
+    }));
+    await page.locator('#demo-follow').check();
+    await page.mouse.move(340, 650, { steps: 10 });
+    await page.waitForTimeout(1700);
+    assert.equal(await visitor.getAttribute('data-motion'), 'follow');
+    const followed = await visitor.evaluate((el) => ({
+      x: +el.dataset.bodyX,
+      y: +el.dataset.bodyY,
+    }));
+    assert.ok(
+      Math.hypot(followed.x - 340, followed.y - 650) <
+        Math.hypot(initial.x - 340, initial.y - 650) - 100,
+    );
+    assert.ok(
+      Math.hypot(followed.x - 340, followed.y - 650) > 55,
+      'spider maintains space around pointer',
+    );
+    await page.locator('#demo-follow').uncheck();
+    await page.mouse.move(900, 200, { steps: 10 });
+    await page.waitForTimeout(300);
+    assert.equal(await visitor.getAttribute('data-motion'), 'explore');
+    await page.keyboard.press('Escape');
   } finally {
     await page.close();
   }

@@ -5,10 +5,13 @@ const summon = document.querySelector<HTMLButtonElement>('#summon')!,
   pause = document.querySelector<HTMLButtonElement>('#pause')!,
   restore = document.querySelector<HTMLButtonElement>('#restore')!,
   status = document.querySelector<HTMLElement>('#status')!,
-  slider = document.querySelector<HTMLInputElement>('#intensity')!;
+  slider = document.querySelector<HTMLInputElement>('#intensity')!,
+  follow = document.querySelector<HTMLInputElement>('#follow-mouse')!;
 function paint(s: Status) {
   settings.personality = s.personality;
   settings.intensity = s.intensity;
+  settings.followMouse = s.followMouse;
+  follow.checked = s.followMouse;
   summon.disabled = s.active;
   summon.innerHTML = s.active
     ? 'Your spider is here <span>✦</span>'
@@ -17,9 +20,11 @@ function paint(s: Status) {
   pause.textContent = s.paused ? 'Resume' : 'Pause';
   status.textContent = s.reducedMotion
     ? 'Reduced motion is on. Enjoy some quiet company.'
-    : s.active
-      ? 'Move your cursor to say hello. Esc restores everything.'
-      : 'Only this tab. Everything goes back with Esc.';
+    : s.recordLimitReached
+      ? 'Trail is full. Reset for a fresh composition.'
+      : s.active
+        ? 'Your trail stays as you scroll. Esc resets everything.'
+        : 'Only this tab. Reset or Esc brings every word back.';
   slider.value = String(Math.round(s.intensity * 100));
   paintSettings();
 }
@@ -64,6 +69,10 @@ slider.addEventListener('input', () => {
   paintSettings();
 });
 slider.addEventListener('change', () => void send('configure'));
+follow.addEventListener('change', () => {
+  settings.followMouse = follow.checked;
+  void send('configure');
+});
 void chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
   targetId = tab?.id;
   return send('status');

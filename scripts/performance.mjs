@@ -7,7 +7,8 @@ const server = await serve();
 const browser = await chromium.launch({ channel: 'chromium', headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  await page.goto('http://127.0.0.1:4173');
+  await page.goto('http://127.0.0.1:4173/reference.html');
+  await page.evaluate(() => document.querySelector('#reference-volume-30').scrollIntoView());
   await page.evaluate(() => {
     globalThis.samples = { frames: [], tasks: [] };
     let last = performance.now();
@@ -23,18 +24,25 @@ try {
     }
     requestAnimationFrame(frame);
   });
+  await page.locator('#demo-personality').selectOption('feral');
   await page.locator('#demo-summon').click();
   await page.waitForTimeout(12000);
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.waitForTimeout(6000);
+  await page.evaluate(() => document.querySelector('#reference-volume-30').scrollIntoView());
+  await page.waitForTimeout(6000);
   const samples = await page.evaluate(() => samples);
   samples.frames.sort((a, b) => a - b);
   const result = {
     sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
-    surface: 'Local playground without video recording or screenshots',
+    surface: 'Dense light playground, volume30/top/return, without video recording or screenshots',
     browser: browser.version(),
-    durationSeconds: 12,
+    durationSeconds: 24,
     frameSamples: samples.frames.length,
     medianFrameMs: samples.frames[Math.floor(samples.frames.length * 0.5)],
     p95FrameMs: samples.frames[Math.floor(samples.frames.length * 0.95)],
+    p99FrameMs: samples.frames[Math.floor(samples.frames.length * 0.99)],
+    over50ms: samples.frames.filter((n) => n > 50).length,
     longTasks: samples.tasks,
     fragments: await page.locator('[data-cr4wler-root] .piece').count(),
   };
