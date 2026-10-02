@@ -2,7 +2,7 @@
 
 **A tiny neon troublemaker for the open web.** Eight legs. Excellent taste. Questionable manners.
 
-cr4wler is a Chrome extension proof of concept that climbs over a real page, scans a phrase with a head-mounted beam, locks onto it, and pulls its typography apart. A persistent composition accumulates as you scroll. The original page stays in place. Press **Escape** and everything returns immediately.
+cr4wler is a Chrome extension for the sake of _whimsey_ that climbs over a real page, locks onto phrases with a head-mounted beam, 'eats' its typography. A persistent composition accumulates as you scroll. The original page stays in place. Press **Escape** and everything returns immediately.
 
 ![cr4wler exploring the playground](docs/playground.png)
 
@@ -59,13 +59,11 @@ These are intended timing budgets. Body approach and browser frame cadence also 
 
 Rapid scrolling releases planted contacts before they exceed their fixed leg reach. The spider crouches, tucks its feet for a short hop, lands on the new visible surface, and chooses nearby text. An offscreen strike keeps its committed mark while releasing its grip. Repeated scrolls cannot drag airborne feet or restart a hop indefinitely. Reduced motion and paused geometry use a calm bounded reset. Recovery never scrolls the page.
 
-## A guest, not a wrecking ball
+## Privacy: a guest, not a wrecking ball
 
-Only `activeTab` and `scripting` are requested. No host permissions or automatic content scripts. A toolbar gesture grants access to the current tab; Summon injects a single controller into its main frame.
+Nothing is clicked, submitted, fetched, uploaded, or stored. All fragment text lives only in this page's memory while the effect is active. There are no runtime dependencies, trackers, telemetry, fonts from CDNs, or remote services. See [PRIVACY.md](PRIVACY.md).
 
-The controller adds a fixed Shadow DOM overlay. It copies **text only**, never HTML, scripts, buttons, images, or embedded content. CSS Custom Highlights temporarily paint the source ranges transparent. The source text, attributes, event handlers, input values, and layout are never rewritten. Restoration deletes only cr4wler's own highlight entry and overlay. Existing highlights and page edits are preserved.
-
-Inputs, forms, buttons, editors, dialogs, embedded frames, hidden content, live regions, and conservatively recognized payment/authentication/private widgets are excluded. Authors can also opt out any subtree with `data-cr4wler-ignore`. This is a visual POC, not a sensitive-data classifier: don't summon it on pages you do not want animated.
+The controller adds a fixed Shadow DOM overlay. It copies **text only**, never HTML, scripts, buttons, images, or embedded content. Inputs, forms, buttons, editors, dialogs, embedded frames, hidden content, live regions, and conservatively recognized payment/authentication/private widgets are excluded. Authors can also opt out any subtree with `data-cr4wler-ignore`.
 
 Nothing is clicked, submitted, fetched, uploaded, or stored. All fragment text lives only in this page's memory while the effect is active. There are no runtime dependencies, trackers, telemetry, fonts from CDNs, or remote services. See [PRIVACY.md](PRIVACY.md).
 
