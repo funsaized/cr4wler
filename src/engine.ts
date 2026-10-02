@@ -9,6 +9,7 @@ import {
   type Target,
 } from './targets';
 import { huntProfiles } from './hunt-profiles';
+import { RuntimeQuality } from './runtime-quality';
 import { defaults, settingsFrom, type Settings, type Status } from './types';
 import {
   layoutShards,
@@ -55,7 +56,12 @@ export class Cr4wler {
   private settings: Settings = { ...defaults };
   private abort = new AbortController();
   private raf = 0;
-  private geometryRaf = 0;
+  private resizeDirty = false;
+  private quality = new RuntimeQuality();
+  private boundsRevision = 0;
+  private boundsCache = new WeakMap<Target, number>();
+  private nextBoundsCheck = 0;
+  private discovery = new AbortController();
   private previous = 0;
   private time = 0;
   private paused = false;
@@ -156,6 +162,10 @@ export class Cr4wler {
     this.configure(value ?? {});
     if (this.host) return this.status();
     this.abort = new AbortController();
+    this.discovery = new AbortController();
+    this.quality = new RuntimeQuality();
+    this.boundsCache = new WeakMap();
+    this.nextBoundsCheck = 0;
     this.paused = false;
     this.hidden = document.hidden;
     this.time = this.phaseTime = this.previous = 0;
@@ -286,7 +296,7 @@ export class Cr4wler {
     window.addEventListener(
       'resize',
       () => {
-        this.resize();
+        this.resizeDirty = true;
         this.scheduleGeometry(true);
         this.invalidateScan();
       },
@@ -302,6 +312,19 @@ export class Cr4wler {
       },
       { passive: true, capture: true, signal },
     );
+    window.visualViewport?.addEventListener(
+      'resize',
+      () => {
+        this.resizeDirty = true;
+        this.scheduleGeometry(true);
+        this.invalidateScan();
+      },
+      { passive: true, signal },
+    );
+    window.visualViewport?.addEventListener('scroll', () => this.scheduleGeometry(), {
+      passive: true,
+      signal,
+    });
     window.addEventListener('pagehide', () => this.restore(), { signal });
     document.addEventListener(
       'visibilitychange',
@@ -310,8 +333,8 @@ export class Cr4wler {
         if (this.hidden) {
           this.clearFollowIntent();
           cancelAnimationFrame(this.raf);
-          cancelAnimationFrame(this.geometryRaf);
-          this.geometryRaf = 0;
+          this.raf = 0;
+          this.cancelDiscovery();
         } else {
           this.scheduleGeometry(true);
           this.resumeFrames();
@@ -366,7 +389,15 @@ export class Cr4wler {
       this.resizeObserver.observe(document.documentElement);
       if (document.body) this.resizeObserver.observe(document.body);
     }
-    document.fonts?.addEventListener('loadingdone', () => this.scheduleGeometry(true), { signal });
+    document.fonts?.addEventListener(
+      'loadingdone',
+      () => {
+        // A replacement font can change glyph advances without changing the line's bounds.
+        for (const record of this.fragments) record.layoutDirty = true;
+        this.scheduleGeometry(true);
+      },
+      { signal },
+    );
     this.updateActivity();
     this.resumeFrames();
     return this.status();
@@ -377,16 +408,20 @@ export class Cr4wler {
     this.clearFollowIntent();
     if (this.pauseButton) this.pauseButton.textContent = this.paused ? 'Resume' : 'Pause';
     this.updateActivity();
-    if (this.paused) cancelAnimationFrame(this.raf);
-    else this.resumeFrames();
+    if (this.paused) {
+      cancelAnimationFrame(this.raf);
+      this.raf = 0;
+      this.cancelDiscovery();
+      if (this.geometryDirty) this.requestFrame();
+    } else this.resumeFrames();
     return this.status();
   }
   restore() {
     this.clearFollowIntent();
     this.scanRevision++;
     cancelAnimationFrame(this.raf);
-    cancelAnimationFrame(this.geometryRaf);
-    this.geometryRaf = 0;
+    this.raf = 0;
+    this.cancelDiscovery();
     this.abort.abort();
     this.observer?.disconnect();
     this.observer = null;
@@ -407,6 +442,9 @@ export class Cr4wler {
     this.pieces = null;
     this.overflow = null;
     this.spider = null;
+    this.activity = this.pauseButton = this.tip = null;
+    this.resizeDirty = false;
+    this.boundsCache = new WeakMap();
     this.lastSpiderOptions = null;
     this.targets = [];
     this.fragments = [];
@@ -444,11 +482,33 @@ export class Cr4wler {
     this.destination.y = clamp(this.destination.y, 110, Math.max(110, innerHeight - 150));
     this.spider?.render();
   }
+  private requestFrame() {
+    if (!this.raf && !this.hidden && this.host) this.raf = requestAnimationFrame(this.frame);
+  }
   private resumeFrames() {
-    cancelAnimationFrame(this.raf);
     this.previous = performance.now();
-    if (!this.hidden && this.host && (!this.paused || this.reduced.matches))
-      this.raf = requestAnimationFrame(this.frame);
+    if (!this.paused || this.reduced.matches || this.geometryDirty) this.requestFrame();
+  }
+  private cancelDiscovery() {
+    this.discovery.abort();
+    this.discovery = new AbortController();
+    this.scanning = false;
+  }
+  private targetFresh(target: Target) {
+    if (!valid(target)) return false;
+    if (this.boundsCache.get(target) !== this.boundsRevision) {
+      this.boundsCache.set(target, this.boundsRevision);
+      return fresh(target);
+    }
+    const r = target.rect;
+    return (
+      r.width > 12 &&
+      r.height > 5 &&
+      r.top >= 6 &&
+      r.bottom <= innerHeight - 6 &&
+      r.left >= 0 &&
+      r.right <= innerWidth
+    );
   }
   private invalidateScan() {
     this.scanRevision++;
@@ -498,7 +558,7 @@ export class Cr4wler {
       );
     });
     if (!relevant.length) return;
-    for (const record of [...this.fragments]) {
+    for (const record of this.fragments) {
       const touched =
         !record.target.node.isConnected ||
         relevant.some((r) =>
@@ -523,12 +583,10 @@ export class Cr4wler {
   private scheduleGeometry(reflow = false) {
     this.geometryDirty = true;
     this.layoutDirty ||= reflow;
-    if (!this.host || this.hidden || this.geometryRaf) return;
-    // This scheduler is independent of hunting, so Pause still follows document scroll.
-    this.geometryRaf = requestAnimationFrame(() => {
-      this.geometryRaf = 0;
-      if (this.host && !this.hidden && this.geometryDirty) this.refreshGeometry();
-    });
+    this.boundsRevision++;
+    if (this.pointerActive) this.pointerDirty = true;
+    // One event-driven frame also keeps paused damage attached to the document.
+    this.requestFrame();
   }
   private anchorTraits(element: HTMLElement): { clips: HTMLElement[]; liveScroll: boolean } {
     const clips: HTMLElement[] = [];
@@ -569,9 +627,13 @@ export class Cr4wler {
     this.layoutDirty = this.geometryDirty = false;
     const clipCache = new Map<Element, DOMRect>();
     const visible: Fragment[] = [];
-    for (const record of [...this.fragments]) {
+    const rebuilds = new Set<Fragment>();
+    const removed: Fragment[] = [];
+    const unmount: Fragment[] = [];
+    const scrollers = [...this.movedScrollers];
+    for (const record of this.fragments) {
       if (!record.target.node.isConnected) {
-        this.release(record);
+        removed.push(record);
         continue;
       }
       let rect = new DOMRect(
@@ -585,7 +647,7 @@ export class Cr4wler {
         rect.top <= innerHeight + MARGIN &&
         rect.right >= -MARGIN &&
         rect.left <= innerWidth + MARGIN;
-      const scrolled = [...this.movedScrollers].some(
+      const scrolled = scrollers.some(
         (node) => node instanceof Element && node.contains(record.target.element),
       );
       if (reflow || record.layoutDirty || record.liveScroll || nearby || scrolled) {
@@ -594,6 +656,7 @@ export class Cr4wler {
         record.documentY = rect.y + scrollY;
       }
       record.target.rect = rect;
+      this.boundsCache.set(record.target, this.boundsRevision);
       if (reflow || record.layoutDirty)
         Object.assign(record, this.anchorTraits(record.target.element));
       record.clip = this.clipFor(record, clipCache);
@@ -611,26 +674,40 @@ export class Cr4wler {
           Math.abs(rect.height - record.sourceHeight) > 0.5;
         if (reflow || record.layoutDirty || resized || !record.shards.length) {
           const style = getComputedStyle(record.target.element);
+          const typographyChanged =
+            record.target.font !== style.font ||
+            record.target.letterSpacing !== style.letterSpacing;
           record.target.font = style.font;
           record.target.letterSpacing = style.letterSpacing;
           if (style.display === 'none' || style.visibility !== 'visible' || style.opacity === '0') {
-            record.el?.remove();
-            record.el = null;
+            unmount.push(record);
             continue;
           }
-          record.shards = layoutShards(record, record.intensity);
-          rebuild(record);
+          if (record.layoutDirty || resized || typographyChanged || !record.shards.length) {
+            record.shards = layoutShards(record, record.intensity);
+            rebuilds.add(record);
+          }
           record.layoutDirty = false;
         }
         visible.push(record);
       } else {
         record.layoutDirty ||= reflow;
-        record.el?.remove();
-        record.el = null;
+        unmount.push(record);
       }
       record.sourceWidth = rect.width;
       record.sourceHeight = rect.height;
     }
+    // Complete all source and clip reads before touching projection DOM.
+    if (this.candidate) {
+      if (!this.targetFresh(this.candidate)) this.cancelCandidate();
+      else this.targetDestination(this.candidate);
+    }
+    for (const record of removed) this.release(record);
+    for (const record of unmount) {
+      record.el?.remove();
+      record.el = null;
+    }
+    for (const record of rebuilds) rebuild(record);
     this.movedScrollers.clear();
     this.visibleCount = visible.length;
     // The active strike always has a DOM projection; excess *visible* settled effects
@@ -655,10 +732,6 @@ export class Cr4wler {
         if (ctx) draw(record, ctx);
       }
     });
-    if (this.candidate) {
-      if (!fresh(this.candidate)) this.cancelCandidate();
-      else this.targetDestination(this.candidate);
-    }
     this.updateActivity();
     if (this.paused || this.reduced.matches) {
       this.syncRestingSurface();
@@ -697,7 +770,7 @@ export class Cr4wler {
       surfaceDelta,
       grip: record ? this.strikeGrip(record) : undefined,
       selector:
-        target && fresh(target) && this.lastSpiderOptions.selector
+        target && this.targetFresh(target) && this.lastSpiderOptions.selector
           ? { ...this.lastSpiderOptions.selector, rect: target.rect }
           : undefined,
       attention: undefined,
@@ -708,7 +781,7 @@ export class Cr4wler {
   private async scan() {
     if (this.scanning || this.limitReached || this.reduced.matches || !this.highlight) return;
     this.scanning = true;
-    const signal = this.abort.signal;
+    const signal = this.discovery.signal;
     const revision = this.scanRevision;
     const list = await scanTargets(signal);
     if (signal.aborted || !this.host) return;
@@ -745,7 +818,7 @@ export class Cr4wler {
       .sort((a, b) => a.score - b.score)
       .slice(0, 16);
     for (const { target } of shortlist) {
-      if (!fresh(target)) continue;
+      if (!this.targetFresh(target)) continue;
       this.selectCandidate(target, 'autonomous');
       return;
     }
@@ -804,6 +877,7 @@ export class Cr4wler {
       sourceWidth: target.rect.width,
       sourceHeight: target.rect.height,
       intensity: this.settings.intensity,
+      shardLimit: [16, 10, 6][this.quality.level],
       layoutDirty: true,
       ...this.anchorTraits(target.element),
     };
@@ -956,7 +1030,7 @@ export class Cr4wler {
   private updateHover() {
     if (!this.pointerActive || !this.followAvailable()) return;
     const profile = huntProfiles[this.settings.personality];
-    if (this.time >= this.nextHoverProbe) {
+    if (this.pointerDirty && this.time >= this.nextHoverProbe) {
       this.pointerDirty = false;
       this.nextHoverProbe = this.time + 0.035;
       const freshPointer = this.pointerMoved;
@@ -1013,7 +1087,7 @@ export class Cr4wler {
       performance.now() - this.hoverCommittedAt < profile.retarget * 1000
     )
       return;
-    if (!fresh(intent.target)) {
+    if (!this.targetFresh(intent.target)) {
       this.hover = null;
       return;
     }
@@ -1107,13 +1181,27 @@ export class Cr4wler {
     this.updateActivity();
   }
   private frame = (now: number) => {
-    if (!this.host || !this.spider || this.hidden || (this.paused && !this.reduced.matches)) return;
+    this.raf = 0;
+    if (!this.host || !this.spider || this.hidden) return;
+    if (this.resizeDirty) {
+      this.resizeDirty = false;
+      this.resize();
+    }
+    if (this.geometryDirty) this.refreshGeometry();
+    if (this.paused && !this.reduced.matches) return;
     if (!this.host.isConnected) {
       this.restore();
       return;
     }
     const elapsed = Math.max(0, (now - this.previous) / 1000);
     const dt = Math.min(elapsed, 0.033);
+    if (!this.reduced.matches) this.quality.sample(elapsed * 1000);
+    // CSS animations do not emit mutations. Bound the fallback recheck to ~7Hz.
+    if (this.time >= this.nextBoundsCheck) {
+      this.nextBoundsCheck = this.time + 0.15;
+      this.boundsRevision++;
+      if (this.pointerActive) this.pointerDirty = true;
+    }
     const strikeAtFrameStart = this.current;
     this.previous = now;
     const quiet = this.reduced.matches;
@@ -1126,6 +1214,7 @@ export class Cr4wler {
       !quiet &&
       !this.paused &&
       !this.limitReached &&
+      !this.settings.followMouse &&
       this.time >= this.nextScan &&
       !this.scanning
     )
@@ -1155,7 +1244,10 @@ export class Cr4wler {
       const ownDelta = this.takeSurfaceDelta();
       surfaceDelta = { x: externalDelta.x + ownDelta.x, y: externalDelta.y + ownDelta.y };
       if (this.geometryDirty) this.refreshGeometry();
-      if (this.spider.needsRecovery(surfaceDelta) || (this.current && !fresh(this.current.target)))
+      if (
+        this.spider.needsRecovery(surfaceDelta) ||
+        (this.current && !this.targetFresh(this.current.target))
+      )
         this.beginRecovery(surfaceDelta);
       if (this.mode === 'recover' && !this.spider.recovering) {
         this.mode = 'scan';
@@ -1179,7 +1271,7 @@ export class Cr4wler {
         } else if (this.phaseTime > profile.choice && this.time >= this.nextChoice) this.choose();
       }
       if (this.candidate) {
-        if (!fresh(this.candidate)) this.cancelCandidate();
+        if (!this.targetFresh(this.candidate)) this.cancelCandidate();
         else this.targetDestination(this.candidate);
       }
       const candidate = this.candidate;
@@ -1217,13 +1309,12 @@ export class Cr4wler {
       }
       if (this.current) {
         const record = this.current;
-        record.target.rect = record.target.range.getBoundingClientRect();
         this.targetDestination(record.target);
         // Physics uses capped dt; an atomic strike uses elapsed foreground time so
         // a slow frame cannot stretch the promised 180–420ms interruption window.
         if (record === strikeAtFrameStart) record.strikeElapsed += elapsed;
         record.progress = clamp(record.strikeElapsed / record.strikeDuration, 0, 1);
-        paint(record);
+        place(record);
         selector = {
           rect: record.target.rect,
           progress: record.progress,
@@ -1251,6 +1342,7 @@ export class Cr4wler {
     const spiderOptions: SpiderOptions = {
       ...this.settings,
       reducedMotion: quiet,
+      quality: this.quality.level,
       descending: !quiet && this.mode === 'arrive',
       grip,
       selector,
@@ -1295,6 +1387,6 @@ export class Cr4wler {
       this.updateActivity();
       return;
     }
-    this.raf = requestAnimationFrame(this.frame);
+    this.requestFrame();
   };
 }

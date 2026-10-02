@@ -3,9 +3,9 @@
 Welcome. Keep the creature playful, the page usable, and the dependency list small.
 
 1. Fork the repository and create a focused branch.
-2. Use Node.js 22+; run `npm ci` and `npx playwright install chromium`.
+2. Use Node.js 22.12+; run `npm ci` and `npx playwright install chromium`.
 3. Develop with `npm run dev`. The demo and extension use the same engine.
-4. Run `npm run typecheck`, `npm test`, and `npm run format:check`.
+4. Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run format:check`. Use `npm run format` (Oxfmt) and `npm run lint:fix` (Oxlint) to apply formatting and safe lint fixes.
 5. For extension changes, run `npm run test:extension` and the manual checks in [docs/TESTING.md](docs/TESTING.md) in a profile that allows unpacked extensions.
 6. Describe the visible change, the reason for it, and what you actually tested. Include a short recording for motion changes.
 

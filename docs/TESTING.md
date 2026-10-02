@@ -4,6 +4,7 @@
 npm ci
 npx playwright install chromium
 npm run typecheck
+npm run lint
 npm run format:check
 npm test
 npm run test:extension
@@ -31,6 +32,11 @@ The administrator policy is left untouched. The installed-extension test runs on
 Local capture uses the shared playground engine directly. It is clearly distinguished from the installed-extension video. Every evidence JSON identifies its source commit, browser version, surface and viewport. Screenshots use `caret: 'initial'` so the recorder itself does not leave empty style attributes on editable fixture elements.
 
 ## Capture and performance
+
+The [runtime investigation](RUNTIME-PERFORMANCE.md) adds matched host-only/runtime workloads,
+before/after distributions on the dense fixture and a live public page, lifecycle retention
+checks, and explicit limits. Run `npm run perf:runtime`; see that report for reproduction
+options, measured results, and the distinction between runtime cost and displayed frame pacing.
 
 ```sh
 npm run build

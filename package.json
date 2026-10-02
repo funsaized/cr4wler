@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -17,14 +17,18 @@
     "capture": "node scripts/capture.mjs",
     "test:extension": "npm run build && node scripts/extension-check.mjs",
     "test:popup": "npm run build && node scripts/popup-check.mjs",
-    "format": "prettier --write src public scripts tests *.json *.md docs .github",
-    "format:check": "prettier --check src public scripts tests *.json *.md docs .github"
+    "perf:runtime": "npm run build && node scripts/runtime-performance.mjs",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint --deny-warnings src scripts tests",
+    "lint:fix": "npm run lint -- --fix"
   },
   "devDependencies": {
     "@types/chrome": "0.1.37",
     "esbuild": "0.25.11",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
     "playwright": "1.63.0",
-    "prettier": "3.6.2",
     "typescript": "5.9.3"
   }
 }

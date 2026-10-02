@@ -10,7 +10,7 @@ cr4wler is a Chrome extension for the sake of _whimsey_ that climbs over a real 
 
 ## Try it
 
-Requires Node.js 22+ and npm. Python 3 is needed only to package the ZIP.
+Requires Node.js 22.12+ and npm. Python 3 is needed only to package the ZIP.
 
 ```sh
 git clone https://github.com/funsaized/cr4wler.git
@@ -73,6 +73,8 @@ Nothing is clicked, submitted, fetched, uploaded, or stored. All fragment text l
 
 ```sh
 npm run typecheck
+npm run lint
+npm run format:check
 npx playwright install chromium
 npm test
 npm run test:extension

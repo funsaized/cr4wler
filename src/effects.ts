@@ -30,6 +30,7 @@ export interface Projection {
   color: string;
   accent: string;
   shards: Shard[];
+  shardLimit?: number;
   progress: number;
   clip: Clip;
   el: HTMLSpanElement | null;
@@ -45,7 +46,12 @@ function noise(seed: number): number {
 export function layoutShards(record: Projection, intensity: number): Shard[] {
   const { target, effect, id, color, accent } = record;
   const chars = Array.from(target.text);
-  const count = effect === 'peel' ? 1 : effect === 'shear' ? 3 : Math.min(16, chars.length);
+  const count =
+    effect === 'peel'
+      ? 1
+      : effect === 'shear'
+        ? 3
+        : Math.min(record.shardLimit ?? 16, chars.length);
   const shards: Shard[] = [];
   let offset = 0;
   const force = 0.62 + intensity * 0.66;

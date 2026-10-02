@@ -7,6 +7,8 @@ export interface SpiderOptions {
   intensity: number;
   personality: 'curious' | 'feral' | 'dreamy';
   reducedMotion: boolean;
+  /** Decorative budget only; never changes the skeleton, input or targeting. */
+  quality?: number;
   grip?: { point: Point; progress: number; color: string };
   selector?: {
     rect: { x: number; y: number; width: number; height: number };
@@ -1108,8 +1110,9 @@ export class Spider {
       ctx.stroke();
       ctx.strokeStyle = '#ae9fff';
       ctx.lineWidth = 0.75;
-      for (let i = 0; i < 28; i++) {
-        const a = (i * Math.PI * 2) / 28,
+      const fibers = (this.options.quality ?? 0) >= 2 ? 14 : 28;
+      for (let i = 0; i < fibers; i++) {
+        const a = (i * Math.PI * 2) / fibers,
           ripple = 3 + (i % 3);
         ctx.beginPath();
         ctx.moveTo(Math.cos(a) * 20, 15 + Math.sin(a) * 23);
@@ -1249,7 +1252,8 @@ export class Spider {
     }
     ctx.fillStyle = headColor;
     ctx.shadowColor = headColor;
-    ctx.shadowBlur = this.options.selector && !this.options.reducedMotion ? 4 : 0;
+    ctx.shadowBlur =
+      this.options.selector && !this.options.reducedMotion && !this.options.quality ? 4 : 0;
     this.dot(0, -7, this.options.selector ? 1.55 : 1.1);
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#f7ffff';
@@ -1318,7 +1322,7 @@ export class Spider {
     this.dot(point.x, point.y, size + 0.85);
     ctx.fillStyle = color;
     ctx.shadowColor = color;
-    ctx.shadowBlur = active ? 4.5 : 0;
+    ctx.shadowBlur = active && !this.options.quality ? 4.5 : 0;
     this.dot(point.x, point.y, size);
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#f0ffff';

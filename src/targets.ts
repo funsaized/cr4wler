@@ -197,8 +197,20 @@ export function scanTargets(signal: AbortSignal): Promise<Target[]> {
       resolve(result);
       return;
     }
-    const cursor = cursors.get(signal) ?? { next: body.firstChild, offset: 0 };
-    cursors.set(signal, cursor);
+    let cursor = cursors.get(signal);
+    if (!cursor) {
+      cursor = { next: body.firstChild, offset: 0 };
+      cursors.set(signal, cursor);
+      signal.addEventListener('abort', () => cursors.delete(signal), { once: true });
+    }
+    let timer = 0;
+    const finish = (targets: Target[]) => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', cancel);
+      resolve(targets);
+    };
+    const cancel = () => finish([]);
+    signal.addEventListener('abort', cancel, { once: true });
     if (!cursor.next?.isConnected || !body.contains(cursor.next)) cursor.next = body.firstChild;
     const roots: Node[] = [];
     const seedOffsets = new Map<Text, number>();
@@ -250,7 +262,7 @@ export function scanTargets(signal: AbortSignal): Promise<Target[]> {
     };
     const slice = () => {
       if (signal.aborted) {
-        resolve([]);
+        finish([]);
         return;
       }
       const start = performance.now();
@@ -268,7 +280,7 @@ export function scanTargets(signal: AbortSignal): Promise<Target[]> {
         if (!node) {
           cursor.next = body.firstChild;
           cursor.offset = (cursor.offset + 37) % 128;
-          resolve(result);
+          finish(result);
           return;
         }
         const current: Node = node;
@@ -281,14 +293,14 @@ export function scanTargets(signal: AbortSignal): Promise<Target[]> {
           offer(current as Text, seedOffsets.get(current as Text) ?? cursor.offset);
         }
         if (performance.now() - start >= 2) {
-          setTimeout(slice, 16);
+          timer = window.setTimeout(slice, 16);
           return;
         }
       }
       if (walkingBody && !cursor.next) cursor.next = body.firstChild;
-      resolve(result);
+      finish(result);
     };
     // Even the first document walk runs outside the pointer/scroll event handler.
-    setTimeout(slice, 0);
+    timer = window.setTimeout(slice, 0);
   });
 }
