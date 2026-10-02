@@ -60,6 +60,16 @@ v0.4 uses bone budgets independent of contact distance, bounded stride destinati
 
 The four new browser regressions cover rapid wheel/fling movement, repeated reversals, PageDown/Home/End, programmatic jumps, resize with distant content, scrolling mid-strike, follow on/off, blur, paused geometry, reduced motion, record persistence and exact reset. Every sampled contact must stay inside its physical reach budget; every joint must remain finite. The visitor must return visibly within the test's 2.5-second bound. Ordinary edge crawling must retain a climbing gait. External movement must disarm stationary edge intent without fighting manual input.
 
+## Popup launch (v0.4.1)
+
+Summon awaits content-script injection and an acknowledgement that the visitor is active before closing the actual toolbar popup. Repeated clicks cannot start another launch or close twice. Opening the menu while a spider is already active keeps Pause, Reset and settings available. An injection failure or missing, rejected or inactive acknowledgement keeps the menu open with retry guidance and preserves its chosen settings.
+
+The browser suite now has **26 tests**. Its popup regressions delay injection and acknowledgement independently, exercise repeated and idempotent launches, retry failures, and verify settings and controls. Popup pages opened as ordinary extension tabs stay open, retaining the existing real-API interaction and capture coverage. Only the current window returned by Chrome's [popup view API](https://developer.chrome.com/docs/extensions/reference/api/extension#method-getViews) is eligible to close.
+
+`npm run test:popup` adds a separate **headed native toolbar-popup check**. In permitted CI, `xvfb-run -a -s "-screen 0 1280x900x24" npm run test:popup` loads the packaged extension, triggers the real toolbar action, attaches to the native popover and observes its actual destruction after acknowledgement. It checks one close per successful or idempotent launch, active-status menus staying open, restricted-page failure staying open, selected Feral/83%/Follow settings, one visitor, exact restoration, and the site window remaining open without navigation or requests. Evidence is written to `artifacts/extension-evidence/popup/result.json`. Local installation remains administrator-blocked; this check is run in CI rather than by changing local policy.
+
+[CI run 37049735492](https://github.com/funsaized/cr4wler/actions/runs/37049735492) passed on source `56eb3a3f949c99f926e623599caa559ae16bc693`: all 26 tests, actual installed-extension integration, headed native-popup closure and failure checks, and packaging. The 0.4.1 ZIP is reproducible; only `popup.js` and the manifest version differ from 0.4.0. Existing demonstration recordings retain their original captured-source provenance.
+
 ## Release evidence (v0.4)
 
 ### Continuous README hero

@@ -22,7 +22,7 @@ npm run build
 1. Open `chrome://extensions` in a Chrome profile where local extensions are allowed.
 2. Turn on **Developer mode**, choose **Load unpacked**, and select this project's `dist/` directory.
 3. Open a regular website, click cr4wler in the extension toolbar, and choose **Summon your spider**.
-4. Try Curious, Dreamy, or Feral. Use the mischief slider to change the force of the typographic effects. Enable **Follow my cursor**, hover a word to choose its next target, then guide it toward the top or bottom edge to crawl through the page.
+4. The popup closes after a successful launch. Reopen it to try Curious, Dreamy, or Feral. Use the mischief slider to change the force of the typographic effects. Enable **Follow my cursor**, hover a word to choose its next target, then guide it toward the top or bottom edge to crawl through the page.
 5. Pause from the popup or floating dock. **Reset page** or **Escape** removes the visitor and every fragment.
 
 The popup's **Try the playground** link opens the bundled night garden. Its **Daylight stress test** link opens an ordinary document with 1,800 fictional references across 60 sections; **Night archive** switches the same dense fixture to dark colors. For the standalone version:
