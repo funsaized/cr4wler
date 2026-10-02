@@ -54,6 +54,18 @@ The record cap is 512. DOM projection is capped at 72 records and 16 shards per 
 
 ## Release evidence
 
-The v0.2 implementation and capture are being verified together. The committed evidence JSON and CI artifact result identify the exact runtime source; release results are recorded after those checks finish.
+Runtime source: `1dd4e83a94a63fad6762c1b5c81c8834cec2abf2`. Later evidence commits change documentation and captured assets only.
 
-The previous v0.1 installed-extension validation passed in [CI run 36983851870](https://github.com/funsaized/cr4wler/actions/runs/36983851870) on `34a26facd33daf7a71ecba943fc9ecae114ce037`. That historical result does not certify v0.2.
+[CI run 36987401786](https://github.com/funsaized/cr4wler/actions/runs/36987401786) passed on that exact source. TypeScript, formatting, all **11 browser tests**, actual installed-extension integration, and packaging passed.
+
+- [Installed extension video](extension-demo.webm): **37.76 seconds**, Chromium 153.0.8010.12, 1440×1000. All five effects appear. Nine earlier record IDs survived the excursion to volume 30 and return. The source restored exactly; no page errors, requests, navigation or site actions were observed. [Raw result and phase timings](extension-evidence.json).
+- [Night-garden playground video](demo.webm): **36.16 seconds**, same browser and viewport. All five effects, mouse guidance, pause, scroll and return, then exact restoration. No observed page requests or errors. [Capture data](evidence.json). The [popup screenshot](popup.png) uses mocked Chrome APIs.
+- [Dense-page sample without recording](performance.json): 1,425 frame intervals over 24 seconds while visiting volume 30, the top, and returning. Median and p95 were **16.7ms**, p99 **33.3ms**. Five long tasks were observed, ranging **61–101ms**; these occasional stalls remain a POC performance limitation on a large document.
+- Recording has material overhead in the software-rendered environments: the local capture p95 was 33.3ms, and the installed CI recording p95 was 50ms. The CI recording includes screenshot pauses and tasks up to 221ms. These measurements are reported separately rather than treated as animation-only benchmarks.
+- Two local release builds were byte-identical, and CI produced the same ZIP digest.
+
+```text
+561f28952cf13dd8853c77f5b1af5bb768c46b6a10f07bda03ed1d64f73a14bf  cr4wler-0.2.0.zip
+```
+
+CI artifacts: [installed-extension evidence](https://github.com/funsaized/cr4wler/actions/runs/36987401786/artifacts/11218490469) · [unpacked package and digest](https://github.com/funsaized/cr4wler/actions/runs/36987401786/artifacts/11217988950). Repository access is required. GitHub's retention applies to artifact links; the checked-in videos, screenshots and JSON remain with the source.

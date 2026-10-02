@@ -1,0 +1,226 @@
+{
+  "sourceCommit": "1dd4e83a94a63fad6762c1b5c81c8834cec2abf2",
+  "surface": "Actual installed unpacked extension; real Chrome APIs; CDP toolbar action",
+  "passed": true,
+  "persistentRecordIds": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+  "effects": ["peel", "scatter", "shear", "disassemble", "erase"],
+  "phases": [
+    {
+      "phase": "arrive",
+      "at": 943.9
+    },
+    {
+      "phase": "scan",
+      "at": 2877.1
+    },
+    {
+      "phase": "lock",
+      "at": 3727
+    },
+    {
+      "phase": "strike",
+      "at": 4343.7
+    },
+    {
+      "phase": "aftermath",
+      "at": 5243.7
+    },
+    {
+      "phase": "scan",
+      "at": 5643.7
+    },
+    {
+      "phase": "lock",
+      "at": 6460.3
+    },
+    {
+      "phase": "strike",
+      "at": 7026.9
+    },
+    {
+      "phase": "aftermath",
+      "at": 7743.5
+    },
+    {
+      "phase": "scan",
+      "at": 8110.2
+    },
+    {
+      "phase": "lock",
+      "at": 8926.9
+    },
+    {
+      "phase": "strike",
+      "at": 9510.1
+    },
+    {
+      "phase": "aftermath",
+      "at": 10243.5
+    },
+    {
+      "phase": "scan",
+      "at": 10593.5
+    },
+    {
+      "phase": "lock",
+      "at": 11410.1
+    },
+    {
+      "phase": "strike",
+      "at": 11993.4
+    },
+    {
+      "phase": "aftermath",
+      "at": 12726.7
+    },
+    {
+      "phase": "scan",
+      "at": 13143.4
+    },
+    {
+      "phase": "lock",
+      "at": 13959.9
+    },
+    {
+      "phase": "strike",
+      "at": 14626.6
+    },
+    {
+      "phase": "aftermath",
+      "at": 15410
+    },
+    {
+      "phase": "scan",
+      "at": 15793.2
+    },
+    {
+      "phase": "lock",
+      "at": 16659.9
+    },
+    {
+      "phase": "strike",
+      "at": 17259.8
+    },
+    {
+      "phase": "aftermath",
+      "at": 18193.1
+    },
+    {
+      "phase": "scan",
+      "at": 18609.8
+    },
+    {
+      "phase": "lock",
+      "at": 19526.5
+    },
+    {
+      "phase": "strike",
+      "at": 20109.8
+    },
+    {
+      "phase": "aftermath",
+      "at": 21026.3
+    },
+    {
+      "phase": "scan",
+      "at": 21459.6
+    },
+    {
+      "phase": "lock",
+      "at": 22942.9
+    },
+    {
+      "phase": "strike",
+      "at": 23609.6
+    },
+    {
+      "phase": "aftermath",
+      "at": 24559.6
+    },
+    {
+      "phase": "scan",
+      "at": 24992.9
+    },
+    {
+      "phase": "lock",
+      "at": 25992.9
+    },
+    {
+      "phase": "strike",
+      "at": 26859.4
+    },
+    {
+      "phase": "paused",
+      "at": 27776.2
+    },
+    {
+      "phase": "strike",
+      "at": 28659.4
+    },
+    {
+      "phase": "aftermath",
+      "at": 28892.7
+    },
+    {
+      "phase": "scan",
+      "at": 29409.4
+    },
+    {
+      "phase": "lock",
+      "at": 30392.7
+    },
+    {
+      "phase": "strike",
+      "at": 31159.3
+    },
+    {
+      "phase": "aftermath",
+      "at": 32092.6
+    },
+    {
+      "phase": "scan",
+      "at": 32609.2
+    },
+    {
+      "phase": "lock",
+      "at": 33675.9
+    },
+    {
+      "phase": "scan",
+      "at": 34259.2
+    }
+  ],
+  "metrics": {
+    "frameSamples": 1263,
+    "medianFrameMs": 33.20000000000073,
+    "p95FrameMs": 50,
+    "p99FrameMs": 83.19999999999993,
+    "over50ms": 51,
+    "longTasks": [
+      {
+        "start": 21319.29999999999,
+        "duration": 57
+      },
+      {
+        "start": 23616.100000000006,
+        "duration": 58
+      },
+      {
+        "start": 26670.79999999999,
+        "duration": 154
+      },
+      {
+        "start": 26870.600000000006,
+        "duration": 217
+      },
+      {
+        "start": 35207.600000000006,
+        "duration": 221
+      }
+    ]
+  },
+  "exactRestore": true,
+  "errors": [],
+  "browser": "153.0.8010.12",
+  "requests": []
+}

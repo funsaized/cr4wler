@@ -6,7 +6,7 @@ cr4wler is a Chrome extension proof of concept that climbs over a real page, sca
 
 ![cr4wler exploring the playground](docs/playground.png)
 
-[Watch the captured browser demo](docs/demo.webm) · [Privacy](PRIVACY.md) · [Testing and limitations](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
+[Watch the night-garden demo](docs/demo.webm) · [Watch the installed extension on a light page](docs/extension-demo.webm) · [Privacy](PRIVACY.md) · [Testing and limitations](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
 
 ## Try it
 

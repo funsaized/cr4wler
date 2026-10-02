@@ -1,24 +1,25 @@
 {
-  "sourceCommit": "773ccde34829b701636de628607f7ecab2f358d2",
-  "capturedAt": "2026-10-02T08:08:10.545Z",
-  "browser": "141.0.7390.37",
+  "sourceCommit": "1dd4e83a94a63fad6762c1b5c81c8834cec2abf2",
+  "capturedAt": "2026-10-02T09:02:34.922Z",
+  "browser": "153.0.8010.12",
   "surface": "Local playground. Not an installed extension. Popup screenshot uses mocked chrome.tabs.",
   "viewport": {
     "width": 1440,
     "height": 1000
   },
-  "elapsedMs": 23117,
-  "fragmentCount": 4,
+  "elapsedMs": 35688,
+  "fragmentCount": 6,
+  "effects": ["shear", "disassemble", "erase", "scatter", "peel"],
   "restoreExact": true,
   "pageRequestsAfterActivation": [],
   "pageErrors": [],
   "metrics": {
-    "frameSamples": 1336,
+    "frameSamples": 1826,
     "medianFrameMs": 16.699999999999818,
-    "p95FrameMs": 16.799999999999272,
-    "p99FrameMs": 33.29999999999927,
-    "over50ms": 2,
-    "longTasks": [83]
+    "p95FrameMs": 33.30000000000109,
+    "p99FrameMs": 66.70000000000073,
+    "over50ms": 27,
+    "longTasks": [56]
   },
   "extensionLoad": {
     "status": "blocked",
