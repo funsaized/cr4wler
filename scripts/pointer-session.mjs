@@ -1,8 +1,8 @@
-/** Real pointer interaction shared by standalone capture and installed-extension CI.
+/** Real pointer instrumentation for installed-extension CI and native demo capture.
  * The pointer marker is recording instrumentation, not part of the extension. */
 import assert from 'node:assert/strict';
 
-export async function preparePointerSession(page, options = {}) {
+export async function preparePointerSession(page, { surface }) {
   await page.evaluate((surface) => {
     const marker = document.createElement('div');
     marker.dataset.cr4wlerIgnore = '';
@@ -104,7 +104,7 @@ export async function preparePointerSession(page, options = {}) {
       if (pointerAudit.frames.length < 9000) requestAnimationFrame(sample);
     }
     requestAnimationFrame(sample);
-  }, options.surface ?? 'Local playground');
+  }, surface);
 }
 
 async function pointAt(page, id, personality) {
@@ -134,11 +134,9 @@ async function waitForMark(page, id) {
     { timeout: 10000 },
   );
 }
-export async function runPointerSession(page, controls, dir, prefix, options = {}) {
-  const screenshot = async (suffix) => {
-    if (options.screenshots !== false)
-      await page.screenshot({ path: `${dir}/${prefix}-${suffix}.png`, caret: 'initial' });
-  };
+export async function runPointerSession(page, controls, dir, prefix) {
+  const screenshot = (suffix) =>
+    page.screenshot({ path: `${dir}/${prefix}-${suffix}.png`, caret: 'initial' });
   await controls.setPersonality('feral');
   await controls.setFollow(true);
   await controls.summon();

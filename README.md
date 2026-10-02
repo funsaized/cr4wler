@@ -6,7 +6,7 @@ cr4wler is a Chrome extension for the sake of _whimsey_ that climbs over a real 
 
 ![Full Chromium window: cr4wler in neon color, Feral at maximum intensity, then Curious following the cursor.](docs/cr4wler-demo.gif)
 
-[Full browser demo · 30fps](docs/github-demo.webm) · [Watch the night-archive demo](docs/demo.webm) · [Installed extension: daylight](docs/extension-demo.webm) · [Installed extension: night](docs/extension-night-demo.webm) · [Privacy](PRIVACY.md) · [Testing and limitations](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
+[Full browser demo · 30fps](docs/github-demo.webm) · [Runtime performance](docs/RUNTIME-PERFORMANCE.md) · [Privacy](PRIVACY.md) · [Testing and limitations](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
 
 ## Try it
 

@@ -1,8 +1,6 @@
 name: Record GitHub repository demo
 on:
   workflow_dispatch:
-  push:
-    branches: [capture/browser-color]
 permissions:
   contents: read
 jobs:
