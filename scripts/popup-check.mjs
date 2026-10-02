@@ -146,7 +146,7 @@ try {
   const { id } = await cdp.send('Extensions.loadUnpacked', { path: resolve('dist') });
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   const site = await context.newPage();
-  await site.goto('http://127.0.0.1:4173/reference.html');
+  await site.goto('http://127.0.0.1:4173/reference.html?autostart=off');
   const original = await site.locator('main').innerHTML(),
     originalURL = site.url();
   const requests = [],

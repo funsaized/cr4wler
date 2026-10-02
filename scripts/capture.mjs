@@ -17,7 +17,7 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 try {
-  await page.goto('http://127.0.0.1:4173/reference.html?theme=night');
+  await page.goto('http://127.0.0.1:4173/reference.html?theme=night&autostart=off');
   await page.evaluate(() => document.querySelector('#reference-volume-8').scrollIntoView());
   const before = await page.locator('main').innerHTML();
   const errors = [],

@@ -34,6 +34,8 @@ npm run dev
 
 The playground runs the same animation and interaction engine directly. It does not require extension installation and is not evidence that extension permissions work.
 
+The demo site welcomes one spider automatically when each page is ready. Pause keeps it still; Reset or Escape leaves it off until you choose Summon. Reduced motion shows a quiet, static visitor. Cached history returns preserve your active, paused or reset choice. The extension still needs its toolbar Summon action on other websites.
+
 ## What makes it move
 
 - Eight planted feet, analytic inverse kinematics, articulated knees, crisp neon leg cores and luminous joints. A compact braced body, forward eyes and little palps turn toward your next target. All procedural; no animated images or external assets.

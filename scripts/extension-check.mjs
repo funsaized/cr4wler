@@ -38,7 +38,7 @@ try {
     fixturePage = page;
     fixtureVideo = page.video();
     await page.goto(
-      `http://127.0.0.1:4173/reference.html${theme === 'night' ? '?theme=night' : ''}`,
+      `http://127.0.0.1:4173/reference.html?autostart=off${theme === 'night' ? '&theme=night' : ''}`,
     );
     await page.evaluate(() => document.querySelector('#reference-volume-8').scrollIntoView());
     await page.bringToFront();

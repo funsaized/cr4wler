@@ -20,7 +20,10 @@ async function fixture(options = {}) {
     viewport: { width: 1440, height: 1000 },
     ...contextOptions,
   });
-  await page.goto(base + path);
+  const url = new URL(base + path);
+  // Legacy safety/animation regressions and extension fixtures control their own launch.
+  url.searchParams.set('autostart', 'off');
+  await page.goto(url.href);
   return page;
 }
 async function pieces(page) {
@@ -36,6 +39,237 @@ async function waitForPiece(page) {
 async function start(page) {
   await page.locator('#demo-summon').click();
 }
+
+async function automaticSite(path = '/', options = {}) {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, ...options });
+  await page.goto(base + path);
+  return page;
+}
+
+test('site first navigation automatically welcomes one visitor with active controls', async () => {
+  for (const path of ['/', '/reference.html', '/reference.html?theme=night']) {
+    const page = await automaticSite(path);
+    try {
+      assert.equal(await page.locator(root).count(), 1, path);
+      assert.equal(await page.locator('#demo-summon').isDisabled(), true);
+      assert.equal(await page.locator('#demo-pause').isEnabled(), true);
+      assert.equal(await page.locator('#demo-restore').isEnabled(), true);
+      assert.match(await page.locator('#demo-summon').innerText(), /visitor has arrived/);
+      assert.match(await page.locator('#demo-status').innerText(), /traces left behind/);
+      assert.equal(await page.evaluate(() => __cr4wlerPlayground.engine.status().active), true);
+    } finally {
+      await page.close();
+    }
+  }
+});
+
+test('automatic site Pause, Resume, Reset and explicit Summon keep coherent state', async () => {
+  const page = await automaticSite('/');
+  try {
+    await page.locator('#demo-personality').selectOption('feral');
+    await page.locator('#demo-intensity').fill('83');
+    await page.locator('#demo-follow').check();
+    assert.match(await page.locator('#demo-status').innerText(), /Hover chooses/);
+    await page.locator('#demo-pause').click();
+    assert.equal(await page.locator('#demo-pause').innerText(), 'Resume');
+    assert.match(await page.locator('#demo-status').innerText(), /Paused/);
+    assert.equal(await page.evaluate(() => __cr4wlerPlayground.engine.status().paused), true);
+    await page.evaluate(
+      () => (globalThis.originalVisitor = document.querySelector('[data-cr4wler-root]')),
+    );
+    await page.locator('#demo-pause').click();
+    assert.equal(await page.locator('#demo-pause').innerText(), 'Pause');
+    assert.equal(
+      await page.evaluate(() => document.querySelector('[data-cr4wler-root]') === originalVisitor),
+      true,
+    );
+    await page.locator('#demo-restore').click();
+    await page.waitForTimeout(1200);
+    assert.equal(await page.locator(root).count(), 0);
+    assert.equal(await page.locator('#demo-summon').isEnabled(), true);
+    assert.equal(await page.locator('#demo-pause').isDisabled(), true);
+    assert.equal(await page.locator('#demo-restore').isDisabled(), true);
+    assert.match(await page.locator('#demo-status').innerText(), /No visitor/);
+    await start(page);
+    assert.equal(await page.locator(root).count(), 1);
+    const status = await page.evaluate(() => __cr4wlerPlayground.engine.status());
+    assert.equal(status.personality, 'feral');
+    assert.equal(status.intensity, 0.83);
+    assert.equal(status.followMouse, true);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1100);
+    assert.equal(await page.locator(root).count(), 0, 'Escape does not immediately re-summon');
+  } finally {
+    await page.close();
+  }
+});
+
+test('site bundle reentry and control remount preserve one engine, settings and user decisions', async () => {
+  const page = await automaticSite('/reference.html?theme=night', { reducedMotion: 'reduce' });
+  const code = await readFile('dist/playground.js', 'utf8');
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  try {
+    await page.evaluate(() => (globalThis.originalEngine = __cr4wlerPlayground.engine));
+    await page.locator('#demo-personality').selectOption('feral');
+    await page.locator('#demo-intensity').fill('83');
+    await page.locator('#demo-follow').check();
+    await page.addScriptTag({ content: code });
+    await page.addScriptTag({ content: code });
+    assert.equal(await page.evaluate(() => __cr4wlerPlayground.engine === originalEngine), true);
+    assert.equal(await page.locator(root).count(), 1);
+    assert.equal(await page.locator('#reference-appendix section').count(), 60);
+    assert.equal(await page.locator('#reference-appendix li').count(), 1800);
+    await page.locator('#demo-pause').click();
+    assert.equal(
+      await page.evaluate(() => __cr4wlerPlayground.engine.status().paused),
+      true,
+      'one click has one handler',
+    );
+    await page.evaluate(() => {
+      const controls = document.querySelector('.lab-controls');
+      globalThis.remountedControls = controls.cloneNode(true);
+      globalThis.controlsParent = controls.parentElement;
+      controls.remove();
+    });
+    await page.waitForTimeout(1100);
+    await page.addScriptTag({ content: code });
+    await page.evaluate(() => controlsParent.append(remountedControls));
+    await page.addScriptTag({ content: code });
+    assert.equal(await page.locator(root).count(), 1);
+    assert.equal(await page.locator('#demo-pause').innerText(), 'Resume');
+    assert.equal(await page.locator('#demo-personality').inputValue(), 'feral');
+    assert.equal(await page.locator('#demo-intensity').inputValue(), '83');
+    assert.equal(await page.locator('#demo-follow').isChecked(), true);
+    await page.locator('#demo-restore').click();
+    await page.addScriptTag({ content: code });
+    await page.waitForTimeout(1100);
+    assert.equal(await page.locator(root).count(), 0, 'reentry respects Reset');
+    await start(page);
+    assert.equal(await page.locator(root).count(), 1);
+    assert.equal(await page.evaluate(() => __cr4wlerPlayground.engine === originalEngine), true);
+    assert.deepEqual(errors, []);
+  } finally {
+    await page.close();
+  }
+});
+
+test('site waits for readiness and repeated pre-ready bundles initialize once', async () => {
+  const page = await browser.newPage({ reducedMotion: 'reduce' });
+  const code = await readFile('dist/playground.js', 'utf8');
+  try {
+    await page.addInitScript(() => {
+      document.addEventListener(
+        'DOMContentLoaded',
+        () => {
+          globalThis.visitorsBeforeReady = document.querySelectorAll('[data-cr4wler-root]').length;
+        },
+        { once: true },
+      );
+    });
+    await page.route('**/playground.js', (route) =>
+      route.fulfill({ contentType: 'text/javascript', body: `${code}\n${code}` }),
+    );
+    await page.goto(`${base}/reference.html`);
+    assert.equal(await page.evaluate(() => visitorsBeforeReady), 0);
+    assert.equal(await page.locator(root).count(), 1);
+    assert.equal(await page.locator('#reference-appendix section').count(), 60);
+    await page.locator('#demo-pause').click();
+    assert.equal(await page.locator('#demo-pause').innerText(), 'Resume');
+  } finally {
+    await page.close();
+  }
+});
+
+test('site reduced-motion autostart is static, quiet and resettable', async () => {
+  const page = await automaticSite('/', { reducedMotion: 'reduce' });
+  try {
+    assert.equal(await page.locator(root).count(), 1);
+    assert.match(await page.locator('#demo-status').innerText(), /Reduced motion/);
+    await page.waitForTimeout(200);
+    const image = await page
+      .locator(`${root} canvas.visitor`)
+      .evaluate((canvas) => canvas.toDataURL());
+    await page.waitForTimeout(1200);
+    assert.equal(
+      await page.locator(`${root} canvas.visitor`).evaluate((canvas) => canvas.toDataURL()),
+      image,
+    );
+    assert.equal(await pieces(page), 0);
+    assert.equal(await page.evaluate(() => __cr4wlerPlayground.engine.status().phase), 'quiet');
+    await page.locator('#demo-restore').click();
+    assert.equal(await page.locator(root).count(), 0);
+  } finally {
+    await page.close();
+  }
+});
+
+test('site cached lifecycle restores active or paused intent, and keeps Reset off', async () => {
+  for (const intent of ['active', 'paused', 'reset']) {
+    const page = await automaticSite('/', { reducedMotion: 'reduce' });
+    try {
+      if (intent === 'paused') await page.locator('#demo-pause').click();
+      if (intent === 'reset') await page.locator('#demo-restore').click();
+      await page.evaluate(() =>
+        window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })),
+      );
+      assert.equal(await page.locator(root).count(), 0);
+      await page.evaluate(() => {
+        window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+        window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+      });
+      assert.equal(await page.locator(root).count(), intent === 'reset' ? 0 : 1);
+      assert.equal(
+        await page.evaluate(() => __cr4wlerPlayground.engine.status().paused),
+        intent === 'paused',
+      );
+      assert.equal(await page.locator('#demo-summon').isEnabled(), intent === 'reset');
+    } finally {
+      await page.close();
+    }
+  }
+});
+
+test('site real back/forward navigation never duplicates a visitor', async (t) => {
+  const historyBrowser = await chromium.launch({
+    channel: 'chromium',
+    headless: true,
+    ignoreDefaultArgs: ['--disable-back-forward-cache'],
+  });
+  const page = await historyBrowser.newPage({ reducedMotion: 'reduce' });
+  try {
+    await page.addInitScript(() => {
+      globalThis.siteDocumentId = crypto.randomUUID();
+      globalThis.lastPageShowCached = false;
+      window.addEventListener(
+        'pageshow',
+        (event) => (globalThis.lastPageShowCached = event.persisted),
+      );
+    });
+    await page.goto(base);
+    for (const intent of ['paused', 'reset']) {
+      if (intent === 'paused') await page.locator('#demo-pause').click();
+      else await page.locator('#demo-restore').click();
+      const documentId = await page.evaluate(() => siteDocumentId);
+      await page.goto(`${base}/reference.html`);
+      assert.equal(await page.locator(root).count(), 1);
+      await page.goBack({ waitUntil: 'commit' });
+      await page.waitForFunction(() => globalThis.__cr4wlerPlayground?.initialized);
+      const cached = await page.evaluate(
+        (id) => siteDocumentId === id && lastPageShowCached,
+        documentId,
+      );
+      t.diagnostic(`Native cached history return for ${intent}: ${cached}`);
+      assert.equal(await page.locator(root).count(), cached && intent === 'reset' ? 0 : 1);
+      assert.equal(
+        await page.evaluate(() => __cr4wlerPlayground.engine.status().paused),
+        cached && intent === 'paused',
+      );
+    }
+  } finally {
+    await historyBrowser.close();
+  }
+});
 
 test('manifest is gesture-scoped, local-only MV3', async () => {
   const m = JSON.parse(await readFile('dist/manifest.json', 'utf8'));
