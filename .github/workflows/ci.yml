@@ -22,3 +22,8 @@ jobs:
         with:
           name: cr4wler-unpacked
           path: artifacts/cr4wler-*.zip*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cr4wler-extension-evidence
+          path: artifacts/extension-evidence/
