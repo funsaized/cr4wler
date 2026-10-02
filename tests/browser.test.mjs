@@ -354,6 +354,7 @@ test('popup controls dispatch settings and handle restricted pages', async () =>
       globalThis.sent = [];
       globalThis.active = false;
       globalThis.chrome = {
+        extension: { getViews: () => [] },
         tabs: {
           query: async () => [{ id: 7 }],
           sendMessage: async (id, message) => {
@@ -401,6 +402,145 @@ test('popup controls dispatch settings and handle restricted pages', async () =>
     assert.match(await page.locator('#status').innerText(), /off limits/);
   } finally {
     await page.close();
+  }
+});
+
+async function popupFixture({ mode = 'success', toolbar = true } = {}) {
+  const page = await browser.newPage({ viewport: { width: 368, height: 800 } });
+  await page.addInitScript(
+    ({ mode, toolbar }) => {
+      globalThis.failureMode = mode;
+      globalThis.closeCount = 0;
+      globalThis.injections = 0;
+      globalThis.sent = [];
+      globalThis.active = mode === 'already-active';
+      window.close = () => closeCount++;
+      globalThis.chrome = {
+        extension: { getViews: () => (toolbar ? [window] : []) },
+        scripting: {
+          executeScript: async () => {
+            injections++;
+            if (failureMode === 'inject-failure') throw Error('Restricted page');
+            if (failureMode === 'deferred')
+              await new Promise((resolve) => (globalThis.finishInjection = resolve));
+          },
+        },
+        tabs: {
+          query: async () => [{ id: 7 }],
+          sendMessage: async (id, message) => {
+            sent.push({ id, ...structuredClone(message) });
+            if (message.action === 'summon') {
+              if (failureMode === 'message-failure') throw Error('No receiver');
+              if (failureMode === 'missing') return undefined;
+              if (failureMode === 'deferred')
+                await new Promise((resolve) => (globalThis.finishAck = resolve));
+              globalThis.active = failureMode !== 'inactive';
+            }
+            if (message.action === 'restore') globalThis.active = false;
+            return {
+              active,
+              paused: false,
+              reducedMotion: false,
+              fragments: 0,
+              ...message.settings,
+            };
+          },
+        },
+      };
+    },
+    { mode, toolbar },
+  );
+  await page.goto(`${base}/popup.html`);
+  await page.waitForFunction(() => sent.some((message) => message.action === 'status'));
+  return page;
+}
+
+test('Summon closes the toolbar popup once, only after injection and active acknowledgement', async () => {
+  const page = await popupFixture({ mode: 'deferred' });
+  try {
+    await page.locator('[data-personality="feral"]').click();
+    await page.locator('#follow-mouse').check();
+    await page.locator('#intensity').fill('83');
+    await page.locator('#summon').click();
+    await page.waitForFunction(() => typeof finishInjection === 'function');
+    await page.locator('#summon').dispatchEvent('click');
+    assert.equal(await page.evaluate(() => injections), 1);
+    assert.equal(await page.evaluate(() => closeCount), 0);
+    assert.equal(await page.evaluate(() => sent.filter((x) => x.action === 'summon').length), 0);
+    await page.evaluate(() => finishInjection());
+    await page.waitForFunction(() => typeof finishAck === 'function');
+    assert.equal(await page.evaluate(() => closeCount), 0);
+    await page.locator('#summon').dispatchEvent('click');
+    await page.evaluate(() => finishAck());
+    await page.waitForFunction(() => closeCount === 1);
+    await page.locator('#summon').dispatchEvent('click');
+    assert.equal(await page.evaluate(() => closeCount), 1);
+    assert.equal(await page.evaluate(() => injections), 1);
+    const commands = await page.evaluate(() => sent.filter((x) => x.action === 'summon'));
+    assert.equal(commands.length, 1);
+    assert.equal(commands[0].id, 7);
+    assert.deepEqual(commands[0].settings, {
+      personality: 'feral',
+      intensity: 0.83,
+      followMouse: true,
+    });
+    assert.equal(await page.locator('#follow-mouse').isChecked(), true);
+    assert.equal(await page.locator('#intensity').inputValue(), '83');
+  } finally {
+    await page.close();
+  }
+});
+
+test('failed or unconfirmed Summon stays open with retry guidance and preserves settings', async () => {
+  for (const mode of ['inject-failure', 'message-failure', 'inactive', 'missing']) {
+    const page = await popupFixture({ mode });
+    try {
+      await page.locator('[data-personality="dreamy"]').click();
+      await page.locator('#follow-mouse').check();
+      await page.locator('#intensity').fill('78');
+      await page.locator('#summon').click();
+      await page.waitForFunction(() =>
+        /off limits|could not start/.test(document.querySelector('#status').textContent),
+      );
+      assert.equal(await page.evaluate(() => closeCount), 0, mode);
+      assert.equal(await page.locator('#summon').isEnabled(), true, mode);
+      assert.equal(
+        await page.locator('[data-personality="dreamy"]').getAttribute('aria-pressed'),
+        'true',
+      );
+      assert.equal(await page.locator('#follow-mouse').isChecked(), true);
+      assert.equal(await page.locator('#intensity').inputValue(), '78');
+      await page.evaluate(() => (globalThis.failureMode = 'success'));
+      await page.locator('#summon').click();
+      await page.waitForFunction(() => closeCount === 1);
+    } finally {
+      await page.close();
+    }
+  }
+});
+
+test('active-status checks and popup pages opened as tabs do not close their window', async () => {
+  for (const options of [{ mode: 'already-active' }, { toolbar: false }]) {
+    const page = await popupFixture(options);
+    try {
+      if (options.toolbar === false) {
+        await page.locator('#summon').click();
+        await page.waitForFunction(() => active);
+      }
+      assert.equal(await page.evaluate(() => closeCount), 0);
+      assert.equal(await page.locator('#pause').isEnabled(), true);
+      assert.equal(await page.locator('#summon').isDisabled(), true);
+      if (options.mode === 'already-active') {
+        await page.locator('#summon').dispatchEvent('click');
+        await page.waitForFunction(() => closeCount === 1);
+        assert.equal(
+          await page.evaluate(() => sent.filter((x) => x.action === 'summon').length),
+          1,
+        );
+      }
+    } finally {
+      await page.close();
+    }
   }
 });
 

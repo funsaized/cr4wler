@@ -1,6 +1,6 @@
 {
   "name": "cr4wler",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "A tiny neon troublemaker for the open web.",
   "license": "MIT",
@@ -16,6 +16,7 @@
     "package": "npm run build && python3 scripts/package.py",
     "capture": "node scripts/capture.mjs",
     "test:extension": "npm run build && node scripts/extension-check.mjs",
+    "test:popup": "npm run build && node scripts/popup-check.mjs",
     "format": "prettier --write src public scripts tests *.json *.md docs .github",
     "format:check": "prettier --check src public scripts tests *.json *.md docs .github"
   },

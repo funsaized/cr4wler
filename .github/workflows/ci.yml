@@ -17,6 +17,7 @@ jobs:
       - run: npm run format:check
       - run: npm test
       - run: npm run test:extension
+      - run: xvfb-run -a -s "-screen 0 1280x900x24" npm run test:popup
       - run: npm run package
       - uses: actions/upload-artifact@v4
         with:

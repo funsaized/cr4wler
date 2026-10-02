@@ -2,6 +2,8 @@ import { Spider } from './spider';
 import { spiderTypes, defaults, type Command, type Settings, type Status } from './types';
 const settings: Settings = { ...defaults };
 let targetId: number | undefined;
+let summoning = false,
+  popupCloseRequested = false;
 const summon = document.querySelector<HTMLButtonElement>('#summon')!,
   pause = document.querySelector<HTMLButtonElement>('#pause')!,
   restore = document.querySelector<HTMLButtonElement>('#restore')!,
@@ -13,7 +15,7 @@ function paint(s: Status) {
   settings.intensity = s.intensity;
   settings.followMouse = s.followMouse;
   follow.checked = s.followMouse;
-  summon.disabled = s.active;
+  summon.disabled = s.active || summoning;
   summon.innerHTML = s.active
     ? 'Your spider is here <span>✦</span>'
     : 'Summon your spider <span>↗</span>';
@@ -48,23 +50,44 @@ function paintSettings() {
     settings.intensity < 0.33 ? 'Gentle' : settings.intensity < 0.7 ? 'Playful' : 'Unsupervised';
 }
 async function send(action: Command['action'], inject = false) {
+  let injected = false;
   try {
     if (targetId === undefined) throw Error('No tab');
-    if (inject)
+    if (inject) {
       await chrome.scripting.executeScript({ target: { tabId: targetId }, files: ['content.js'] });
+      injected = true;
+    }
     const s = (await chrome.tabs.sendMessage(targetId, {
       type: 'CR4WLER',
       action,
       settings,
     } satisfies Command)) as Status;
+    if (action === 'summon' && s?.active !== true) throw Error('Launch was not acknowledged');
     paint(s);
+    return s;
   } catch {
     if (action === 'status' || action === 'configure') return;
-    status.textContent = 'This page is off limits. Try a regular website or the playground.';
+    status.textContent =
+      action === 'summon' && injected
+        ? 'Your spider could not start. Reload this page and try Summon again.'
+        : 'This page is off limits. Try a regular website or the playground.';
     summon.disabled = false;
   }
 }
-summon.addEventListener('click', () => void send('summon', true));
+async function launch() {
+  if (summoning || popupCloseRequested) return;
+  summoning = true;
+  summon.disabled = true;
+  const result = await send('summon', true);
+  summoning = false;
+  // Close this toolbar view only, after the page confirms the visitor is active.
+  // Opening popup.html in a tab remains useful for integration checks and controls.
+  if (result?.active && chrome.extension.getViews({ type: 'popup' }).includes(window)) {
+    popupCloseRequested = true;
+    window.close();
+  }
+}
+summon.addEventListener('click', () => void launch());
 pause.addEventListener('click', () => void send('pause'));
 restore.addEventListener('click', () => void send('restore'));
 document.querySelectorAll<HTMLButtonElement>('[data-personality]').forEach((b) =>
