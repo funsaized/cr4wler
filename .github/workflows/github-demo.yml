@@ -20,8 +20,26 @@ jobs:
       - run: npm run build
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg xvfb
       - run: xvfb-run -a -s "-screen 0 1440x1080x24" node scripts/github-demo.mjs
+      - run: split -b 20M artifacts/github-demo/window-source.mkv artifacts/github-demo/source-part-
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: cr4wler-github-demo
-          path: artifacts/github-demo/
+          path: |
+            artifacts/github-demo/
+            !artifacts/github-demo/window-source.mkv
+            !artifacts/github-demo/source-part-*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cr4wler-window-source-00
+          path: artifacts/github-demo/source-part-aa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cr4wler-window-source-01
+          path: artifacts/github-demo/source-part-ab
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cr4wler-window-source-02
+          path: artifacts/github-demo/source-part-ac
+          if-no-files-found: ignore

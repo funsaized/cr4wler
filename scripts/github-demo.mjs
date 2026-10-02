@@ -1,7 +1,8 @@
 /** Native Chromium window capture: actual public GitHub page and installed extension. */
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -415,6 +416,44 @@ try {
     evidence.recordingError = error.message;
     process.exitCode = 1;
   });
+  if (started !== undefined) {
+    const source = `${dir}/window-source.mkv`;
+    const bytes = await readFile(source);
+    const frames = JSON.parse(
+      execFileSync(
+        'ffprobe',
+        [
+          '-v',
+          'error',
+          '-select_streams',
+          'v',
+          '-show_frames',
+          '-show_entries',
+          'frame=best_effort_timestamp_time',
+          '-of',
+          'json',
+          source,
+        ],
+        { encoding: 'utf8' },
+      ),
+    ).frames.map((frame) => Number(frame.best_effort_timestamp_time));
+    const deltas = frames
+      .slice(1)
+      .map((time, index) => (time - frames[index]) * 1000)
+      .sort((a, b) => a - b);
+    evidence.capture.sourceBytes = bytes.length;
+    evidence.capture.sourceSha256 = createHash('sha256').update(bytes).digest('hex');
+    evidence.capture.measuredCadence = {
+      frames: frames.length,
+      durationSeconds: frames.at(-1) - frames[0],
+      averageFps: (frames.length - 1) / (frames.at(-1) - frames[0]),
+      medianIntervalMs: deltas[Math.floor(deltas.length * 0.5)],
+      p95IntervalMs: deltas[Math.floor(deltas.length * 0.95)],
+      maximumIntervalMs: deltas.at(-1),
+      timing: 'Actual X11 capture timestamps; passthrough encoding, no frame interpolation.',
+    };
+    await writeFile(`${dir}/source-frame-times.json`, JSON.stringify(frames) + '\n');
+  }
   await page?.close();
   await popup?.close();
   await context?.close();
