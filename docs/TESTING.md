@@ -52,32 +52,43 @@ The record cap is 512. DOM projection is capped at 72 records and 16 shards per 
 - Change the OS reduced-motion preference during a session. New hunts stop; existing marks remain still until Reset.
 - Inspect permission and network panels. There are no host permissions or runtime network services.
 
-## Previous release evidence (v0.3)
+## Fast-scroll recovery
 
-The v0.4 source is awaiting its source-bound release captures. The recordings below belong to v0.3.
+The v0.3 body lived in viewport coordinates while planted contacts followed document scrolling. Its IK solver enlarged segment lengths to meet displaced contacts; stride prediction also used unbounded scroll velocity. A committed grip could follow its source far offscreen. A 120px-per-frame reproduction reached 1,175–3,347px foot distances, well beyond the old 180–245px nominal skeletons.
 
-Runtime source: `27e939736b87480f17401a7415d92416ad45e4eb`. The release evidence commit changes documentation and captured assets only.
+v0.4 uses bone budgets independent of contact distance, bounded stride destinations and explicit contact ownership. Normal crawling releases an exhausted foot into a short lift. Rapid displacement releases the rig into anticipation, tucked flight and staged landing; impulses during a hop cannot restart or extend it. Nominal recovery budgets are 300ms for the jumping spider, 460ms for the widow and 640ms for the orb-weaver. Browser cadence affects wall-clock completion. Offscreen strikes retain their committed record and release their grip. Nearby visible text is reacquired after landing. Recovery never moves the page. Paused/reduced-motion geometry uses a calm finite reset.
 
-[CI run 36993698123](https://github.com/funsaized/cr4wler/actions/runs/36993698123) passed on that exact source: TypeScript, formatting, all **16 browser tests**, actual installed-extension integration on both themes, and packaging.
+The four new browser regressions cover rapid wheel/fling movement, repeated reversals, PageDown/Home/End, programmatic jumps, resize with distant content, scrolling mid-strike, follow on/off, blur, paused geometry, reduced motion, record persistence and exact reset. Every sampled contact must stay inside its physical reach budget; every joint must remain finite. The visitor must return visibly within the test's 2.5-second bound. Ordinary edge crawling must retain a climbing gait. External movement must disarm stationary edge intent without fighting manual input.
+
+## Release evidence (v0.4)
+
+Recorded runtime source: `35243e9b1c1f47f884a07a60459758126dcc3599`. Later release evidence commits change documentation and captured assets only.
+
+[CI run 36998438016](https://github.com/funsaized/cr4wler/actions/runs/36998438016) passed on that exact source: TypeScript, formatting, all **20 browser tests**, actual installed-extension integration on both themes, and packaging.
 
 | Recording                                               | Duration | Input → selection | Median / p95 frame interval |
 | ------------------------------------------------------- | -------- | ----------------- | --------------------------- |
-| [Installed extension, daylight](extension-demo.webm)    | 20.80s   | 1–49ms            | 33.3 / 50.1ms               |
-| [Installed extension, night](extension-night-demo.webm) | 20.60s   | 26–62ms           | 33.3 / 66.6ms               |
-| [Standalone night playground](demo.webm)                | 19.96s   | 13–74ms           | 16.7 / 33.4ms               |
+| [Installed extension, daylight](extension-demo.webm)    | 27.52s   | 18–28ms           | 33.3 / 50.1ms               |
+| [Installed extension, night](extension-night-demo.webm) | 27.56s   | 26–37ms           | 33.3 / 50.0ms               |
+| [Standalone night playground](demo.webm)                | 24.08s   | 4–16ms            | 16.7 / 16.8ms               |
 
-All recordings use Chromium 153.0.8010.12 at 1440×1000 and real pointer events. Each shows an immediate hover redirect, all three temperaments, four effects, deliberate bidirectional edge scrolling, a paused deep-scroll excursion and exact restoration. Five earlier record IDs survived the excursion to volume 30 and return. There were no observed page errors, requests, navigation or site actions in either installed session. [Installed results and phase timings](extension-evidence.json) · [Standalone capture data](evidence.json). The [popup screenshot](popup.png) uses mocked Chrome APIs; the installed sessions use the actual extension popup page and real Chrome APIs.
+All recordings use Chromium 153.0.8010.12 at 1440×1000 and real pointer events. Each shows hover preemption, all three distinct spider anatomies, rapid wheel movement and reversal, visible recovery and landing, four effects, bidirectional edge crawling, paused deep-scroll return and exact restoration. Five earlier record IDs survived. In both installed sessions all sampled contact reaches stayed below their physical budget, all joint coordinates remained finite, and the page stayed stationary after manual input settled. There were no observed page errors, requests, unintended navigation, site clicks or form changes. [Installed results, geometry and phase timings](extension-evidence.json) · [Standalone capture data](evidence.json). Pointer rings and type labels are recording instrumentation. The [popup screenshot](popup.png) uses mocked Chrome APIs; installed sessions use real Chrome APIs and the actual popup page.
 
-The [dense-page sample without recording](performance.json) ran the same pointer scenario for 14.52 seconds, collecting 861 frame intervals. Median was **16.7ms**, p95 **16.8ms**, and p99 **16.8ms**. Pointer-to-selection was **14–33ms**. Two long tasks of 55ms and 68ms were observed. These are measurements from one synthetic page in a software-rendered container, not a guarantee across websites or devices.
+### Frame pacing comparison
 
-Capture has material overhead. The installed recordings include screenshots, popup control changes and tasks up to 228ms; their p95 intervals are reported separately above. Performance on arbitrary large or complex pages remains a POC limitation.
+The unrecorded sample uses the same dense synthetic document and software-rendered local environment, with video and screenshots omitted. v0.4 adds rapid-scroll recovery and explicit type demonstrations, so the scenarios have different durations and workloads.
 
-Additional [interaction checks](interaction-v3-validation.json) verify the latest pending hover wins during an atomic strike, the 1,800px edge-visit budget, and fresh intent after manual scrolling. [Procedural gait checks](spider-v3-validation.json) measured zero planted-foot slip over 1,080px of surface movement in each temperament, at least four support contacts, exact paused translation and bounded poses after 32,000px document jumps. These are local development measurements, separate from the CI browser suite.
+| Sample                                     | Duration / frame samples | Median / p95 / p99   | Long tasks  |
+| ------------------------------------------ | ------------------------ | -------------------- | ----------- |
+| v0.3 pointer hunts and edge crawling       | 14.52s / 861             | 16.7 / 16.8 / 16.8ms | 2, 55–68ms  |
+| [v0.4 extended scenario](performance.json) | 20.09s / 1,178           | 16.7 / 16.8 / 16.8ms | 3, 55–157ms |
 
-Two local release builds were byte-identical, and the downloaded CI package matched those bytes.
+v0.4 input-to-selection response was 16–33ms in that unrecorded run. Occasional stalls remain a POC limitation. These samples do not establish performance across websites, hardware or browser configurations. CI recording adds video, screenshots and popup changes; its tasks reached 209ms and its p95 intervals are reported separately above.
+
+Two local release builds were byte-identical. The downloaded CI package matched those bytes.
 
 ```text
-c74b912d95d2e976ca8bc6c1ac1c9fdfca336cdd517867734dd29f961d690763  cr4wler-0.3.0.zip
+1a490070c4370dbc5c26cc30c18ae0babe24eccb896374e57692716843a6972a  cr4wler-0.4.0.zip
 ```
 
-CI artifacts: [installed-extension evidence](https://github.com/funsaized/cr4wler/actions/runs/36993698123/artifacts/11220413980) · [unpacked package and digest](https://github.com/funsaized/cr4wler/actions/runs/36993698123/artifacts/11220862937). Repository access is required. GitHub's retention applies to artifact links; the checked-in videos, screenshots and JSON remain with the source.
+CI artifacts: [installed-extension evidence](https://github.com/funsaized/cr4wler/actions/runs/36998438016/artifacts/11222109100) · [unpacked package and digest](https://github.com/funsaized/cr4wler/actions/runs/36998438016/artifacts/11222019015). Repository access is required. GitHub's retention applies to artifact links; the checked-in videos, screenshots and JSON remain with the source.

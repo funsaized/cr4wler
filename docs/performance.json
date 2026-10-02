@@ -1,9 +1,437 @@
 {
-  "sourceCommit": "27e939736b87480f17401a7415d92416ad45e4eb",
+  "sourceCommit": "35243e9b1c1f47f884a07a60459758126dcc3599",
   "surface": "Dense night fixture, real pointer hunts, temperament changes and edge scrolling; no video or screenshots",
   "browser": "153.0.8010.12",
-  "durationSeconds": 14.521,
-  "pointerInstrumentation": "Visible ring follows actual pointer events. No Chrome APIs mocked.",
+  "durationSeconds": 20.094,
+  "pointerInstrumentation": "Visible ring follows actual pointer events; type label is recording instrumentation. No Chrome APIs mocked.",
+  "rapidScroll": [
+    {
+      "personality": "curious",
+      "before": 12627,
+      "after": 13327,
+      "bodyReturnedVisible": true,
+      "pageUnmovedAfterInput": true
+    },
+    {
+      "personality": "dreamy",
+      "before": 12627,
+      "after": 13327,
+      "bodyReturnedVisible": true,
+      "pageUnmovedAfterInput": true
+    },
+    {
+      "personality": "feral",
+      "before": 12627,
+      "after": 13327,
+      "bodyReturnedVisible": true,
+      "pageUnmovedAfterInput": true
+    }
+  ],
+  "rig": {
+    "samples": 1125,
+    "maxReachRatio": 0.9999560331426842,
+    "maxBoneRatio": 0.9615384615384633,
+    "finite": true,
+    "recoveries": [
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 473.1
+      },
+      {
+        "type": "jumping spider",
+        "phase": "anticipate",
+        "reason": "hunt",
+        "at": 2189.8
+      },
+      {
+        "type": "jumping spider",
+        "phase": "flight",
+        "reason": "hunt",
+        "at": 2239.8
+      },
+      {
+        "type": "jumping spider",
+        "phase": "land",
+        "reason": "hunt",
+        "at": 2389.7
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 2489.7
+      },
+      {
+        "type": "jumping spider",
+        "phase": "anticipate",
+        "reason": "hunt",
+        "at": 3306.4
+      },
+      {
+        "type": "jumping spider",
+        "phase": "flight",
+        "reason": "hunt",
+        "at": 3356.4
+      },
+      {
+        "type": "jumping spider",
+        "phase": "land",
+        "reason": "hunt",
+        "at": 3506.4
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 3606.4
+      },
+      {
+        "type": "orb-weaver",
+        "phase": "none",
+        "reason": "",
+        "at": 4456.4
+      },
+      {
+        "type": "widow",
+        "phase": "none",
+        "reason": "",
+        "at": 6923
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 8122.9
+      },
+      {
+        "type": "widow",
+        "phase": "none",
+        "reason": "",
+        "at": 8156.2
+      },
+      {
+        "type": "widow",
+        "phase": "anticipate",
+        "reason": "scroll",
+        "at": 8422.8
+      },
+      {
+        "type": "widow",
+        "phase": "flight",
+        "reason": "scroll",
+        "at": 8506.2
+      },
+      {
+        "type": "widow",
+        "phase": "land",
+        "reason": "scroll",
+        "at": 8756.2
+      },
+      {
+        "type": "widow",
+        "phase": "none",
+        "reason": "",
+        "at": 8872.9
+      },
+      {
+        "type": "widow",
+        "phase": "anticipate",
+        "reason": "scroll",
+        "at": 9072.9
+      },
+      {
+        "type": "widow",
+        "phase": "flight",
+        "reason": "scroll",
+        "at": 9156.1
+      },
+      {
+        "type": "widow",
+        "phase": "land",
+        "reason": "scroll",
+        "at": 9406.1
+      },
+      {
+        "type": "widow",
+        "phase": "none",
+        "reason": "",
+        "at": 9522.8
+      },
+      {
+        "type": "orb-weaver",
+        "phase": "none",
+        "reason": "",
+        "at": 9789.5
+      },
+      {
+        "type": "orb-weaver",
+        "phase": "anticipate",
+        "reason": "scroll",
+        "at": 10056.2
+      },
+      {
+        "type": "orb-weaver",
+        "phase": "flight",
+        "reason": "scroll",
+        "at": 10172.8
+      },
+      {
+        "type": "orb-weaver",
+        "phase": "land",
+        "reason": "scroll",
+        "at": 10522.8
+      },
+      {
+        "type": "orb-weaver",
+        "phase": "none",
+        "reason": "",
+        "at": 10689.4
+      },
+      {
+        "type": "orb-weaver",
+        "phase": "anticipate",
+        "reason": "scroll",
+        "at": 10889.4
+      },
+      {
+        "type": "orb-weaver",
+        "phase": "flight",
+        "reason": "scroll",
+        "at": 11006.1
+      },
+      {
+        "type": "orb-weaver",
+        "phase": "land",
+        "reason": "scroll",
+        "at": 11356.1
+      },
+      {
+        "type": "orb-weaver",
+        "phase": "none",
+        "reason": "",
+        "at": 11522.8
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 11606
+      },
+      {
+        "type": "jumping spider",
+        "phase": "anticipate",
+        "reason": "hunt",
+        "at": 11722.7
+      },
+      {
+        "type": "jumping spider",
+        "phase": "flight",
+        "reason": "hunt",
+        "at": 11772.8
+      },
+      {
+        "type": "jumping spider",
+        "phase": "land",
+        "reason": "hunt",
+        "at": 11922.7
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 12006
+      },
+      {
+        "type": "jumping spider",
+        "phase": "anticipate",
+        "reason": "scroll",
+        "at": 12306
+      },
+      {
+        "type": "jumping spider",
+        "phase": "flight",
+        "reason": "scroll",
+        "at": 12356
+      },
+      {
+        "type": "jumping spider",
+        "phase": "land",
+        "reason": "scroll",
+        "at": 12506
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 12589.3
+      },
+      {
+        "type": "jumping spider",
+        "phase": "anticipate",
+        "reason": "hunt",
+        "at": 13306
+      },
+      {
+        "type": "jumping spider",
+        "phase": "flight",
+        "reason": "hunt",
+        "at": 13356
+      },
+      {
+        "type": "jumping spider",
+        "phase": "land",
+        "reason": "hunt",
+        "at": 13506
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 13606
+      },
+      {
+        "type": "jumping spider",
+        "phase": "anticipate",
+        "reason": "hunt",
+        "at": 13822.7
+      },
+      {
+        "type": "jumping spider",
+        "phase": "flight",
+        "reason": "hunt",
+        "at": 13872.6
+      },
+      {
+        "type": "jumping spider",
+        "phase": "land",
+        "reason": "hunt",
+        "at": 14022.6
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 14106
+      },
+      {
+        "type": "jumping spider",
+        "phase": "anticipate",
+        "reason": "hunt",
+        "at": 15705.9
+      },
+      {
+        "type": "jumping spider",
+        "phase": "flight",
+        "reason": "hunt",
+        "at": 15755.9
+      },
+      {
+        "type": "jumping spider",
+        "phase": "land",
+        "reason": "hunt",
+        "at": 15905.9
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 16005.9
+      },
+      {
+        "type": "jumping spider",
+        "phase": "anticipate",
+        "reason": "hunt",
+        "at": 16222.5
+      },
+      {
+        "type": "jumping spider",
+        "phase": "flight",
+        "reason": "hunt",
+        "at": 16272.6
+      },
+      {
+        "type": "jumping spider",
+        "phase": "land",
+        "reason": "hunt",
+        "at": 16422.5
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 16522.5
+      },
+      {
+        "type": "jumping spider",
+        "phase": "anticipate",
+        "reason": "hunt",
+        "at": 17055.8
+      },
+      {
+        "type": "jumping spider",
+        "phase": "flight",
+        "reason": "hunt",
+        "at": 17105.8
+      },
+      {
+        "type": "jumping spider",
+        "phase": "land",
+        "reason": "hunt",
+        "at": 17255.8
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 17355.9
+      },
+      {
+        "type": "jumping spider",
+        "phase": "anticipate",
+        "reason": "hunt",
+        "at": 18105.9
+      },
+      {
+        "type": "jumping spider",
+        "phase": "flight",
+        "reason": "hunt",
+        "at": 18155.8
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 18272.5
+      },
+      {
+        "type": "jumping spider",
+        "phase": "anticipate",
+        "reason": "hunt",
+        "at": 19072.5
+      },
+      {
+        "type": "jumping spider",
+        "phase": "flight",
+        "reason": "hunt",
+        "at": 19122.5
+      },
+      {
+        "type": "jumping spider",
+        "phase": "land",
+        "reason": "hunt",
+        "at": 19289.1
+      },
+      {
+        "type": "jumping spider",
+        "phase": "none",
+        "reason": "",
+        "at": 19372.5
+      }
+    ],
+    "types": ["jumping spider", "orb-weaver", "widow"]
+  },
   "hoverPreemption": {
     "abandoned": "reference-target-8-13",
     "next": "reference-target-8-4",
@@ -18,8 +446,8 @@
   },
   "edgeScroll": {
     "initial": 12627,
-    "advanced": 13451,
-    "returned": 12850,
+    "advanced": 13445,
+    "returned": 12882,
     "centerStops": true
   },
   "persistentRecordIds": ["1", "2", "3", "4", "5"],
@@ -27,162 +455,226 @@
     {
       "target": "reference-target-8-13",
       "personality": "feral",
-      "inputToSelectionMs": 14.300000000372506
+      "inputToSelectionMs": 16.09999999850993
     },
     {
       "target": "reference-target-8-4",
       "personality": "feral",
-      "inputToSelectionMs": 32.700000000745035
+      "inputToSelectionMs": 32.89999999925499
     },
     {
       "target": "reference-target-8-9",
       "personality": "feral",
-      "inputToSelectionMs": 16
+      "inputToSelectionMs": 16.199999998510066
     },
     {
       "target": "reference-target-8-16",
       "personality": "feral",
-      "inputToSelectionMs": 15.900000001490298
+      "inputToSelectionMs": 16.199999998882504
     },
     {
       "target": "reference-target-8-7",
       "personality": "dreamy",
-      "inputToSelectionMs": 13.699999999999818
+      "inputToSelectionMs": 16.199999999254942
     },
     {
       "target": "reference-target-8-11",
       "personality": "curious",
-      "inputToSelectionMs": 16.200000001117587
+      "inputToSelectionMs": 16.199999999627835
     }
   ],
   "effects": ["shear", "scatter", "erase", "peel"],
   "phases": [
     {
       "phase": "arrive",
-      "at": 626.4
+      "at": 423.1
     },
     {
       "phase": "scan",
-      "at": 926.4
+      "at": 673.1
     },
     {
       "phase": "lock",
-      "at": 1543
+      "at": 1589.8
     },
     {
       "phase": "strike",
-      "at": 1626.3
+      "at": 1673.1
     },
     {
       "phase": "aftermath",
-      "at": 1809.7
+      "at": 1856.4
     },
     {
       "phase": "scan",
-      "at": 1909.7
+      "at": 1956.4
     },
     {
       "phase": "lock",
-      "at": 2376.3
+      "at": 2606.4
     },
     {
       "phase": "strike",
-      "at": 2459.7
+      "at": 2689.8
     },
     {
       "phase": "aftermath",
-      "at": 2642.9
+      "at": 2873.1
     },
     {
       "phase": "scan",
-      "at": 2742.9
+      "at": 2973.1
     },
     {
       "phase": "lock",
-      "at": 3359.6
+      "at": 3806.3
     },
     {
       "phase": "strike",
-      "at": 3443
+      "at": 3889.7
     },
     {
       "phase": "aftermath",
-      "at": 3626.3
+      "at": 4073.1
     },
     {
       "phase": "scan",
-      "at": 3726.2
+      "at": 4173
     },
     {
       "phase": "lock",
-      "at": 5409.5
+      "at": 5839.6
     },
     {
       "phase": "strike",
-      "at": 5876.1
+      "at": 6306.3
     },
     {
       "phase": "aftermath",
-      "at": 6309.5
+      "at": 6739.6
     },
     {
       "phase": "scan",
-      "at": 6592.8
+      "at": 7022.9
     },
     {
       "phase": "lock",
-      "at": 6926.2
+      "at": 7339.6
     },
     {
       "phase": "strike",
-      "at": 7126.1
+      "at": 7556.2
     },
     {
       "phase": "aftermath",
-      "at": 7426.1
+      "at": 7856.2
     },
     {
       "phase": "scan",
-      "at": 7709.5
+      "at": 8122.9
+    },
+    {
+      "phase": "recover",
+      "at": 8422.8
+    },
+    {
+      "phase": "scan",
+      "at": 8889.5
+    },
+    {
+      "phase": "recover",
+      "at": 9072.9
+    },
+    {
+      "phase": "scan",
+      "at": 9539.5
+    },
+    {
+      "phase": "recover",
+      "at": 10056.2
+    },
+    {
+      "phase": "scan",
+      "at": 10706.1
+    },
+    {
+      "phase": "recover",
+      "at": 10889.4
+    },
+    {
+      "phase": "scan",
+      "at": 11539.5
     },
     {
       "phase": "lock",
-      "at": 7926.1
+      "at": 12289.4
     },
     {
-      "phase": "strike",
-      "at": 8009.4
-    },
-    {
-      "phase": "aftermath",
-      "at": 8192.7
+      "phase": "recover",
+      "at": 12306
     },
     {
       "phase": "scan",
-      "at": 8292.8
+      "at": 12606
+    },
+    {
+      "phase": "lock",
+      "at": 12939.3
+    },
+    {
+      "phase": "strike",
+      "at": 13022.7
+    },
+    {
+      "phase": "aftermath",
+      "at": 13206
+    },
+    {
+      "phase": "scan",
+      "at": 13306
+    },
+    {
+      "phase": "lock",
+      "at": 16689.2
+    },
+    {
+      "phase": "strike",
+      "at": 16772.5
+    },
+    {
+      "phase": "aftermath",
+      "at": 16972.5
+    },
+    {
+      "phase": "scan",
+      "at": 17055.8
     },
     {
       "phase": "paused",
-      "at": 12925.9
+      "at": 18222.4
     },
     {
       "phase": "scan",
-      "at": 13709.2
+      "at": 19055.7
     }
   ],
   "metrics": {
-    "frameSamples": 861,
+    "frameSamples": 1178,
     "medianFrameMs": 16.699999999999818,
     "p95FrameMs": 16.799999999999272,
     "p99FrameMs": 16.80000000000109,
-    "over50ms": 2,
+    "over50ms": 3,
     "longTasks": [
       {
-        "at": 617,
-        "duration": 68
+        "at": 17595.200000001118,
+        "duration": 157
       },
       {
-        "at": 14205.5,
+        "at": 18459.300000000745,
+        "duration": 131
+      },
+      {
+        "at": 19551.5,
         "duration": 55
       }
     ]
