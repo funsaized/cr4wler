@@ -1,0 +1,27 @@
+{
+  "sourceCommit": "153846a80f932a8b9c9acbf6794b8c8980ec02f8",
+  "capturedAt": "2026-10-02T08:05:15.960Z",
+  "browser": "141.0.7390.37",
+  "surface": "Local playground. Not an installed extension. Popup screenshot uses mocked chrome.tabs.",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "elapsedMs": 23931,
+  "fragmentCount": 4,
+  "restoreExact": false,
+  "pageRequestsAfterActivation": [],
+  "pageErrors": [],
+  "metrics": {
+    "frameSamples": 1336,
+    "medianFrameMs": 16.699999999999818,
+    "p95FrameMs": 16.799999999999272,
+    "p99FrameMs": 33.20000000000073,
+    "over50ms": 5,
+    "longTasks": [96]
+  },
+  "extensionLoad": {
+    "status": "blocked",
+    "reason": "Loading of unpacked extensions is disabled by the administrator."
+  }
+}

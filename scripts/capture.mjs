@@ -61,7 +61,12 @@ try {
   await page.waitForTimeout(5500);
   await page.screenshot({ path: 'docs/playground-scrolled.png' });
   await page.keyboard.press('Escape');
-  const restoreExact = (await page.locator('main').innerHTML()) === before;
+  const after = await page.locator('main').innerHTML();
+  const restoreExact = after === before;
+  if (!restoreExact) {
+    await writeFile('artifacts/source-before.html', before);
+    await writeFile('artifacts/source-after.html', after);
+  }
   await page.waitForTimeout(800);
   const stats = await page.evaluate(() => captureStats);
   const sorted = stats.frames.filter((n) => n > 0).sort((a, b) => a - b);
