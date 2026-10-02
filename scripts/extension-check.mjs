@@ -8,7 +8,7 @@ import { join, resolve } from 'node:path';
 import { serve } from './serve.mjs';
 const profile = await mkdtemp(join(tmpdir(), 'cr4wler-extension-'));
 const server = await serve();
-let context, fixtureVideo;
+let context, fixtureVideo, fixturePage;
 await mkdir('artifacts/extension-evidence', { recursive: true });
 const evidence = {
   sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
@@ -28,8 +28,10 @@ try {
   const { id } = await cdp.send('Extensions.loadUnpacked', { path: resolve('dist') });
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   const page = await context.newPage();
+  fixturePage = page;
   fixtureVideo = page.video();
   await page.goto('http://127.0.0.1:4173');
+  await page.bringToFront();
   const original = await page.locator('main').innerHTML();
   const originalURL = page.url();
   const requests = [];
@@ -111,8 +113,9 @@ try {
   evidence.error = error.message;
   process.exitCode = 1;
 } finally {
-  await context?.close();
+  if (fixturePage && !fixturePage.isClosed()) await fixturePage.close();
   if (fixtureVideo) await fixtureVideo.saveAs('artifacts/extension-evidence/extension-demo.webm');
+  await context?.close();
   await writeFile(
     'artifacts/extension-evidence/result.json',
     JSON.stringify(evidence, null, 2) + '\n',
