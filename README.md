@@ -105,4 +105,4 @@ Protected browser pages, the Chrome Web Store, PDFs, and other extensions' pages
 
 Inspiration behind the implementation: [rybinfx](https://x.com/rybinfx/status/2105700296760688790?s=20)
 
-MIT licensed, made for **funsaized**. Contributions with fewer legs are also welcome.
+MIT licensed, made for **fun**. Contributions with fewer legs are also welcome.
