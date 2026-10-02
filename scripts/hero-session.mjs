@@ -1,8 +1,7 @@
 /** Single-personality README footage. Runs the actual installed extension.
  * Every word, form value and pointer cue belongs to this synthetic fixture. */
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
+import { writeFile } from 'node:fs/promises';
 import { preparePointerSession } from './pointer-session.mjs';
 
 const titles = [
@@ -115,6 +114,21 @@ export async function captureHeroSession({ context, cdp, id, dir, sourceCommit }
         document.querySelector('main').addEventListener(type, () => heroSiteActions[type]++, true);
     });
     await preparePointerSession(page, { surface: 'Installed extension · cursor following ON' });
+    await page.evaluate(() => {
+      globalThis.heroMaxVisitors = 0;
+      globalThis.heroVisitorHosts = new Set();
+      globalThis.heroPersonalities = new Set();
+      const sample = () => {
+        const hosts = document.querySelectorAll('[data-cr4wler-root]');
+        heroMaxVisitors = Math.max(heroMaxVisitors, hosts.length);
+        for (const host of hosts) {
+          heroVisitorHosts.add(host);
+          if (host.dataset.personality) heroPersonalities.add(host.dataset.personality);
+        }
+        requestAnimationFrame(sample);
+      };
+      sample();
+    });
     await page.locator('#recording-pointer').evaluate((marker) => {
       marker.style.width = marker.style.height = '20px';
       marker.style.borderWidth = '3px';
@@ -190,6 +204,17 @@ export async function captureHeroSession({ context, cdp, id, dir, sourceCommit }
     await page.waitForTimeout(1100);
     evidence.clipEndSeconds = (Date.now() - createdAt) / 1000;
     const audit = await page.evaluate(() => pointerAudit);
+    assert.equal(
+      await page.evaluate(() => heroMaxVisitors),
+      1,
+      'exactly one visitor engine throughout',
+    );
+    assert.equal(
+      await page.evaluate(() => heroVisitorHosts.size),
+      1,
+      'same visitor host throughout',
+    );
+    assert.deepEqual(await page.evaluate(() => [...heroPersonalities]), ['curious']);
     assert.deepEqual(
       audit.rig.types,
       ['widow'],
@@ -220,6 +245,9 @@ export async function captureHeroSession({ context, cdp, id, dir, sourceCommit }
       scroll: { initial, advanced, stopped, returned: returnedScroll, realPointerOnly: true },
       persistentRecordIds: retained,
       exactRestore: true,
+      maxVisitorCount: await page.evaluate(() => heroMaxVisitors),
+      uniqueVisitorHosts: await page.evaluate(() => heroVisitorHosts.size),
+      personalities: await page.evaluate(() => [...heroPersonalities]),
       siteActions: await page.evaluate(() => heroSiteActions),
       requests,
       errors,
@@ -236,23 +264,6 @@ export async function captureHeroSession({ context, cdp, id, dir, sourceCommit }
     await video.saveAs(`${dir}/hero-demo.webm`);
     await popup?.close();
     await writeFile(`${dir}/hero-result.json`, JSON.stringify(evidence, null, 2) + '\n');
-  }
-  // Temporary transport for the generated synthetic fixture video when the
-  // execution environment cannot reach GitHub's artifact storage host.
-  if (process.env.CI && evidence.passed) {
-    const bytes = await readFile(`${dir}/hero-demo.webm`);
-    console.log('CR4WLER_HERO_JSON ' + JSON.stringify(evidence));
-    console.log(
-      'CR4WLER_HERO_VIDEO ' +
-        JSON.stringify({
-          bytes: bytes.length,
-          sha256: createHash('sha256').update(bytes).digest('hex'),
-        }),
-    );
-    const encoded = bytes.toString('base64');
-    for (let offset = 0; offset < encoded.length; offset += 4096)
-      console.log(`CR4WLER_HERO_CHUNK ${offset / 4096} ${encoded.slice(offset, offset + 4096)}`);
-    console.log('CR4WLER_HERO_END');
   }
   console.log(
     'HERO CAPTURE PASS: one Curious widow, four word grabs, pointer-only bidirectional edge scrolling, persistent aftermath and exact restore.',

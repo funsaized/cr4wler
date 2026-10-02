@@ -62,7 +62,17 @@ The four new browser regressions cover rapid wheel/fling movement, repeated reve
 
 ## Release evidence (v0.4)
 
-Recorded runtime source: `35243e9b1c1f47f884a07a60459758126dcc3599`. Later release evidence commits change documentation and captured assets only.
+### Continuous README hero
+
+[The README GIF](cr4wler-demo.gif) is a continuous **23.25-second** excerpt of an actual installed-extension session: one Curious widow, cursor following enabled, and a static synthetic fixture with no standalone playground engine. The same visitor locks onto several hovered phrases, eats newly revealed words during real pointer-driven edge scrolling, and returns to its earlier persistent marks. No personality changes, cuts, resummons or resets appear in the excerpt. Escape and exact restoration are verified after the displayed sequence.
+
+Captured source: `20a146aa4a11e42e75a4130089b7457c7997b61e`, [passing installed-extension CI run 37012413174](https://github.com/funsaized/cr4wler/actions/runs/37012413174). Runtime source remains `35243e9b1c1f47f884a07a60459758126dcc3599`. The GIF is 720×692, 12fps, 279 frames and 8,960,375 bytes. Every displayed frame was reviewed; the final GIF was played across two loop boundaries in a clean Chromium page. [Capture, conversion and review evidence](hero-evidence.json) includes the source video and GIF SHA-256 digests, actual pointer/scroll measurements, retained record IDs and safety assertions. The normal loop returns to the beginning of the recording.
+
+`npm run test:extension` reproduces the single-visitor scenario and writes `artifacts/extension-evidence/hero-demo.webm` and `hero-result.json`. The harness asserts one visitor host on every sampled animation frame, one widow anatomy throughout, real pointer-only scrolling, persistent records and exact restore. The fixture contains only fictional notes and dummy protected controls. It never loads a second engine. The published excerpt omits the three final restoration-test frames; all retained encoded frames and timings remain unchanged.
+
+### Packaged release
+
+Recorded runtime source: `35243e9b1c1f47f884a07a60459758126dcc3599`. Later release evidence commits update documentation, captured assets and recording harnesses; runtime source remains unchanged.
 
 [CI run 36998438016](https://github.com/funsaized/cr4wler/actions/runs/36998438016) passed on that exact source: TypeScript, formatting, all **20 browser tests**, actual installed-extension integration on both themes, and packaging.
 

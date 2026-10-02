@@ -1,0 +1,342 @@
+{
+  "capture": {
+    "sourceCommit": "20a146aa4a11e42e75a4130089b7457c7997b61e",
+    "surface": "Actual installed MV3 extension; one Curious widow; real pointer and edge scrolling",
+    "fixture": "Generated synthetic typography habitat, 120 fictional notes and dummy protected inputs",
+    "passed": true,
+    "timeline": [
+      {
+        "stage": "summon",
+        "atSeconds": 1.084
+      },
+      {
+        "stage": "hover-and-eat-2",
+        "atSeconds": 1.368
+      },
+      {
+        "stage": "hover-and-eat-4",
+        "atSeconds": 4.298
+      },
+      {
+        "stage": "hover-and-eat-6",
+        "atSeconds": 6.74
+      },
+      {
+        "stage": "pointer-to-bottom-edge",
+        "atSeconds": 9.205
+      },
+      {
+        "stage": "pointer-inward-stops-scroll",
+        "atSeconds": 13.672
+      },
+      {
+        "stage": "eat-newly-visible-word",
+        "atSeconds": 15.394
+      },
+      {
+        "stage": "pointer-to-top-edge",
+        "atSeconds": 17.578
+      },
+      {
+        "stage": "persistent-aftermath-returned",
+        "atSeconds": 23.678
+      }
+    ],
+    "clipStartSeconds": 1.368,
+    "clipEndSeconds": 24.779,
+    "browser": "153.0.8010.12",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "scroll": {
+      "initial": 0,
+      "advanced": 547,
+      "stopped": 565,
+      "returned": 0,
+      "realPointerOnly": true
+    },
+    "persistentRecordIds": ["1", "2", "3"],
+    "exactRestore": true,
+    "siteActions": {
+      "click": 0,
+      "input": 0,
+      "change": 0,
+      "submit": 0
+    },
+    "requests": [],
+    "errors": [],
+    "rig": {
+      "samples": 595,
+      "maxReachRatio": 0.9999084738956416,
+      "maxBoneRatio": 0.9615384615384627,
+      "finite": true,
+      "recoveries": [
+        {
+          "type": "widow",
+          "phase": "none",
+          "reason": "",
+          "at": 1263.1
+        }
+      ],
+      "types": ["widow"]
+    },
+    "phases": [
+      {
+        "phase": "arrive",
+        "at": 1146.4
+      },
+      {
+        "phase": "scan",
+        "at": 1763.1
+      },
+      {
+        "phase": "lock",
+        "at": 2896.4
+      },
+      {
+        "phase": "strike",
+        "at": 3196.4
+      },
+      {
+        "phase": "aftermath",
+        "at": 3546.4
+      },
+      {
+        "phase": "scan",
+        "at": 3946.4
+      },
+      {
+        "phase": "lock",
+        "at": 5362.9
+      },
+      {
+        "phase": "strike",
+        "at": 5696.2
+      },
+      {
+        "phase": "aftermath",
+        "at": 5962.9
+      },
+      {
+        "phase": "scan",
+        "at": 6396.2
+      },
+      {
+        "phase": "lock",
+        "at": 7796.1
+      },
+      {
+        "phase": "strike",
+        "at": 8079.5
+      },
+      {
+        "phase": "aftermath",
+        "at": 8412.8
+      },
+      {
+        "phase": "scan",
+        "at": 8762.8
+      },
+      {
+        "phase": "lock",
+        "at": 10629.4
+      },
+      {
+        "phase": "strike",
+        "at": 10946.1
+      },
+      {
+        "phase": "aftermath",
+        "at": 11246
+      },
+      {
+        "phase": "scan",
+        "at": 11629.4
+      },
+      {
+        "phase": "lock",
+        "at": 14912.5
+      },
+      {
+        "phase": "strike",
+        "at": 15145.9
+      },
+      {
+        "phase": "aftermath",
+        "at": 15512.5
+      },
+      {
+        "phase": "scan",
+        "at": 15879.1
+      },
+      {
+        "phase": "lock",
+        "at": 16179.2
+      },
+      {
+        "phase": "strike",
+        "at": 16495.8
+      },
+      {
+        "phase": "aftermath",
+        "at": 16779.2
+      },
+      {
+        "phase": "scan",
+        "at": 17079.1
+      },
+      {
+        "phase": "lock",
+        "at": 18762.4
+      },
+      {
+        "phase": "scan",
+        "at": 18912.4
+      },
+      {
+        "phase": "lock",
+        "at": 21145.7
+      },
+      {
+        "phase": "strike",
+        "at": 21395.6
+      },
+      {
+        "phase": "aftermath",
+        "at": 21728.9
+      },
+      {
+        "phase": "scan",
+        "at": 22078.9
+      },
+      {
+        "phase": "lock",
+        "at": 22895.5
+      },
+      {
+        "phase": "strike",
+        "at": 23178.9
+      },
+      {
+        "phase": "aftermath",
+        "at": 23512.2
+      },
+      {
+        "phase": "scan",
+        "at": 23812.2
+      }
+    ],
+    "effects": ["scatter", "peel", "disassemble", "shear", "erase"],
+    "responses": [
+      {
+        "target": "hero-word-2",
+        "personality": "curious",
+        "inputToSelectionMs": 25.900000000023283
+      },
+      {
+        "target": "hero-word-4",
+        "personality": "curious",
+        "inputToSelectionMs": 749.7000000000116
+      },
+      {
+        "target": "hero-word-6",
+        "personality": "curious",
+        "inputToSelectionMs": 757.1000000000349
+      },
+      {
+        "target": "hero-word-8",
+        "personality": "curious",
+        "inputToSelectionMs": 217.30000000003565
+      }
+    ]
+  },
+  "sourceVideo": {
+    "name": "hero-demo.webm",
+    "bytes": 3607209,
+    "durationSeconds": 25.6,
+    "dimensions": [1440, 1000],
+    "fps": 25,
+    "sha256": "6a39a29a894f7f1f923a5d862f83370a6a89655883d36f306cb9a02201ff1e1c",
+    "ciRun": "https://github.com/funsaized/cr4wler/actions/runs/37012413174"
+  },
+  "runtimeSourceCommit": "35243e9b1c1f47f884a07a60459758126dcc3599",
+  "gif": {
+    "path": "docs/cr4wler-demo.gif",
+    "gifBytes": 8960375,
+    "sha256": "69df564ed209703d8ad28a84a0f8a7ed00b9541cfa0785c011973894f459e8c3",
+    "dimensions": [720, 692],
+    "frames": 279,
+    "durationMs": 23250,
+    "loop": 0,
+    "fps": 12,
+    "crop": [1040, 1000, 200, 0],
+    "paletteColors": 128,
+    "gifsicleVersion": "1.96",
+    "optimization": "-O3 --lossy=40",
+    "trimmedTailFrames": 3,
+    "trimMethod": "Verbatim original GIF blocks through frame 279; all retained decoded frames and timings verified identical"
+  },
+  "visualReview": {
+    "framesReviewed": 279,
+    "method": "All decoded frames inspected in numbered contact sheets; retained decoded RGB pixels and delays verified identical after the final three restoration frames were removed.",
+    "syntheticContentOnly": true,
+    "oneCuriousWidowThroughout": true,
+    "noCutsPersonalityChangesResummonsOrResetsInExcerpt": true,
+    "pageInteraction": "Hovered words, laser lock, feeding, bottom-edge scrolling, new words, top-edge return, persistent aftermath.",
+    "loop": "Ordinary infinite repeat of a continuous excerpt; the loop returns to its beginning."
+  },
+  "gifPlayback": {
+    "purpose": "Decode and play the final GIF across two loop boundaries; this is GIF playback, not extension installation.",
+    "browser": "151.0.7922.173",
+    "elapsedMs": 50114,
+    "samples": [
+      {
+        "atMs": 83,
+        "sha256": "3778acb5d81922acef958106d7113a09abe9f18f8a1a05dce91fd153727b9879"
+      },
+      {
+        "atMs": 5105,
+        "sha256": "8ada565b4d9c9b954b59deaa7c64f8d3378cbd6002e3ee3775238b96e0a26336"
+      },
+      {
+        "atMs": 10117,
+        "sha256": "f23abc026d88cbbe5253c5351ca35ffae50011498c576e30e6261c5731ba0fc2"
+      },
+      {
+        "atMs": 15110,
+        "sha256": "2ed8419238ab874f3dec4216f3564838acd1c2354d7fa53ee2bb3afaf0735c80"
+      },
+      {
+        "atMs": 20101,
+        "sha256": "ee3adf8e2b2339c1fe4a97a013f23bdfd83b3748a5e4ad72c7fe282064664b9e"
+      },
+      {
+        "atMs": 25088,
+        "sha256": "5c0834d8009ae0af87604f2b1e2eda3f43a7dff7097ff46c645f25bfe588d318"
+      },
+      {
+        "atMs": 30096,
+        "sha256": "2dfbe022c61d7f14b63acb8c2a549ad842f0d626e05856e4567abb074ace729e"
+      },
+      {
+        "atMs": 35111,
+        "sha256": "9711ac24fad57605f869487539e06f836eeca49deb08a2412b81ebf758160a76"
+      },
+      {
+        "atMs": 40142,
+        "sha256": "d03088953465bd1fa9d5c89ba8887ac23056d4c3ff1998a91f3da85f7f22e3d3"
+      },
+      {
+        "atMs": 45126,
+        "sha256": "8477012c8905d3da13b8089222861e678ee428f51592b407110ca84ab6675d87"
+      },
+      {
+        "atMs": 50113,
+        "sha256": "90520bf6d3a7dba63e05ba66678e5e6fc8ca907b18513ffc1e9ee563e468c181"
+      }
+    ],
+    "uniqueSampleCount": 11,
+    "requests": []
+  }
+}
