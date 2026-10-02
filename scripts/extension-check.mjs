@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { serve } from './serve.mjs';
 import { preparePointerSession, runPointerSession } from './pointer-session.mjs';
+import { captureHeroSession } from './hero-session.mjs';
 const profile = await mkdtemp(join(tmpdir(), 'cr4wler-extension-'));
 const server = await serve();
 const dir = 'artifacts/extension-evidence';
@@ -99,6 +100,13 @@ try {
     fixtureVideo = null;
     await popup.close();
   }
+  evidence.hero = await captureHeroSession({
+    context,
+    cdp,
+    id,
+    dir,
+    sourceCommit: evidence.sourceCommit,
+  });
   evidence.browser = context.browser().version();
   evidence.viewport = { width: 1440, height: 1000 };
   evidence.passed = true;
