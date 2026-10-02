@@ -1,8 +1,8 @@
-/** Actual public GitHub capture. One installed extension, no account or fixture. */
+/** Native Chromium window capture: actual public GitHub page and installed extension. */
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { preparePointerSession } from './pointer-session.mjs';
@@ -17,12 +17,105 @@ const evidence = {
   surface: 'Actual installed MV3 extension on its real public GitHub repository',
   url,
   freshSignedOutProfile: true,
-  viewport: { width: 1200, height: 1000 },
+  window: { width: 1440, height: 1080 },
+  capture: {
+    method: 'FFmpeg x11grab of the actual headed Chromium window',
+    requestedFps: 30,
+    codec: 'Lossless RGB H.264 (CRF 0)',
+    includesNativeTabsAndAddressBar: true,
+  },
   passed: false,
   timeline: [],
   hoverTargets: [],
 };
-let context, page, popup, video, started;
+let context, page, popup, recorder, recordingDone, started;
+async function startWindowRecording() {
+  assert.ok(process.env.DISPLAY, 'A real X11 display is required for native-window capture');
+  const args = [
+    '-y',
+    '-hide_banner',
+    '-loglevel',
+    'warning',
+    '-f',
+    'x11grab',
+    '-framerate',
+    '30',
+    '-video_size',
+    '1440x1080',
+    '-draw_mouse',
+    '0',
+    '-i',
+    process.env.DISPLAY,
+    '-c:v',
+    'libx264rgb',
+    '-preset',
+    'fast',
+    '-tune',
+    'zerolatency',
+    '-crf',
+    '0',
+    '-threads',
+    '2',
+    '-pix_fmt',
+    'rgb24',
+    '-fps_mode',
+    'passthrough',
+    '-progress',
+    'pipe:1',
+    `${dir}/window-source.mkv`,
+  ];
+  recorder = spawn('ffmpeg', args, { stdio: ['pipe', 'pipe', 'pipe'] });
+  let diagnostics = '',
+    readyResolve,
+    readyReject;
+  const ready = new Promise((resolve, reject) => {
+    readyResolve = resolve;
+    readyReject = reject;
+  });
+  recorder.stderr.on('data', (data) => {
+    diagnostics += data;
+  });
+  recorder.stdout.on('data', (data) => {
+    const time = data.toString().match(/out_time_us=(\d+)/);
+    if (time && started === undefined) {
+      started = Date.now() - Number(time[1]) / 1000;
+      readyResolve();
+    }
+  });
+  recordingDone = new Promise((resolve, reject) => {
+    recorder.on('error', (error) => {
+      readyReject(error);
+      reject(error);
+    });
+    recorder.on('exit', (code) => {
+      if (code === 0) resolve();
+      else {
+        const error = new Error(`Window recorder exited ${code}: ${diagnostics}`);
+        readyReject(error);
+        reject(error);
+      }
+    });
+  });
+  recordingDone.catch(() => {});
+  await Promise.race([
+    ready,
+    new Promise((_, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error('Window recorder did not produce a frame')),
+        15000,
+      );
+      timeout.unref();
+    }),
+  ]);
+  evidence.capture.command = args;
+}
+async function stopWindowRecording() {
+  if (!recorder) return;
+  recorder.stdin.write('q\n');
+  await recordingDone;
+  recorder = null;
+}
+
 async function mark(stage) {
   evidence.timeline.push({ stage, atSeconds: (Date.now() - started) / 1000 });
 }
@@ -97,18 +190,34 @@ async function feedVisibleWord() {
 try {
   context = await chromium.launchPersistentContext(profile, {
     channel: 'chromium',
-    viewport: evidence.viewport,
+    viewport: null,
     colorScheme: 'dark',
-    recordVideo: { dir: `${dir}/raw`, size: evidence.viewport },
-    headless: true,
+    headless: false,
     ignoreDefaultArgs: ['--disable-extensions'],
-    args: ['--enable-unsafe-extension-debugging'],
+    args: [
+      '--enable-unsafe-extension-debugging',
+      '--window-position=0,0',
+      '--window-size=1440,1080',
+    ],
   });
   const cdp = await context.browser().newBrowserCDPSession();
   const { id } = await cdp.send('Extensions.loadUnpacked', { path: resolve('dist') });
-  started = Date.now();
-  page = await context.newPage();
-  video = page.video();
+  page = context.pages()[0];
+  const pageCdp = await context.newCDPSession(page);
+  const { windowId } = await pageCdp.send('Browser.getWindowForTarget');
+  await pageCdp.send('Browser.setWindowBounds', {
+    windowId,
+    bounds: { left: 0, top: 0, width: 1440, height: 1080, windowState: 'normal' },
+  });
+  evidence.nativeWindowBounds = (
+    await pageCdp.send('Browser.getWindowBounds', { windowId })
+  ).bounds;
+  evidence.viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+  assert.ok(evidence.viewport.width >= 1380 && evidence.viewport.width <= 1440);
+  assert.ok(
+    evidence.viewport.height < 1080 && evidence.viewport.height > 850,
+    'Native browser chrome must occupy visible space',
+  );
   const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
   assert.ok(response.ok(), `actual GitHub page HTTP ${response.status()}`);
   await page.waitForSelector('article.markdown-body');
@@ -180,6 +289,7 @@ try {
     input.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await page.mouse.move(500, 440);
+  await startWindowRecording();
   evidence.clipStartSeconds = (Date.now() - started) / 1000;
   await mark('summon-feral-max');
   await popup.locator('#summon').click();
@@ -218,7 +328,7 @@ try {
   await feedVisibleWord();
   const edgeInitial = await page.evaluate(() => scrollY);
   await mark('curious-pointer-bottom-edge');
-  await move(420, 995, 700);
+  await move(420, evidence.viewport.height - 5, 700);
   await page.waitForTimeout(2700);
   const edgeAdvanced = await page.evaluate(() => scrollY);
   assert.ok(edgeAdvanced > edgeInitial + 150, 'actual edge pointer must scroll GitHub');
@@ -262,6 +372,7 @@ try {
     returned: await page.evaluate(() => scrollY),
   };
   await page.waitForTimeout(1200);
+  await stopWindowRecording();
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
   assert.equal(await page.locator('[data-cr4wler-root]').count(), 0);
@@ -283,6 +394,12 @@ try {
     siteActions: actions,
     exactRestore: true,
     errors,
+    framePacing: {
+      samples: audit.frames.length,
+      medianMs: [...audit.frames].sort((a, b) => a - b)[Math.floor(audit.frames.length / 2)],
+      p95Ms: [...audit.frames].sort((a, b) => a - b)[Math.floor(audit.frames.length * 0.95)],
+      longTasks: audit.longTasks,
+    },
   });
   console.log(
     'GITHUB DEMO PASS: actual public signed-out dark repository, one instance, Feral max, Curious follow, real text grabs and pointer-only edge scrolling, exact restore and no site actions.',
@@ -294,8 +411,11 @@ try {
   if (page && !page.isClosed())
     await page.screenshot({ path: `${dir}/failed.png`, caret: 'initial' }).catch(() => {});
 } finally {
+  await stopWindowRecording().catch((error) => {
+    evidence.recordingError = error.message;
+    process.exitCode = 1;
+  });
   await page?.close();
-  if (video) await video.saveAs(`${dir}/github-demo.webm`);
   await popup?.close();
   await context?.close();
   await rm(profile, { recursive: true, force: true });
