@@ -1,342 +1,638 @@
 {
   "capture": {
-    "sourceCommit": "20a146aa4a11e42e75a4130089b7457c7997b61e",
-    "surface": "Actual installed MV3 extension; one Curious widow; real pointer and edge scrolling",
-    "fixture": "Generated synthetic typography habitat, 120 fictional notes and dummy protected inputs",
+    "sourceCommit": "f9f276ef95e50e91b9af054b102113bb60dad467",
+    "runtimeSourceTree": "fb5dd3b0f04055f2d0228a7888c04f372cde157d",
+    "surface": "Actual installed MV3 extension on its real public GitHub repository",
+    "url": "https://github.com/funsaized/cr4wler",
+    "freshSignedOutProfile": true,
+    "viewport": {
+      "width": 1200,
+      "height": 1000
+    },
     "passed": true,
     "timeline": [
       {
-        "stage": "summon",
-        "atSeconds": 1.084
+        "stage": "summon-feral-max",
+        "atSeconds": 5.273
       },
       {
-        "stage": "hover-and-eat-2",
-        "atSeconds": 1.368
+        "stage": "feral-manual-scroll",
+        "atSeconds": 7.252
       },
       {
-        "stage": "hover-and-eat-4",
-        "atSeconds": 4.298
+        "stage": "switch-curious-follow-on",
+        "atSeconds": 16.402
       },
       {
-        "stage": "hover-and-eat-6",
-        "atSeconds": 6.74
+        "stage": "curious-hover-1",
+        "atSeconds": 16.693
       },
       {
-        "stage": "pointer-to-bottom-edge",
-        "atSeconds": 9.205
+        "stage": "curious-hover-2",
+        "atSeconds": 19.679
       },
       {
-        "stage": "pointer-inward-stops-scroll",
-        "atSeconds": 13.672
+        "stage": "curious-pointer-bottom-edge",
+        "atSeconds": 22.426
       },
       {
-        "stage": "eat-newly-visible-word",
-        "atSeconds": 15.394
+        "stage": "curious-hover-3",
+        "atSeconds": 27.572
       },
       {
-        "stage": "pointer-to-top-edge",
-        "atSeconds": 17.578
+        "stage": "curious-pointer-top-edge",
+        "atSeconds": 30.005
       },
       {
         "stage": "persistent-aftermath-returned",
-        "atSeconds": 23.678
+        "atSeconds": 36.128
       }
     ],
-    "clipStartSeconds": 1.368,
-    "clipEndSeconds": 24.779,
+    "hoverTargets": [
+      {
+        "index": 0,
+        "x": 73.671875,
+        "y": 514.234375,
+        "text": "Development"
+      },
+      {
+        "index": 1,
+        "x": 70.78125,
+        "y": 415.234375,
+        "text": "Nothing is clicked, submitted, fetched, uploaded, or stored. All fragment text l"
+      },
+      {
+        "index": 2,
+        "x": 70.78125,
+        "y": 471.84375,
+        "text": "Discovery combines viewport hit testing with a progressive document cursor. Each"
+      }
+    ],
+    "theme": {
+      "colorMode": "auto",
+      "darkTheme": "dark",
+      "prefersDark": true,
+      "background": "rgb(13, 17, 23)"
+    },
+    "startScrollY": 2597,
+    "clipStartSeconds": 5.273,
+    "manualScroll": {
+      "initial": 2597,
+      "after": 3977
+    },
+    "clipEndSeconds": 36.128,
+    "pointerScroll": {
+      "initial": 3977,
+      "advanced": 4834,
+      "stopped": 4846,
+      "returned": 3975
+    },
     "browser": "153.0.8010.12",
-    "viewport": {
-      "width": 1440,
-      "height": 1000
+    "hostAudit": {
+      "maxVisitorCount": 1,
+      "uniqueVisitorHosts": 1,
+      "personalities": ["feral", "curious"]
     },
-    "scroll": {
-      "initial": 0,
-      "advanced": 547,
-      "stopped": 565,
-      "returned": 0,
-      "realPointerOnly": true
+    "rig": {
+      "samples": 1798,
+      "maxReachRatio": 0.9999298981033288,
+      "maxBoneRatio": 0.9312804130947424,
+      "finite": true,
+      "recoveries": [
+        {
+          "type": "jumping spider",
+          "phase": "none",
+          "reason": "",
+          "at": 5387.1
+        },
+        {
+          "type": "jumping spider",
+          "phase": "anticipate",
+          "reason": "scroll",
+          "at": 7236.9
+        },
+        {
+          "type": "jumping spider",
+          "phase": "flight",
+          "reason": "scroll",
+          "at": 7287
+        },
+        {
+          "type": "jumping spider",
+          "phase": "land",
+          "reason": "scroll",
+          "at": 7437
+        },
+        {
+          "type": "jumping spider",
+          "phase": "none",
+          "reason": "",
+          "at": 7536.9
+        },
+        {
+          "type": "jumping spider",
+          "phase": "anticipate",
+          "reason": "scroll",
+          "at": 8420.2
+        },
+        {
+          "type": "jumping spider",
+          "phase": "flight",
+          "reason": "scroll",
+          "at": 8470.3
+        },
+        {
+          "type": "jumping spider",
+          "phase": "land",
+          "reason": "scroll",
+          "at": 8620.2
+        },
+        {
+          "type": "jumping spider",
+          "phase": "none",
+          "reason": "",
+          "at": 8703.6
+        },
+        {
+          "type": "jumping spider",
+          "phase": "anticipate",
+          "reason": "scroll",
+          "at": 9603.5
+        },
+        {
+          "type": "jumping spider",
+          "phase": "flight",
+          "reason": "scroll",
+          "at": 9653.5
+        },
+        {
+          "type": "jumping spider",
+          "phase": "land",
+          "reason": "scroll",
+          "at": 9803.6
+        },
+        {
+          "type": "jumping spider",
+          "phase": "none",
+          "reason": "",
+          "at": 9886.9
+        },
+        {
+          "type": "jumping spider",
+          "phase": "anticipate",
+          "reason": "scroll",
+          "at": 10786.8
+        },
+        {
+          "type": "jumping spider",
+          "phase": "flight",
+          "reason": "scroll",
+          "at": 10836.8
+        },
+        {
+          "type": "jumping spider",
+          "phase": "land",
+          "reason": "scroll",
+          "at": 10986.8
+        },
+        {
+          "type": "jumping spider",
+          "phase": "none",
+          "reason": "",
+          "at": 11070.1
+        },
+        {
+          "type": "jumping spider",
+          "phase": "anticipate",
+          "reason": "scroll",
+          "at": 11986.7
+        },
+        {
+          "type": "jumping spider",
+          "phase": "flight",
+          "reason": "scroll",
+          "at": 12020.1
+        },
+        {
+          "type": "jumping spider",
+          "phase": "land",
+          "reason": "scroll",
+          "at": 12170.1
+        },
+        {
+          "type": "jumping spider",
+          "phase": "none",
+          "reason": "",
+          "at": 12270.1
+        },
+        {
+          "type": "jumping spider",
+          "phase": "anticipate",
+          "reason": "hunt",
+          "at": 14703.3
+        },
+        {
+          "type": "jumping spider",
+          "phase": "flight",
+          "reason": "hunt",
+          "at": 14753.3
+        },
+        {
+          "type": "jumping spider",
+          "phase": "land",
+          "reason": "hunt",
+          "at": 14903.3
+        },
+        {
+          "type": "jumping spider",
+          "phase": "none",
+          "reason": "",
+          "at": 15003.3
+        },
+        {
+          "type": "widow",
+          "phase": "none",
+          "reason": "",
+          "at": 16436.6
+        }
+      ],
+      "types": ["jumping spider", "widow"]
     },
-    "persistentRecordIds": ["1", "2", "3"],
-    "exactRestore": true,
+    "phases": [
+      {
+        "phase": "arrive",
+        "at": 5337
+      },
+      {
+        "phase": "scan",
+        "at": 5737
+      },
+      {
+        "phase": "lock",
+        "at": 6587
+      },
+      {
+        "phase": "strike",
+        "at": 6670.3
+      },
+      {
+        "phase": "aftermath",
+        "at": 6853.6
+      },
+      {
+        "phase": "scan",
+        "at": 6953.7
+      },
+      {
+        "phase": "lock",
+        "at": 7220.3
+      },
+      {
+        "phase": "recover",
+        "at": 7236.9
+      },
+      {
+        "phase": "scan",
+        "at": 7553.6
+      },
+      {
+        "phase": "lock",
+        "at": 7853.6
+      },
+      {
+        "phase": "strike",
+        "at": 7936.9
+      },
+      {
+        "phase": "aftermath",
+        "at": 8120.2
+      },
+      {
+        "phase": "scan",
+        "at": 8220.3
+      },
+      {
+        "phase": "recover",
+        "at": 8420.2
+      },
+      {
+        "phase": "scan",
+        "at": 8720.2
+      },
+      {
+        "phase": "lock",
+        "at": 9270.2
+      },
+      {
+        "phase": "strike",
+        "at": 9353.6
+      },
+      {
+        "phase": "aftermath",
+        "at": 9536.9
+      },
+      {
+        "phase": "recover",
+        "at": 9603.5
+      },
+      {
+        "phase": "scan",
+        "at": 9903.5
+      },
+      {
+        "phase": "lock",
+        "at": 10453.5
+      },
+      {
+        "phase": "strike",
+        "at": 10536.8
+      },
+      {
+        "phase": "aftermath",
+        "at": 10720.2
+      },
+      {
+        "phase": "recover",
+        "at": 10786.8
+      },
+      {
+        "phase": "scan",
+        "at": 11086.8
+      },
+      {
+        "phase": "lock",
+        "at": 11786.7
+      },
+      {
+        "phase": "strike",
+        "at": 11870.1
+      },
+      {
+        "phase": "recover",
+        "at": 11986.7
+      },
+      {
+        "phase": "scan",
+        "at": 12286.7
+      },
+      {
+        "phase": "lock",
+        "at": 12886.7
+      },
+      {
+        "phase": "strike",
+        "at": 12970
+      },
+      {
+        "phase": "aftermath",
+        "at": 13153.4
+      },
+      {
+        "phase": "scan",
+        "at": 13253.4
+      },
+      {
+        "phase": "lock",
+        "at": 13570
+      },
+      {
+        "phase": "strike",
+        "at": 13653.4
+      },
+      {
+        "phase": "aftermath",
+        "at": 13836.7
+      },
+      {
+        "phase": "scan",
+        "at": 13936.7
+      },
+      {
+        "phase": "lock",
+        "at": 14203.4
+      },
+      {
+        "phase": "strike",
+        "at": 14286.6
+      },
+      {
+        "phase": "aftermath",
+        "at": 14470
+      },
+      {
+        "phase": "scan",
+        "at": 14570
+      },
+      {
+        "phase": "lock",
+        "at": 15070
+      },
+      {
+        "phase": "strike",
+        "at": 15153.3
+      },
+      {
+        "phase": "aftermath",
+        "at": 15336.6
+      },
+      {
+        "phase": "scan",
+        "at": 15436.6
+      },
+      {
+        "phase": "lock",
+        "at": 15753.3
+      },
+      {
+        "phase": "strike",
+        "at": 15836.7
+      },
+      {
+        "phase": "aftermath",
+        "at": 16020
+      },
+      {
+        "phase": "scan",
+        "at": 16119.9
+      },
+      {
+        "phase": "lock",
+        "at": 16486.6
+      },
+      {
+        "phase": "scan",
+        "at": 16653.2
+      },
+      {
+        "phase": "lock",
+        "at": 18086.5
+      },
+      {
+        "phase": "strike",
+        "at": 18286.5
+      },
+      {
+        "phase": "aftermath",
+        "at": 18603.1
+      },
+      {
+        "phase": "scan",
+        "at": 18886.5
+      },
+      {
+        "phase": "lock",
+        "at": 20836.4
+      },
+      {
+        "phase": "strike",
+        "at": 21053.1
+      },
+      {
+        "phase": "aftermath",
+        "at": 21353.1
+      },
+      {
+        "phase": "scan",
+        "at": 21636.4
+      },
+      {
+        "phase": "lock",
+        "at": 27352.8
+      },
+      {
+        "phase": "strike",
+        "at": 27552.8
+      },
+      {
+        "phase": "aftermath",
+        "at": 27869.5
+      },
+      {
+        "phase": "scan",
+        "at": 28152.8
+      }
+    ],
+    "effects": ["shear", "scatter", "erase", "disassemble", "peel"],
     "siteActions": {
       "click": 0,
       "input": 0,
       "change": 0,
       "submit": 0
     },
-    "requests": [],
-    "errors": [],
-    "rig": {
-      "samples": 595,
-      "maxReachRatio": 0.9999084738956416,
-      "maxBoneRatio": 0.9615384615384627,
-      "finite": true,
-      "recoveries": [
-        {
-          "type": "widow",
-          "phase": "none",
-          "reason": "",
-          "at": 1263.1
-        }
-      ],
-      "types": ["widow"]
-    },
-    "phases": [
-      {
-        "phase": "arrive",
-        "at": 1146.4
-      },
-      {
-        "phase": "scan",
-        "at": 1763.1
-      },
-      {
-        "phase": "lock",
-        "at": 2896.4
-      },
-      {
-        "phase": "strike",
-        "at": 3196.4
-      },
-      {
-        "phase": "aftermath",
-        "at": 3546.4
-      },
-      {
-        "phase": "scan",
-        "at": 3946.4
-      },
-      {
-        "phase": "lock",
-        "at": 5362.9
-      },
-      {
-        "phase": "strike",
-        "at": 5696.2
-      },
-      {
-        "phase": "aftermath",
-        "at": 5962.9
-      },
-      {
-        "phase": "scan",
-        "at": 6396.2
-      },
-      {
-        "phase": "lock",
-        "at": 7796.1
-      },
-      {
-        "phase": "strike",
-        "at": 8079.5
-      },
-      {
-        "phase": "aftermath",
-        "at": 8412.8
-      },
-      {
-        "phase": "scan",
-        "at": 8762.8
-      },
-      {
-        "phase": "lock",
-        "at": 10629.4
-      },
-      {
-        "phase": "strike",
-        "at": 10946.1
-      },
-      {
-        "phase": "aftermath",
-        "at": 11246
-      },
-      {
-        "phase": "scan",
-        "at": 11629.4
-      },
-      {
-        "phase": "lock",
-        "at": 14912.5
-      },
-      {
-        "phase": "strike",
-        "at": 15145.9
-      },
-      {
-        "phase": "aftermath",
-        "at": 15512.5
-      },
-      {
-        "phase": "scan",
-        "at": 15879.1
-      },
-      {
-        "phase": "lock",
-        "at": 16179.2
-      },
-      {
-        "phase": "strike",
-        "at": 16495.8
-      },
-      {
-        "phase": "aftermath",
-        "at": 16779.2
-      },
-      {
-        "phase": "scan",
-        "at": 17079.1
-      },
-      {
-        "phase": "lock",
-        "at": 18762.4
-      },
-      {
-        "phase": "scan",
-        "at": 18912.4
-      },
-      {
-        "phase": "lock",
-        "at": 21145.7
-      },
-      {
-        "phase": "strike",
-        "at": 21395.6
-      },
-      {
-        "phase": "aftermath",
-        "at": 21728.9
-      },
-      {
-        "phase": "scan",
-        "at": 22078.9
-      },
-      {
-        "phase": "lock",
-        "at": 22895.5
-      },
-      {
-        "phase": "strike",
-        "at": 23178.9
-      },
-      {
-        "phase": "aftermath",
-        "at": 23512.2
-      },
-      {
-        "phase": "scan",
-        "at": 23812.2
-      }
-    ],
-    "effects": ["scatter", "peel", "disassemble", "shear", "erase"],
-    "responses": [
-      {
-        "target": "hero-word-2",
-        "personality": "curious",
-        "inputToSelectionMs": 25.900000000023283
-      },
-      {
-        "target": "hero-word-4",
-        "personality": "curious",
-        "inputToSelectionMs": 749.7000000000116
-      },
-      {
-        "target": "hero-word-6",
-        "personality": "curious",
-        "inputToSelectionMs": 757.1000000000349
-      },
-      {
-        "target": "hero-word-8",
-        "personality": "curious",
-        "inputToSelectionMs": 217.30000000003565
-      }
-    ]
+    "exactRestore": true,
+    "errors": []
   },
   "sourceVideo": {
-    "name": "hero-demo.webm",
-    "bytes": 3607209,
-    "durationSeconds": 25.6,
-    "dimensions": [1440, 1000],
+    "name": "github-demo.webm",
+    "bytes": 4928853,
+    "durationSeconds": 38.44,
+    "dimensions": [1200, 1000],
     "fps": 25,
-    "sha256": "6a39a29a894f7f1f923a5d862f83370a6a89655883d36f306cb9a02201ff1e1c",
-    "ciRun": "https://github.com/funsaized/cr4wler/actions/runs/37012413174"
+    "sha256": "09fd3604f513d8cf65453d20b5f8cd35e0484ae01887756de141bfdaf5d8df38",
+    "ciRun": "https://github.com/funsaized/cr4wler/actions/runs/37037501450",
+    "artifactId": 11241341735
   },
-  "runtimeSourceCommit": "35243e9b1c1f47f884a07a60459758126dcc3599",
+  "runtimeSourceCommit": "88f7d9ee68a28e97e111d0654bbc5c7c19b5a757",
   "gif": {
     "path": "docs/cr4wler-demo.gif",
-    "gifBytes": 8960375,
-    "sha256": "69df564ed209703d8ad28a84a0f8a7ed00b9541cfa0785c011973894f459e8c3",
-    "dimensions": [720, 692],
-    "frames": 279,
-    "durationMs": 23250,
+    "durationMs": 30900,
+    "frames": 309,
+    "fps": 10,
+    "dimensions": [720, 783],
     "loop": 0,
-    "fps": 12,
-    "crop": [1040, 1000, 200, 0],
-    "paletteColors": 128,
-    "gifsicleVersion": "1.96",
-    "optimization": "-O3 --lossy=40",
-    "trimmedTailFrames": 3,
-    "trimMethod": "Verbatim original GIF blocks through frame 279; all retained decoded frames and timings verified identical"
+    "gifBytes": 15814747,
+    "sha256": "92070a08b58eaad60626d07f8a7688f1b5fe9af29c93f0ef55dca2057a060e9a",
+    "sourceClipSeconds": [5.273, 36.128],
+    "crop": [920, 1000, 16, 0],
+    "scaleWidth": 720,
+    "paletteColors": 64,
+    "dither": "none",
+    "gifsicle": "1.96 -O3 --lossy=80",
+    "retiming": "None; real elapsed-time sampling at 10fps."
+  },
+  "webm": {
+    "path": "docs/github-demo.webm",
+    "bytes": 12694667,
+    "durationSeconds": 30.88,
+    "dimensions": [1200, 1000],
+    "fps": 25,
+    "sha256": "c205167793ba6f00311b0e5cbf962613c32d62556f6db8978533f2b975db06c6",
+    "conversion": "Continuous source excerpt 5.273\u201336.128 seconds, VP9 CRF 22, no speed changes."
   },
   "visualReview": {
-    "framesReviewed": 279,
-    "method": "All decoded frames inspected in numbered contact sheets; retained decoded RGB pixels and delays verified identical after the final three restoration frames were removed.",
-    "syntheticContentOnly": true,
-    "oneCuriousWidowThroughout": true,
-    "noCutsPersonalityChangesResummonsOrResetsInExcerpt": true,
-    "pageInteraction": "Hovered words, laser lock, feeding, bottom-edge scrolling, new words, top-edge return, persistent aftermath.",
-    "loop": "Ordinary infinite repeat of a continuous excerpt; the loop returns to its beginning."
+    "framesReviewed": 309,
+    "method": "All decoded final GIF frames inspected in 20 numbered contact sheets; original full-viewport screenshots and real popup control screenshots also inspected. Final GIF playback screenshots reviewed across two loop boundaries.",
+    "content": "Public GitHub README in a fresh signed-out profile; no account chrome or private page content.",
+    "oneVisitorThroughout": true,
+    "personalityChange": "Intentional Feral at maximum intensity to Curious with Follow ON through actual popup.",
+    "noCutsResummonsOrResetsInExcerpt": true,
+    "pageInteraction": "Autonomous feeding, five real wheel gestures, three hovered text targets, bottom-edge scrolling, top-edge return, and persistent aftermath.",
+    "loop": "Ordinary infinite repeat of a continuous excerpt; the loop returns to its beginning.",
+    "webmReview": "Same source interval at full viewport; original source screenshots and GIF sequence reviewed. The WebM was not individually reviewed at every 25fps frame."
   },
   "gifPlayback": {
-    "purpose": "Decode and play the final GIF across two loop boundaries; this is GIF playback, not extension installation.",
+    "purpose": "Final GIF playback across two loop boundaries; not extension installation.",
     "browser": "151.0.7922.173",
-    "elapsedMs": 50114,
+    "elapsedMs": 65145,
     "samples": [
       {
-        "atMs": 83,
-        "sha256": "3778acb5d81922acef958106d7113a09abe9f18f8a1a05dce91fd153727b9879"
+        "atMs": 186,
+        "sha256": "1fc95fb7723d8e27e00d4293f4ad5a899017edc86fd6b5a62a684ab34d8b939c"
       },
       {
-        "atMs": 5105,
-        "sha256": "8ada565b4d9c9b954b59deaa7c64f8d3378cbd6002e3ee3775238b96e0a26336"
+        "atMs": 5124,
+        "sha256": "fec6f07d868071594960562ce653bb266cf95e456505760e7bbdf0fce65ad224"
       },
       {
-        "atMs": 10117,
-        "sha256": "f23abc026d88cbbe5253c5351ca35ffae50011498c576e30e6261c5731ba0fc2"
+        "atMs": 10124,
+        "sha256": "bb46e135f6f21c938828f57fdf1ad253ef74023acce3178bb3e23203005cd575"
       },
       {
-        "atMs": 15110,
-        "sha256": "2ed8419238ab874f3dec4216f3564838acd1c2354d7fa53ee2bb3afaf0735c80"
+        "atMs": 15151,
+        "sha256": "bfa20dc81ccdf84ffc54aad93d7a77370905a0dc3e5875f52cf6b5031664fe6c"
       },
       {
-        "atMs": 20101,
-        "sha256": "ee3adf8e2b2339c1fe4a97a013f23bdfd83b3748a5e4ad72c7fe282064664b9e"
+        "atMs": 20156,
+        "sha256": "2b1eab87e5f20c93556dad5af440d9140a08a7a92980b2f97e4b2a64f3fe1ff0"
       },
       {
-        "atMs": 25088,
-        "sha256": "5c0834d8009ae0af87604f2b1e2eda3f43a7dff7097ff46c645f25bfe588d318"
+        "atMs": 25165,
+        "sha256": "68a37484ab0ba8192d97a281e971c55082d702a097c41b3b8c51949b45c2504b"
       },
       {
-        "atMs": 30096,
-        "sha256": "2dfbe022c61d7f14b63acb8c2a549ad842f0d626e05856e4567abb074ace729e"
+        "atMs": 30142,
+        "sha256": "7f7fae8af628bc6bd37c5453afb3930916b54ea91f4ecfc942b10316ff1405b3"
       },
       {
-        "atMs": 35111,
-        "sha256": "9711ac24fad57605f869487539e06f836eeca49deb08a2412b81ebf758160a76"
+        "atMs": 35125,
+        "sha256": "5f515f2fefbe7053d3b8aa60831118e9ee316c3b11f186e5377bb109fdf30411"
       },
       {
-        "atMs": 40142,
-        "sha256": "d03088953465bd1fa9d5c89ba8887ac23056d4c3ff1998a91f3da85f7f22e3d3"
+        "atMs": 40151,
+        "sha256": "40934e132be9e98ee27f521a038411d15c29cfeb1b988f99a743713b2a414e21"
       },
       {
-        "atMs": 45126,
-        "sha256": "8477012c8905d3da13b8089222861e678ee428f51592b407110ca84ab6675d87"
+        "atMs": 45254,
+        "sha256": "360ffa860076b1368eb4d8f455b36be73fb5eb1052de2b4659a89eaf16062745"
       },
       {
-        "atMs": 50113,
-        "sha256": "90520bf6d3a7dba63e05ba66678e5e6fc8ca907b18513ffc1e9ee563e468c181"
+        "atMs": 50213,
+        "sha256": "98c578f4db3b9910e53ce49f2edeb07d43d0d34c216e2a295c8cee751cf7f21e"
+      },
+      {
+        "atMs": 55142,
+        "sha256": "7b8725f69cfcc92376686595ebf5250eee8da4d52307c9424ad698bf68aba0ba"
+      },
+      {
+        "atMs": 60158,
+        "sha256": "ad3fe48838f769f65eb203ea5f4d3b6872323567e095d777943ccf75e7d5d1f9"
+      },
+      {
+        "atMs": 65144,
+        "sha256": "b17aacb359c9d20feba0f4101aa7f7a2a1d1b8ab2099ab3dfc3e187a88c36f5c"
       }
     ],
-    "uniqueSampleCount": 11,
+    "uniqueSampleCount": 14,
     "requests": []
   }
 }
