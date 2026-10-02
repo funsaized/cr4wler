@@ -366,3 +366,10 @@ h1 {
   color: #aca2c0;
   min-height: 12px;
 }
+
+/* A close view keeps the selected anatomy visible inside Chrome's compact popup. */
+.specimen canvas {
+  position: absolute;
+  left: 0;
+  top: -32px;
+}
