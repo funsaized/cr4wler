@@ -143,7 +143,7 @@ output {
 input[type='range'] {
   appearance: none;
   width: 100%;
-  margin: 17px 0 10px;
+  margin: 12px 0 6px;
   height: 3px;
   background: linear-gradient(90deg, #bca4ef, #c3ffa0);
   border-radius: 2px;
@@ -252,7 +252,7 @@ h1 {
 }
 .intro {
   font-size: 10px;
-  margin-top: 10px;
+  margin-top: 6px;
 }
 .specimen,
 .specimen canvas {
@@ -281,8 +281,8 @@ main {
   min-height: 26px;
 }
 footer {
-  padding-top: 13px;
-  padding-bottom: 13px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .follow-toggle {

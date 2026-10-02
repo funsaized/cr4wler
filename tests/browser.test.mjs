@@ -582,7 +582,17 @@ test(
 );
 
 test('popup controls dispatch settings and handle restricted pages', async () => {
-  const page = await browser.newPage({ viewport: { width: 368, height: 800 } });
+  const page = await browser.newPage({ viewport: { width: 368, height: 600 } });
+  const assertFits = async () => {
+    const bounds = await page.evaluate(() => ({
+      height: document.body.getBoundingClientRect().height,
+      footerBottom: document.querySelector('footer').getBoundingClientRect().bottom,
+      width: document.documentElement.scrollWidth,
+    }));
+    assert.ok(bounds.height <= 600, `popup height ${bounds.height} exceeds Chrome's limit`);
+    assert.ok(bounds.footerBottom <= 600, 'footer must remain visible without scrolling');
+    assert.ok(bounds.width <= 368, 'controls must not overflow horizontally');
+  };
   try {
     await page.addInitScript(() => {
       globalThis.sent = [];
@@ -608,15 +618,16 @@ test('popup controls dispatch settings and handle restricted pages', async () =>
       };
     });
     await page.goto(`${base}/popup.html`);
-    assert.ok(
-      await page.locator('body').evaluate((e) => e.getBoundingClientRect().height <= 600),
-      'popup must fit Chrome without hidden controls',
-    );
-    await page.getByRole('button', { name: 'Feral' }).click();
+    await assertFits();
+    for (const name of ['Dreamy', 'Curious', 'Feral']) {
+      await page.getByRole('button', { name }).click();
+      await assertFits();
+    }
     await page.locator('#follow-mouse').check();
     await page.locator('#summon').click();
     assert.equal(await page.locator('#summon').isDisabled(), true);
     assert.equal(await page.locator('#pause').isDisabled(), false);
+    await assertFits();
     assert.equal(
       (await page.evaluate(() => sent.find((x) => x.action === 'summon'))).settings.personality,
       'feral',
@@ -634,6 +645,7 @@ test('popup controls dispatch settings and handle restricted pages', async () =>
     );
     await page.locator('#summon').click();
     assert.match(await page.locator('#status').innerText(), /off limits/);
+    await assertFits();
   } finally {
     await page.close();
   }

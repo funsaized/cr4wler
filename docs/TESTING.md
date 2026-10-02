@@ -22,7 +22,7 @@ npm run package
 - Fixed leg reach, finite joints, gait support, large frame deltas, rapid wheel/fling reversals, document jumps, and offscreen mid-strike recovery.
 - Bounds caching, mutation/font invalidation, read-before-write batching, adaptive quality hysteresis, complete shard text, and pinch zoom with nested scrolling.
 
-The packaged content-script idempotency harness and popup tests mock Chrome messaging. They do **not** prove installation or extension permissions. The popup tests include the 600px height limit; the latest full-suite result and its known failure are recorded in the [runtime investigation](RUNTIME-PERFORMANCE.md).
+The packaged content-script idempotency harness and popup tests mock Chrome messaging. They do **not** prove installation or extension permissions. The popup tests enforce the 600px height limit, visible footer and no horizontal overflow across all temperaments and active/error states. Historical profiling results are recorded in the [runtime investigation](RUNTIME-PERFORMANCE.md).
 
 `npm run test:extension` loads the unmodified MV3 package into a disposable persistent Chromium context through the DevTools extension loader. It verifies scripting is denied before a toolbar gesture, triggers the real action, and exercises the real popup page and Chrome APIs. Light/night pointer sessions cover all three anatomies, immediate hover redirects, rapid-scroll recovery, edge crawling, persistent deep-scroll return, and exact restoration. Protected form values, page actions, requests, navigation and errors are checked. The shared hero session adds a focused cursor-following capture.
 

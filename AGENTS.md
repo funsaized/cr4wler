@@ -4,7 +4,7 @@ Chrome MV3 extension and standalone playground for a procedural spider that borr
 
 ## Working approach
 
-- Keep work focused: read the relevant code, make the smallest coherent change, verify it. 
+- Keep work focused: read the relevant code, make the smallest coherent change, verify it.
 - Check `git status` before editing. Preserve unrelated working-tree and staged changes; avoid repository-wide formatting for a local change. Format at the end of edits.
 - Use `README.md` for product behavior, `CONTRIBUTING.md` for contribution rules, and `docs/TESTING.md` for browser checks and evidence requirements. Read these as needed rather than loading every document.
 - Finish with the visible change, checks actually run, and any failures or limitations.

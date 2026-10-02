@@ -88,7 +88,7 @@ For a baseline, extract the desired revision's `src/` into a temporary directory
 
 - `npm run typecheck`: pass.
 - Seven new runtime regressions: pass (scheduler lifecycle, immediate discovery cancellation/bounds, cached bounds and edits, read-before-write batching, font invalidation, adaptive hysteresis/text completeness, large deltas, pinch zoom/nested scroll).
-- Full `npm test`: **50/51 pass**. The failure is the untouched popup test's `body.height <= 600` assertion at `tests/browser.test.mjs:611`; it also fails in isolation. No popup styles or behavior were changed to hide it.
+- At measurement time, full `npm test`: **50/51 pass**. The popup exceeded Chrome's 600px height limit. A subsequent fix reduces decorative spacing without shrinking or hiding controls; its regression checks all temperaments, active cursor-following status, and restricted-page errors in a 600px viewport.
 - `npm run test:extension`: **pass** using the actual loaded MV3 extension and real Chrome APIs on light/night fixtures, including all three anatomies, recovery, protected inputs, no observed site actions/network, and exact restoration. Local recordings/results: `artifacts/extension-evidence/`. This run was permitted; older release notes describing a blocked local loader do not describe this execution.
 - Modified-file Prettier check and `git diff --check`: pass.
 
