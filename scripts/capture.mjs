@@ -25,8 +25,10 @@ try {
     Math.random = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
   });
   await page.goto('http://127.0.0.1:4173');
+  // Playwright's default caret hiding leaves empty style attributes on editors.
+  // Keep the caret unchanged so the recorder cannot mutate the source fixture.
   const before = await page.locator('main').innerHTML();
-  await page.screenshot({ path: 'docs/playground-before.png' });
+  await page.screenshot({ caret: 'initial', path: 'docs/playground-before.png' });
   await page.waitForTimeout(600);
   await page.evaluate(() => {
     globalThis.captureStats = { frames: [], longTasks: [] };
@@ -51,7 +53,7 @@ try {
   await page.locator('#demo-intensity').fill('76');
   await page.locator('#demo-intensity').dispatchEvent('input');
   await page.waitForTimeout(6000);
-  await page.screenshot({ path: 'docs/playground.png' });
+  await page.screenshot({ caret: 'initial', path: 'docs/playground.png' });
   const fragmentCount = await page.locator('[data-cr4wler-root] .piece').count();
   await page.waitForTimeout(2500);
   await page.locator('[data-cr4wler-root] .pause').click();
@@ -59,7 +61,7 @@ try {
   await page.locator('[data-cr4wler-root] .pause').click();
   await page.evaluate(() => scrollTo({ top: 580, behavior: 'smooth' }));
   await page.waitForTimeout(5500);
-  await page.screenshot({ path: 'docs/playground-scrolled.png' });
+  await page.screenshot({ caret: 'initial', path: 'docs/playground-scrolled.png' });
   await page.keyboard.press('Escape');
   const after = await page.locator('main').innerHTML();
   const restoreExact = after === before;
@@ -94,7 +96,7 @@ try {
     };
   });
   await popup.goto('http://127.0.0.1:4173/popup.html');
-  await popup.locator('body').screenshot({ path: 'docs/popup.png' });
+  await popup.locator('body').screenshot({ caret: 'initial', path: 'docs/popup.png' });
   await popup.close();
   const evidence = {
     sourceCommit: commit,
