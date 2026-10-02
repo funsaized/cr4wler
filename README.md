@@ -103,4 +103,6 @@ Device pixel ratio is capped at 2. Hunting stops when paused or the tab is hidde
 
 Protected browser pages, the Chrome Web Store, PDFs, and other extensions' pages cannot be scripted. The built-in playground has its own direct engine. Shadow roots and iframes are deliberately not traversed. CSS-transformed pages, hostile page styles, unusual vertical text, animated layouts, extreme zoom, and live collaborative editors need broader compatibility work. Discovery is incremental and does not promise to visit every eligible phrase. Settings are deliberately ephemeral and reset when the popup is reopened without an active visitor.
 
+Inspiration behind the implementation: [rybinfx](https://x.com/rybinfx/status/2105700296760688790?s=20)
+
 MIT licensed, made for **funsaized**. Contributions with fewer legs are also welcome.
