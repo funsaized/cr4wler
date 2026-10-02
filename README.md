@@ -61,7 +61,7 @@ npm run test:extension
 npm run package
 ```
 
-`npm test` runs real Chromium DOM/interaction tests, a packaged content-script harness with mocked messaging, and popup tests with mocked Chrome APIs. `test:extension` separately attempts a real unpacked load and fails loudly if policy blocks it. The toolbar permission checklist remains a manual release gate. See [the validation record](docs/TESTING.md) for what was actually verified.
+`npm test` runs real Chromium DOM/interaction tests, a packaged content-script harness with mocked messaging, and popup tests with mocked Chrome APIs. `test:extension` separately loads the actual extension, verifies denial before a gesture, triggers Chrome’s toolbar action, and exercises the real popup page and isolated-world controller with unmodified permissions and real Chrome APIs. It records a video and screenshot and fails loudly if browser policy blocks installation. See [the validation record](docs/TESTING.md), including the remaining manual compatibility checklist.
 
 `npm run package` creates `artifacts/cr4wler-0.1.0.zip` and its SHA-256 digest. ZIP entry order, timestamps, and modes are fixed. With the lockfile and the same toolchain, repeated builds produce identical bytes. Unzip before selecting **Load unpacked**. This has not been submitted to the Chrome Web Store.
 
