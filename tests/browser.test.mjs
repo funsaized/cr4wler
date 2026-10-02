@@ -466,7 +466,7 @@ test(
       const strike = trace.find((t) => t.phase === 'strike');
       assert.ok(lock && strike, 'scan/lock/strike must be observable');
       assert.equal(lock.count, 0, 'no source is committed before the first lock');
-      assert.ok(strike.at - lock.at >= 550, 'Curious must hold its lock for an anticipation pause');
+      assert.ok(strike.at - lock.at >= 130, 'Curious must hold its lock for an anticipation pause');
       const firstId = await page.locator(`${root} .piece`).first().getAttribute('data-record-id');
       // Beyond the previous version's 26 second expiry; keep the session running.
       await page.waitForTimeout(27500);
@@ -521,3 +521,271 @@ test('mouse following is opt-in, bounded and can be disabled', { timeout: 14000 
     await page.close();
   }
 });
+
+async function hoverFixture(personality = 'curious') {
+  const page = await fixture();
+  await page.locator('main').evaluate((el) => {
+    el.innerHTML = `<section style="height:900px;position:relative">
+      <a id="aim-a" data-aim href="#fixture" style="position:absolute;top:120px;left:15px;font-size:23px">Aurora has a thousand little legs</a>
+      <a id="aim-b" data-aim href="#fixture" style="position:absolute;top:470px;left:120px;font-size:23px">Borealis is the next chosen adventure</a>
+      <a id="aim-c" data-aim href="#fixture" style="position:absolute;top:290px;left:20px;font-size:20px">Cobalt waits patiently in the middle</a>
+      <div class="checkout" style="position:absolute;top:620px"><a id="private-hover" href="#fixture">PRIVATE PAYMENT WIDGET</a></div>
+      <label style="position:absolute;top:700px">Protected note<input id="hover-input" value="Do not change this" /></label>
+    </section>`;
+  });
+  await page.locator('#demo-personality').selectOption(personality);
+  await page.locator('#demo-follow').check();
+  await start(page);
+  return page;
+}
+async function selectedAim(page, id) {
+  await page.waitForFunction(
+    (id) =>
+      [...CSS.highlights].some(
+        ([name, h]) =>
+          name.endsWith('-selection') &&
+          [...h].some((r) => r.startContainer.parentElement?.closest('[data-aim]')?.id === id),
+      ),
+    id,
+    { timeout: 1800 },
+  );
+}
+async function maskedAims(page) {
+  return page.evaluate(() =>
+    [...CSS.highlights]
+      .filter(([name]) => name.startsWith('cr4wler-') && !name.endsWith('-selection'))
+      .flatMap(([, h]) =>
+        [...h].map((r) => r.startContainer.parentElement?.closest('[data-aim]')?.id),
+      )
+      .filter(Boolean),
+  );
+}
+async function bodyPoint(page) {
+  return page
+    .locator(`${root} canvas.visitor`)
+    .evaluate((el) => ({ x: +el.dataset.bodyX, y: +el.dataset.bodyY }));
+}
+
+test(
+  'stable hover B preempts approach to A and becomes the next committed target',
+  { timeout: 16000 },
+  async () => {
+    const page = await hoverFixture();
+    try {
+      await page.locator('#aim-a').hover();
+      await selectedAim(page, 'aim-a');
+      const before = await bodyPoint(page);
+      const box = await page.locator('#aim-b').boundingBox();
+      const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      const began = Date.now();
+      await page.locator('#aim-b').hover();
+      await selectedAim(page, 'aim-b');
+      assert.ok(Date.now() - began < 650, 'hover intent should be acknowledged promptly');
+      await page.waitForTimeout(650);
+      const after = await bodyPoint(page);
+      assert.ok(
+        Math.hypot(after.x - point.x, after.y - point.y) <
+          Math.hypot(before.x - point.x, before.y - point.y) - 25,
+        'body approaches the chosen element',
+      );
+      await page.waitForFunction(
+        () =>
+          [...CSS.highlights].some(
+            ([name, h]) =>
+              !name.endsWith('-selection') &&
+              [...h].some(
+                (r) => r.startContainer.parentElement?.closest('[data-aim]')?.id === 'aim-b',
+              ),
+          ),
+        null,
+        { timeout: 7000 },
+      );
+      assert.equal((await maskedAims(page))[0], 'aim-b', 'abandoned A must not strike before B');
+      await page.keyboard.press('Escape');
+    } finally {
+      await page.close();
+    }
+  },
+);
+
+test(
+  'pointer jitter is stable and hovering protected controls never selects their content',
+  { timeout: 14000 },
+  async () => {
+    const page = await hoverFixture();
+    try {
+      await page.locator('#aim-b').hover();
+      await selectedAim(page, 'aim-b');
+      const box = await page.locator('#aim-b').boundingBox();
+      for (let i = 0; i < 8; i++)
+        await page.mouse.move(
+          box.x + box.width * 0.5 + (i % 2 ? 2 : -2),
+          box.y + box.height * 0.5 + (i % 2 ? 1 : -1),
+        );
+      await selectedAim(page, 'aim-b');
+      await page.locator('#private-hover').hover();
+      await page.waitForTimeout(600);
+      await page.locator('#hover-input').hover();
+      await page.waitForTimeout(600);
+      const unsafe = await page.evaluate(() =>
+        [...CSS.highlights]
+          .flatMap(([, h]) => [...h])
+          .some((r) => r.startContainer.parentElement?.closest('.checkout,label,input')),
+      );
+      assert.equal(unsafe, false);
+      assert.equal(await page.locator('#hover-input').inputValue(), 'Do not change this');
+      await page.keyboard.press('Escape');
+    } finally {
+      await page.close();
+    }
+  },
+);
+
+test(
+  'edge crawling ramps deliberately, stops at center, and yields to manual wheel',
+  { timeout: 18000 },
+  async () => {
+    const page = await fixture({ path: '/reference.html' });
+    try {
+      await page.locator('#demo-follow').check();
+      await start(page);
+      await page.evaluate(() => scrollTo(0, 3500));
+      const initial = await page.evaluate(() => scrollY);
+      await page.mouse.move(600, 995);
+      await page.waitForTimeout(1200);
+      assert.ok(
+        (await page.evaluate(() => scrollY)) > initial + 60,
+        'bottom edge should advance the document',
+      );
+      await page.mouse.move(600, 500);
+      await page.waitForTimeout(40);
+      const stopped = await page.evaluate(() => scrollY);
+      await page.waitForTimeout(220);
+      assert.ok(
+        Math.abs((await page.evaluate(() => scrollY)) - stopped) < 3,
+        'center stops scrolling immediately',
+      );
+      await page.mouse.move(600, 995);
+      await page.waitForTimeout(750);
+      await page.mouse.wheel(0, 170);
+      await page.waitForTimeout(180);
+      const manual = await page.evaluate(() => scrollY);
+      await page.waitForTimeout(1100);
+      assert.ok(
+        Math.abs((await page.evaluate(() => scrollY)) - manual) < 3,
+        'stationary edge must not fight or resume after manual wheel',
+      );
+      await page.mouse.move(600, 500);
+      await page.waitForTimeout(120);
+      await page.mouse.move(600, 5);
+      await page.waitForTimeout(950);
+      assert.ok(
+        (await page.evaluate(() => scrollY)) < manual - 30,
+        'fresh top-edge intent crawls upward',
+      );
+      await page.keyboard.press('Escape');
+      const reset = await page.evaluate(() => scrollY);
+      await page.waitForTimeout(200);
+      assert.ok(Math.abs((await page.evaluate(() => scrollY)) - reset) < 3);
+    } finally {
+      await page.close();
+    }
+  },
+);
+
+test(
+  'edge crawling stops on pause, toggle off, blur, pointer leave and reduced motion',
+  { timeout: 20000 },
+  async () => {
+    const page = await fixture({ path: '/reference.html?theme=night' });
+    try {
+      await page.locator('#demo-follow').check();
+      await start(page);
+      await page.evaluate(() => scrollTo(0, 3500));
+      async function beginEdge() {
+        await page.mouse.move(600, 500);
+        await page.waitForTimeout(100);
+        await page.mouse.move(600, 995);
+        await page.waitForTimeout(700);
+      }
+      async function still() {
+        await page.waitForTimeout(60);
+        const y = await page.evaluate(() => scrollY);
+        await page.waitForTimeout(220);
+        assert.ok(Math.abs((await page.evaluate(() => scrollY)) - y) < 3);
+      }
+      await beginEdge();
+      await page.locator(`${root} .pause`).dispatchEvent('click');
+      await still();
+      await page.locator(`${root} .pause`).dispatchEvent('click');
+      await still();
+      await beginEdge();
+      await page.locator('#demo-follow').evaluate((el) => {
+        el.checked = false;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      await still();
+      await page.locator('#demo-follow').evaluate((el) => {
+        el.checked = true;
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      await still();
+      await beginEdge();
+      await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+      await still();
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await still();
+      await beginEdge();
+      await page.mouse.move(-20, 500);
+      await still();
+      await beginEdge();
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await still();
+      await page.mouse.move(600, 5);
+      await page.waitForTimeout(500);
+      await still();
+      await page.keyboard.press('Escape');
+    } finally {
+      await page.close();
+    }
+  },
+);
+
+test(
+  'temperaments produce observably different lock and strike rhythms',
+  { timeout: 26000 },
+  async () => {
+    const observations = {};
+    for (const personality of ['feral', 'curious', 'dreamy']) {
+      const page = await hoverFixture(personality);
+      try {
+        await page.evaluate(() => {
+          globalThis.rhythm = [];
+          function tick(t) {
+            const h = document.querySelector('[data-cr4wler-root]');
+            if (h && rhythm.at(-1)?.phase !== h.dataset.phase)
+              rhythm.push({ phase: h.dataset.phase, t });
+            if (rhythm.length < 40) requestAnimationFrame(tick);
+          }
+          requestAnimationFrame(tick);
+        });
+        await page.locator('#aim-b').hover();
+        await page.waitForFunction(() => rhythm.some((x) => x.phase === 'aftermath'), null, {
+          timeout: 7500,
+        });
+        observations[personality] = await page.evaluate(() => {
+          const lock = rhythm.find((x) => x.phase === 'lock'),
+            strike = rhythm.find((x) => x.phase === 'strike'),
+            after = rhythm.find((x) => x.phase === 'aftermath');
+          return { lock: strike.t - lock.t, strike: after.t - strike.t };
+        });
+      } finally {
+        await page.close();
+      }
+    }
+    assert.ok(observations.feral.lock + 30 < observations.curious.lock);
+    assert.ok(observations.curious.lock + 30 < observations.dreamy.lock);
+    assert.ok(observations.feral.strike + 40 < observations.curious.strike);
+    assert.ok(observations.curious.strike + 40 < observations.dreamy.strike);
+  },
+);

@@ -6,7 +6,7 @@ cr4wler is a Chrome extension proof of concept that climbs over a real page, sca
 
 ![cr4wler exploring the playground](docs/playground.png)
 
-[Watch the night-garden demo](docs/demo.webm) · [Watch the installed extension on a light page](docs/extension-demo.webm) · [Privacy](PRIVACY.md) · [Testing and limitations](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
+[Watch the night-archive demo](docs/demo.webm) · [Installed extension: daylight](docs/extension-demo.webm) · [Installed extension: night](docs/extension-night-demo.webm) · [Privacy](PRIVACY.md) · [Testing and limitations](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
 
 ## Try it
 
@@ -22,10 +22,10 @@ npm run build
 1. Open `chrome://extensions` in a Chrome profile where local extensions are allowed.
 2. Turn on **Developer mode**, choose **Load unpacked**, and select this project's `dist/` directory.
 3. Open a regular website, click cr4wler in the extension toolbar, and choose **Summon your spider**.
-4. Try Curious, Dreamy, or Feral. Use the mischief slider to change the force of the typographic effects. Enable **Follow my cursor** to guide its exploration.
+4. Try Curious, Dreamy, or Feral. Use the mischief slider to change the force of the typographic effects. Enable **Follow my cursor**, hover a word to choose its next target, then guide it toward the top or bottom edge to crawl through the page.
 5. Pause from the popup or floating dock. **Reset page** or **Escape** removes the visitor and every fragment.
 
-The popup's **Try the playground** link opens the bundled night garden. Its **Daylight stress test** link opens an ordinary light document with 1,800 fictional references across 60 sections. For the standalone version:
+The popup's **Try the playground** link opens the bundled night garden. Its **Daylight stress test** link opens an ordinary document with 1,800 fictional references across 60 sections; **Night archive** switches the same dense fixture to dark colors. For the standalone version:
 
 ```sh
 npm run dev
@@ -36,12 +36,26 @@ The playground runs the same animation and interaction engine directly. It does 
 
 ## What makes it move
 
-- Eight planted feet, analytic inverse kinematics, articulated knees and feet, crisp neon leg cores, luminous active joints, and a narrow braced wireframe body. All procedural; no animated images or external assets.
+- Eight planted feet, analytic inverse kinematics, articulated knees, crisp neon leg cores and luminous joints. A compact braced body, forward eyes and little palps turn toward your next target. All procedural; no animated images or external assets.
 - Silk arrival and spring-driven movement. The head points toward a live target; a sweeping selector settles into a lock box, pauses in anticipation, then strikes. A gripping front leg follows the contact point during peeling and shearing.
 - Five rotating effects: peeling phrases, skewed shear, scattered glyph groups, staggered disassembly, and ragged erasure trails. Original text is visually masked; colored inert shards form the aftermath.
 - Every committed mark keeps its identity, color, and displacement as you scroll away and return. Reflow updates its anchor to the original live range. Nothing times out. Reset, Escape, or refresh clears the whole composition.
-- Optional cursor following approaches with a comfortable stand-off and biases the next target toward your pointer. A committed lock or strike finishes before the next destination is chosen.
+- Optional cursor following resolves the actual eligible text under your pointer. The eyes and selector acknowledge it promptly; a stable hover replaces a wandering target, approach or lock. Only an already-started strike finishes before the latest hover takes over.
 - Small moving selector accents and low-contrast local pulses; no full-page flashes or high-contrast strobing. Reduced motion shows a still visitor, disables scanning/strikes and retains existing aftermath without continuous animation.
+
+## Take the lead
+
+With **Follow my cursor** enabled, hover an eligible phrase or link. Small pointer jitter stays on the same target. Moving to another element changes the next hunt; it does not activate that element. Inputs and protected widgets remain excluded.
+
+Hold near the top or bottom edge for a deliberate crawl. Speed increases toward the edge, with a 440px/s ceiling. Move back toward the center to stop immediately. Each edge visit rests after six seconds or 1,800px; move again or leave/re-enter the zone to continue. Wheel, touch and navigation-key scrolling take priority and require fresh pointer movement before edge crawling resumes. Pause, leaving the page, losing focus, disabling follow or reduced motion stops scrolling.
+
+| Temperament | How it feels                                                      | Stable hover / lock / strike |
+| ----------- | ----------------------------------------------------------------- | ---------------------------- |
+| Dreamy      | Patient flowing steps, relaxed posture, deliberate peeling        | 140 / 460 / 420ms            |
+| Curious     | Attentive eyes, playful pivots, varied text experiments           | 75 / 200 / 300ms             |
+| Feral       | Compact stance, sharp turns, quick scuttle bursts and brief holds | 35 / 75 / 180ms              |
+
+These are intended timing budgets. Body approach and browser frame cadence also affect completion time. A strike already in progress is briefly atomic; moving during it queues your latest target. Temperament changes physical movement, posture, acquisition, effect ordering and rhythm.
 
 ## A guest, not a wrecking ball
 
@@ -63,9 +77,9 @@ npm run test:extension
 npm run package
 ```
 
-`npm test` runs real Chromium DOM/interaction tests, a packaged content-script harness with mocked messaging, and popup tests with mocked Chrome APIs. `test:extension` separately loads the actual extension, verifies denial before a gesture, triggers Chrome’s toolbar action, and exercises the real popup page and isolated-world controller with unmodified permissions and real Chrome APIs. It records a video and screenshot and fails loudly if browser policy blocks installation. See [the validation record](docs/TESTING.md), including the remaining manual compatibility checklist.
+`npm test` runs real Chromium DOM/interaction tests, a packaged content-script harness with mocked messaging, and popup tests with mocked Chrome APIs. `test:extension` separately loads the actual extension, verifies denial before a gesture, triggers Chrome’s toolbar action, and exercises the real popup page and isolated-world controller with unmodified permissions and real Chrome APIs. It records pointer-controlled videos and screenshots on dense light and dark pages and fails loudly if browser policy blocks installation. See [the validation record](docs/TESTING.md), including the remaining manual compatibility checklist.
 
-`npm run package` creates `artifacts/cr4wler-0.2.0.zip` and its SHA-256 digest. ZIP entry order, timestamps, and modes are fixed. With the lockfile and the same toolchain, repeated builds produce identical bytes. Unzip before selecting **Load unpacked**. This has not been submitted to the Chrome Web Store.
+`npm run package` creates `artifacts/cr4wler-0.3.0.zip` and its SHA-256 digest. ZIP entry order, timestamps, and modes are fixed. With the lockfile and the same toolchain, repeated builds produce identical bytes. Unzip before selecting **Load unpacked**. This has not been submitted to the Chrome Web Store.
 
 Useful files:
 
@@ -88,7 +102,5 @@ Device pixel ratio is capped at 2. Hunting stops when paused or the tab is hidde
 ## POC boundaries
 
 Protected browser pages, the Chrome Web Store, PDFs, and other extensions' pages cannot be scripted. The built-in playground has its own direct engine. Shadow roots and iframes are deliberately not traversed. CSS-transformed pages, hostile page styles, unusual vertical text, animated layouts, extreme zoom, and live collaborative editors need broader compatibility work. Discovery is incremental and does not promise to visit every eligible phrase. Settings are deliberately ephemeral and reset when the popup is reopened without an active visitor.
-
-Motion inspiration: [the reference by @rybinfx](https://x.com/rybinfx/status/2105700296760688790), viewed and analyzed before implementation. All code, procedural motion, visual assets, and playground copy here are original; no video, artwork, or source code was copied. This project is unaffiliated with that creator.
 
 MIT licensed, made for **funsaized**. Contributions with fewer legs are also welcome.

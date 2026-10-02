@@ -440,3 +440,44 @@ a:focus-visible {
   background: #293e21;
   left: 14px;
 }
+
+/* The same ordinary long document, with an authored night reading theme. */
+:root[data-theme='night'] {
+  color-scheme: dark;
+}
+:root[data-theme='night'] body {
+  background: #11131a;
+  color: #d4d8e3;
+}
+:root[data-theme='night'] nav {
+  background: #11131a;
+  border-color: #2c303d;
+}
+:root[data-theme='night'] a {
+  color: #8db5ff;
+}
+:root[data-theme='night'] .wordmark {
+  color: #ecf1fa;
+}
+:root[data-theme='night'] .article-meta,
+:root[data-theme='night'] h2 {
+  border-color: #394051;
+}
+:root[data-theme='night'] .lede {
+  color: #b9c5da;
+}
+:root[data-theme='night'] .abstract {
+  background: #1d2433;
+  border-color: #829cca;
+}
+:root[data-theme='night'] .editor-note,
+:root[data-theme='night'] li span:last-child {
+  color: #8797b0;
+}
+:root[data-theme='night'] .contents > a {
+  color: #95a8c8;
+}
+:root[data-theme='night'] .lab-controls {
+  border: 1px solid #393046;
+  box-shadow: none;
+}

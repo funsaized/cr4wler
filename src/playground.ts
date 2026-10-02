@@ -1,6 +1,15 @@
 import { Cr4wler } from './engine';
 import type { Settings } from './types';
 
+if (new URLSearchParams(location.search).get('theme') === 'night') {
+  document.documentElement.dataset.theme = 'night';
+  const themeLink = document.querySelector<HTMLAnchorElement>('#archive-theme');
+  if (themeLink) {
+    themeLink.href = 'reference.html';
+    themeLink.textContent = 'Daylight archive ↗';
+  }
+}
+
 // An intentionally large, ordinary document exercises progressive discovery.
 // All fixture content is synthetic and built locally before activation.
 const appendix = document.querySelector('#reference-appendix');
@@ -27,6 +36,7 @@ if (appendix) {
       const author = document.createElement('span');
       author.textContent = `Vale, M.; Thread, E. (${2000 + (item % 26)}). `;
       const link = document.createElement('a');
+      link.id = `reference-target-${volume}-${item + 1}`;
       link.href = `#reference-volume-${volume === 60 ? 1 : volume + 1}`;
       link.textContent = topics[(item + volume) % topics.length];
       const journal = document.createElement('i');
@@ -71,7 +81,9 @@ function paint() {
       : s.recordLimitReached
         ? '512 fragments. A complete composition. Reset for a fresh start.'
         : s.active
-          ? `${s.fragments} traces left behind. Scroll to keep exploring. Esc resets.`
+          ? s.followMouse
+            ? `${s.fragments} traces. Hover chooses the next word. Edges scroll. Esc resets.`
+            : `${s.fragments} traces left behind. Enable cursor following to take the lead.`
           : 'A growing trail. A completely fresh start with Esc.';
 }
 summon.addEventListener('click', () => {

@@ -23,7 +23,9 @@ function paint(s: Status) {
     : s.recordLimitReached
       ? 'Trail is full. Reset for a fresh composition.'
       : s.active
-        ? 'Your trail stays as you scroll. Esc resets everything.'
+        ? s.followMouse
+          ? 'Hover chooses the next word. Page edges scroll. Esc resets.'
+          : 'Your trail stays as you scroll. Esc resets everything.'
         : 'Only this tab. Reset or Esc brings every word back.';
   slider.value = String(Math.round(s.intensity * 100));
   paintSettings();

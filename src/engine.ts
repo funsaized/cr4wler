@@ -1,8 +1,16 @@
 import { Spider, type Point, type SpiderOptions } from './spider';
-import { scanTargets, fresh, valid, type Target } from './targets';
+import {
+  scanTargets,
+  targetAtPoint,
+  targetIdentity,
+  eligible,
+  fresh,
+  valid,
+  type Target,
+} from './targets';
+import { huntProfiles } from './hunt-profiles';
 import { defaults, settingsFrom, type Settings, type Status } from './types';
 import {
-  effects,
   layoutShards,
   mount,
   rebuild,
@@ -29,6 +37,8 @@ interface Fragment extends Projection {
   clips: HTMLElement[];
   liveScroll: boolean;
   layoutDirty: boolean;
+  strikeDuration: number;
+  strikeElapsed: number;
 }
 const styles = `
 :host{all:initial!important;position:fixed!important;inset:0!important;z-index:2147483647!important;pointer-events:none!important;contain:strict!important;color-scheme:dark!important;display:block!important;}
@@ -59,6 +69,28 @@ export class Cr4wler {
   private current: Fragment | null = null;
   private candidate: Target | null = null;
   private candidateAge = 0;
+  private candidateSource: 'hover' | 'autonomous' | '' = '';
+  private candidateAt = 0;
+  private scanRevision = 0;
+  private hover: { target: Target; at: number } | null = null;
+  private hoverCommittedAt = -100;
+  private pointerActive = false;
+  private pointerDirty = false;
+  private pointerMoved = false;
+  private nextHoverProbe = 0;
+  private blurred = false;
+  private manualUntil = 0;
+  private manualAnchor: Point | null = null;
+  private edgeDirection = 0;
+  private edgeProximity = 0;
+  private edgeSince = 0;
+  private edgeStarted = 0;
+  private edgeDistance = 0;
+  private edgeVelocity = 0;
+  private edgeExhausted = false;
+  private edgeAnchor: Point | null = null;
+  private phaseChangedAt = 0;
+  private reportedPhase = '';
   private mode: Mode = 'arrive';
   private phaseTime = 0;
   private nextId = 1;
@@ -69,9 +101,10 @@ export class Cr4wler {
   private movedScrollers = new Set<EventTarget>();
   private destination: Point = { x: innerWidth * 0.62, y: innerHeight * 0.38 };
   private pointer: Point = { x: -1000, y: -1000 };
-  private pointerAt = -100;
   private nextFollow = 0;
   private nextTelemetry = 0;
+  private surfaceOffset: Point = { x: scrollX, y: scrollY };
+  private lastSpiderOptions: SpiderOptions | null = null;
   private surface: 'light' | 'dark' = 'dark';
   private highlight: Highlight | null = null;
   private selection: Highlight | null = null;
@@ -102,7 +135,9 @@ export class Cr4wler {
     };
   }
   configure(value: Partial<Settings>) {
+    const followed = this.settings.followMouse;
     this.settings = settingsFrom({ ...this.settings, ...value });
+    if (followed !== this.settings.followMouse) this.clearFollowIntent();
     this.updateActivity();
     return this.status();
   }
@@ -117,7 +152,10 @@ export class Cr4wler {
     this.nextScan = this.nextChoice = this.nextFollow = this.nextTelemetry = 0;
     this.nextId = 1;
     this.limitReached = false;
-    this.pointerAt = -100;
+    this.blurred = false;
+    this.clearFollowIntent();
+    this.manualUntil = 0;
+    this.manualAnchor = null;
     this.host = document.createElement('div');
     this.host.dataset.cr4wlerIgnore = '';
     this.host.dataset.cr4wlerRoot = '';
@@ -155,6 +193,8 @@ export class Cr4wler {
     this.root.append(this.tip);
     document.documentElement.append(this.host);
     this.spider = new Spider(canvas);
+    this.surfaceOffset = { x: scrollX, y: scrollY };
+    this.lastSpiderOptions = null;
     this.surface = this.detectSurface(document.body);
     this.resize();
     if ('highlights' in CSS && typeof Highlight !== 'undefined') {
@@ -177,6 +217,21 @@ export class Cr4wler {
       'keydown',
       (e) => {
         if (e.key === 'Escape') this.restore();
+        else if (
+          [
+            'ArrowUp',
+            'ArrowDown',
+            'ArrowLeft',
+            'ArrowRight',
+            'PageUp',
+            'PageDown',
+            'Home',
+            'End',
+            ' ',
+            'Tab',
+          ].includes(e.key)
+        )
+          this.manualNavigation();
       },
       { capture: true, signal },
     );
@@ -184,10 +239,38 @@ export class Cr4wler {
       'pointermove',
       (e) => {
         if (e.pointerType === 'touch') return;
-        this.pointer = { x: e.clientX, y: e.clientY };
-        this.pointerAt = this.time;
+        this.onPointer(e.clientX, e.clientY);
       },
       { passive: true, signal },
+    );
+    window.addEventListener('wheel', () => this.manualNavigation(), { passive: true, signal });
+    window.addEventListener('touchstart', () => this.manualNavigation(), { passive: true, signal });
+    window.addEventListener('touchmove', () => this.manualNavigation(), { passive: true, signal });
+    document.documentElement.addEventListener('pointerleave', () => this.clearFollowIntent(), {
+      passive: true,
+      signal,
+    });
+    window.addEventListener(
+      'pointerout',
+      (e) => {
+        if (!e.relatedTarget) this.clearFollowIntent();
+      },
+      { passive: true, signal },
+    );
+    window.addEventListener(
+      'blur',
+      () => {
+        this.blurred = true;
+        this.clearFollowIntent();
+      },
+      { signal },
+    );
+    window.addEventListener(
+      'focus',
+      () => {
+        this.blurred = false;
+      },
+      { signal },
     );
     window.addEventListener(
       'resize',
@@ -204,6 +287,7 @@ export class Cr4wler {
         if (e.target) this.movedScrollers.add(e.target);
         this.scheduleGeometry();
         this.invalidateScan();
+        if (this.pointerActive) this.pointerDirty = true;
       },
       { passive: true, capture: true, signal },
     );
@@ -213,6 +297,7 @@ export class Cr4wler {
       () => {
         this.hidden = document.hidden;
         if (this.hidden) {
+          this.clearFollowIntent();
           cancelAnimationFrame(this.raf);
           cancelAnimationFrame(this.geometryRaf);
           this.geometryRaf = 0;
@@ -226,6 +311,7 @@ export class Cr4wler {
     this.reduced.addEventListener(
       'change',
       () => {
+        this.clearFollowIntent();
         // Committed aftermath stays; only an uncommitted lock is abandoned.
         this.cancelCandidate();
         if (this.current) {
@@ -277,6 +363,7 @@ export class Cr4wler {
   pause() {
     if (!this.host) return this.status();
     this.paused = !this.paused;
+    this.clearFollowIntent();
     if (this.pauseButton) this.pauseButton.textContent = this.paused ? 'Resume' : 'Pause';
     this.updateActivity();
     if (this.paused) cancelAnimationFrame(this.raf);
@@ -284,6 +371,8 @@ export class Cr4wler {
     return this.status();
   }
   restore() {
+    this.clearFollowIntent();
+    this.scanRevision++;
     cancelAnimationFrame(this.raf);
     cancelAnimationFrame(this.geometryRaf);
     this.geometryRaf = 0;
@@ -307,6 +396,7 @@ export class Cr4wler {
     this.pieces = null;
     this.overflow = null;
     this.spider = null;
+    this.lastSpiderOptions = null;
     this.targets = [];
     this.fragments = [];
     this.current = null;
@@ -350,12 +440,14 @@ export class Cr4wler {
       this.raf = requestAnimationFrame(this.frame);
   }
   private invalidateScan() {
+    this.scanRevision++;
     this.targets = [];
     this.nextScan = Math.min(this.nextScan, this.time + 0.22);
   }
   private cancelCandidate() {
     this.selection?.clear();
     this.candidate = null;
+    this.candidateSource = '';
     this.candidateAge = 0;
     if (this.mode === 'lock') {
       this.mode = 'scan';
@@ -412,6 +504,8 @@ export class Cr4wler {
       else record.layoutDirty = true;
     }
     if (this.candidate && !valid(this.candidate)) this.cancelCandidate();
+    if (this.hover && !valid(this.hover.target)) this.hover = null;
+    if (this.pointerActive) this.pointerDirty = true;
     this.invalidateScan();
     this.scheduleGeometry(true);
   }
@@ -422,7 +516,7 @@ export class Cr4wler {
     // This scheduler is independent of hunting, so Pause still follows document scroll.
     this.geometryRaf = requestAnimationFrame(() => {
       this.geometryRaf = 0;
-      if (this.host && !this.hidden) this.refreshGeometry();
+      if (this.host && !this.hidden && this.geometryDirty) this.refreshGeometry();
     });
   }
   private anchorTraits(element: HTMLElement): { clips: HTMLElement[]; liveScroll: boolean } {
@@ -555,15 +649,63 @@ export class Cr4wler {
       else this.targetDestination(this.candidate);
     }
     this.updateActivity();
-    if (this.paused || this.reduced.matches) this.spider?.render();
+    if (this.paused || this.reduced.matches) {
+      this.syncRestingSurface();
+      this.spider?.render();
+    }
+  }
+  /** A source point moves by the inverse document scroll in viewport coordinates. */
+  private takeSurfaceDelta(): Point {
+    const next = { x: scrollX, y: scrollY };
+    const delta = { x: this.surfaceOffset.x - next.x, y: this.surfaceOffset.y - next.y };
+    this.surfaceOffset = next;
+    return delta;
+  }
+  private strikeGrip(record: Fragment): SpiderOptions['grip'] {
+    if (record.effect !== 'peel' && record.effect !== 'shear') return undefined;
+    const shard = record.shards[0];
+    return {
+      point: {
+        x: record.target.rect.x + (shard?.dx ?? 0) * record.progress,
+        y:
+          record.target.rect.y + record.target.rect.height / 2 + (shard?.dy ?? 0) * record.progress,
+      },
+      progress: record.progress,
+      color: record.color,
+    };
+  }
+  /** Paused geometry still follows the page, without advancing any gait clock. */
+  private syncRestingSurface() {
+    if (!this.spider || !this.lastSpiderOptions) return;
+    const surfaceDelta = this.takeSurfaceDelta();
+    if (!surfaceDelta.x && !surfaceDelta.y) return;
+    const record = this.current;
+    const target = record?.target ?? this.candidate;
+    this.spider.update(0, this.time, this.spider.position, {
+      ...this.lastSpiderOptions,
+      surfaceDelta,
+      grip: record ? this.strikeGrip(record) : undefined,
+      selector:
+        target && this.lastSpiderOptions.selector
+          ? { ...this.lastSpiderOptions.selector, rect: target.rect }
+          : undefined,
+      attention: undefined,
+      pointer: undefined,
+      pursuing: false,
+    });
   }
   private async scan() {
     if (this.scanning || this.limitReached || this.reduced.matches || !this.highlight) return;
     this.scanning = true;
     const signal = this.abort.signal;
+    const revision = this.scanRevision;
     const list = await scanTargets(signal);
     if (signal.aborted || !this.host) return;
     this.scanning = false;
+    if (revision !== this.scanRevision) {
+      this.nextScan = Math.min(this.nextScan, this.time + 0.1);
+      return;
+    }
     this.targets = list;
     this.nextScan = this.time + (list.length ? 3.2 : 1.1);
   }
@@ -576,11 +718,10 @@ export class Cr4wler {
     );
   }
   private choose() {
-    this.nextChoice = this.time + 0.5;
+    this.nextChoice = this.time + huntProfiles[this.settings.personality].choice;
     if (this.limitReached || !this.highlight) return;
     const body = this.spider?.position ?? this.destination;
-    const following = this.settings.followMouse && this.time - this.pointerAt < 5;
-    const focus = following ? this.pointer : body;
+    const focus = body;
     // Use cached scan geometry for ranking. Only a bounded shortlist is remeasured.
     const shortlist = this.targets
       .filter((t) => !this.occupied(t))
@@ -594,14 +735,7 @@ export class Cr4wler {
       .slice(0, 16);
     for (const { target } of shortlist) {
       if (!fresh(target)) continue;
-      this.candidate = target;
-      this.candidateAge = 0;
-      this.phaseTime = 0;
-      this.surface = this.detectSurface(target.element);
-      this.targetDestination(target);
-      this.selection?.clear();
-      this.selection?.add(target.range);
-      this.updateActivity();
+      this.selectCandidate(target, 'autonomous');
       return;
     }
     this.nextScan = Math.min(this.nextScan, this.time + 0.3);
@@ -632,7 +766,12 @@ export class Cr4wler {
     const record: Fragment = {
       id,
       target,
-      effect: effects[(id - 1) % effects.length],
+      effect:
+        huntProfiles[this.settings.personality].effects[
+          (id - 1) % huntProfiles[this.settings.personality].effects.length
+        ],
+      strikeDuration: huntProfiles[this.settings.personality].strike,
+      strikeElapsed: 0,
       color: palette[(id - 1) % palette.length],
       accent: palette[(id + 1) % palette.length],
       shards: [],
@@ -658,11 +797,212 @@ export class Cr4wler {
     // Commit mask and initial projection atomically before the next paint.
     this.refreshGeometry();
   }
+  private followAvailable() {
+    return (
+      this.settings.followMouse &&
+      !this.paused &&
+      !this.hidden &&
+      !this.blurred &&
+      !this.reduced.matches
+    );
+  }
+  private stopEdge() {
+    this.edgeDirection = this.edgeProximity = this.edgeVelocity = 0;
+    this.edgeSince = this.edgeStarted = this.edgeDistance = 0;
+    if (this.host) this.host.dataset.edgeVelocity = '0.0';
+  }
+  private clearFollowIntent() {
+    this.pointerActive = this.pointerDirty = this.pointerMoved = false;
+    this.hover = null;
+    this.nextHoverProbe = 0;
+    this.edgeExhausted = false;
+    this.edgeAnchor = null;
+    this.stopEdge();
+    if (this.candidateSource === 'hover') this.cancelCandidate();
+    this.updateActivity();
+  }
+  private manualNavigation() {
+    this.clearFollowIntent();
+    this.manualUntil = performance.now() + 850;
+    this.manualAnchor = { ...this.pointer };
+    this.updateActivity();
+  }
+  private edgeZone() {
+    const zone = Math.min(84, Math.max(48, innerHeight * 0.1));
+    if (this.pointer.y < zone) return { direction: -1, proximity: 1 - this.pointer.y / zone };
+    if (this.pointer.y > innerHeight - zone)
+      return { direction: 1, proximity: 1 - (innerHeight - this.pointer.y) / zone };
+    return { direction: 0, proximity: 0 };
+  }
+  private onPointer(x: number, y: number) {
+    this.pointer = { x, y };
+    if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) {
+      this.clearFollowIntent();
+      return;
+    }
+    if (!this.edgeZone().direction) {
+      this.stopEdge();
+      this.edgeExhausted = false;
+      this.edgeAnchor = null;
+    }
+    if (!this.followAvailable()) return;
+    if (
+      performance.now() < this.manualUntil ||
+      (this.manualAnchor && Math.hypot(x - this.manualAnchor.x, y - this.manualAnchor.y) < 12)
+    )
+      return;
+    this.manualAnchor = null;
+    this.pointerActive = this.pointerDirty = this.pointerMoved = true;
+  }
+  private updateEdgeIntent(freshPointer: boolean, safe: boolean) {
+    const zone = this.edgeZone();
+    if (!safe || !zone.direction || !this.followAvailable()) {
+      this.stopEdge();
+      return;
+    }
+    if (this.edgeExhausted) {
+      if (
+        !freshPointer ||
+        !this.edgeAnchor ||
+        Math.hypot(this.pointer.x - this.edgeAnchor.x, this.pointer.y - this.edgeAnchor.y) < 16
+      )
+        return;
+      this.edgeExhausted = false;
+    }
+    if (zone.direction !== this.edgeDirection) {
+      if (!freshPointer) return;
+      this.stopEdge();
+      this.edgeDirection = zone.direction;
+      this.edgeSince = performance.now();
+    }
+    this.edgeProximity = clamp(zone.proximity, 0, 1);
+  }
+  private scrollEdge(dt: number) {
+    if (
+      !this.pointerActive ||
+      !this.followAvailable() ||
+      !this.edgeDirection ||
+      this.edgeExhausted
+    ) {
+      this.stopEdge();
+      return;
+    }
+    const now = performance.now();
+    if (now - this.edgeSince < 240) return;
+    if (!this.edgeStarted) this.edgeStarted = now;
+    const scrolling = document.scrollingElement;
+    const room =
+      this.edgeDirection < 0
+        ? scrollY
+        : Math.max(0, (scrolling?.scrollHeight ?? 0) - innerHeight - scrollY);
+    // One deliberate edge visit is bounded in both time and distance. Re-arm by
+    // leaving/re-entering, or moving at least 16px after the edge crawl rests.
+    if (room < 1 || now - this.edgeStarted >= 6000 || this.edgeDistance >= 1800) {
+      this.stopEdge();
+      this.edgeExhausted = true;
+      this.edgeAnchor = { ...this.pointer };
+      this.updateActivity();
+      return;
+    }
+    const desired = this.edgeDirection * 440 * this.edgeProximity * this.edgeProximity;
+    this.edgeVelocity += (desired - this.edgeVelocity) * (1 - Math.exp(-dt * 7));
+    const distance =
+      this.edgeDirection *
+      Math.min(Math.abs(this.edgeVelocity * dt), room, 1800 - this.edgeDistance);
+    const before = scrollY;
+    // Explicit instant scrolling cannot queue browser smooth-scroll animations.
+    window.scrollBy({ top: distance, left: 0, behavior: 'instant' });
+    this.edgeDistance += Math.abs(scrollY - before);
+    if (scrollY !== before) {
+      this.scheduleGeometry();
+      this.pointerDirty = true;
+    }
+  }
+  private selectCandidate(target: Target, source: 'hover' | 'autonomous') {
+    this.candidate = target;
+    this.candidateSource = source;
+    this.candidateAt = performance.now();
+    this.candidateAge = 0;
+    this.phaseTime = 0;
+    this.mode = 'scan';
+    this.surface = this.detectSurface(target.element);
+    this.targetDestination(target);
+    this.selection?.clear();
+    this.selection?.add(target.range);
+    this.updateActivity();
+  }
+  private updateHover() {
+    if (!this.pointerActive || !this.followAvailable()) return;
+    const profile = huntProfiles[this.settings.personality];
+    if (this.pointerDirty && this.time >= this.nextHoverProbe) {
+      this.pointerDirty = false;
+      this.nextHoverProbe = this.time + 0.035;
+      const freshPointer = this.pointerMoved;
+      this.pointerMoved = false;
+      const hit = document.elementFromPoint(this.pointer.x, this.pointer.y);
+      const safe = hit instanceof HTMLElement && eligible(hit);
+      this.updateEdgeIntent(freshPointer, safe);
+      const resolved = safe ? targetAtPoint(this.pointer.x, this.pointer.y, () => true) : null;
+      const previous = this.hover;
+      if (!resolved) {
+        this.hover = null;
+        if (this.candidateSource === 'hover') this.cancelCandidate();
+      } else {
+        const same =
+          previous?.target.element === resolved.element && previous.target.node === resolved.node;
+        // Preserve one line while traversing its element; a distant line is fresh intent.
+        const rect = previous?.target.range.getBoundingClientRect();
+        const close =
+          rect &&
+          Math.hypot(
+            Math.max(rect.left - this.pointer.x, 0, this.pointer.x - rect.right),
+            Math.max(rect.top - this.pointer.y, 0, this.pointer.y - rect.bottom),
+          ) < 90;
+        const target = same && close && valid(previous!.target) ? previous!.target : resolved;
+        target.rect = target.range.getBoundingClientRect();
+        if (!same || !close) {
+          this.scanRevision++;
+          this.hover = { target, at: performance.now() };
+          // New attention cancels any uncommitted hunt before it can strike.
+          if (this.candidate && this.candidate.element !== target.element) this.cancelCandidate();
+        } else this.hover = previous;
+      }
+      this.selection?.clear();
+      const selection = this.hover?.target ?? this.candidate;
+      if (selection && !this.occupied(selection)) this.selection?.add(selection.range);
+      this.updateActivity();
+    }
+    const intent = this.hover;
+    if (
+      !intent ||
+      this.current ||
+      this.limitReached ||
+      !this.highlight ||
+      this.occupied(intent.target)
+    )
+      return;
+    if (
+      this.candidate === intent.target ||
+      (this.candidate?.element === intent.target.element && this.candidateSource === 'hover')
+    )
+      return;
+    if (
+      performance.now() - intent.at < profile.hoverDwell * 1000 ||
+      performance.now() - this.hoverCommittedAt < profile.retarget * 1000
+    )
+      return;
+    if (!fresh(intent.target)) {
+      this.hover = null;
+      return;
+    }
+    this.hoverCommittedAt = performance.now();
+    this.selectCandidate(intent.target, 'hover');
+  }
   private followPointer() {
     if (
       !this.settings.followMouse ||
       this.time < this.nextFollow ||
-      this.time - this.pointerAt > 4 ||
+      !this.pointerActive ||
       !this.spider
     )
       return;
@@ -688,6 +1028,35 @@ export class Cr4wler {
       this.host.dataset.visibleFragments = String(status.visibleFragments);
       this.host.dataset.recordLimitReached = String(status.recordLimitReached);
       this.host.dataset.followMouse = String(this.settings.followMouse);
+      const profile = huntProfiles[this.settings.personality];
+      if (status.phase !== this.reportedPhase) {
+        this.reportedPhase = status.phase ?? '';
+        this.phaseChangedAt = performance.now();
+      }
+      this.host.dataset.phaseChangedAt = this.phaseChangedAt.toFixed(1);
+      this.host.dataset.candidate = this.candidate ? targetIdentity(this.candidate) : '';
+      this.host.dataset.candidateSource = this.candidateSource;
+      this.host.dataset.candidateAt = this.candidateAt.toFixed(1);
+      this.host.dataset.hoverTarget = this.hover ? targetIdentity(this.hover.target) : '';
+      this.host.dataset.hoverIntentAt = this.hover?.at.toFixed(1) ?? '';
+      this.host.dataset.hoverDwellMs = String(profile.hoverDwell * 1000);
+      this.host.dataset.lockMs = String(profile.lock * 1000);
+      this.host.dataset.strikeMs = String(profile.strike * 1000);
+      this.host.dataset.strikeRecord = this.current ? String(this.current.id) : '';
+      this.host.dataset.strikeTarget = this.current ? targetIdentity(this.current.target) : '';
+      this.host.dataset.edgeVelocity = this.edgeVelocity.toFixed(1);
+      this.host.dataset.edgeState = this.manualAnchor
+        ? 'manual'
+        : this.edgeExhausted
+          ? 'rest'
+          : this.edgeDirection
+            ? this.edgeVelocity
+              ? 'scrolling'
+              : 'dwell'
+            : 'idle';
+      this.host.dataset.edgeDirection = String(this.edgeDirection);
+      this.host.dataset.pointerActive = String(this.pointerActive);
+      this.host.dataset.personality = this.settings.personality;
     }
     if (!this.activity) return;
     this.activity.textContent = this.limitReached
@@ -698,15 +1067,19 @@ export class Cr4wler {
           ? 'quiet company'
           : !this.highlight
             ? 'quiet visitor · highlights unavailable'
-            : this.mode === 'arrive'
-              ? 'coming down…'
-              : this.mode === 'lock'
-                ? 'target locked · considering…'
-                : this.mode === 'strike'
-                  ? `${this.current?.effect ?? 'type'} in progress`
-                  : this.candidate
-                    ? 'scanning the type…'
-                    : `${this.fragments.length} marks · exploring`;
+            : this.edgeVelocity
+              ? 'edge crawl · move inward to stop'
+              : this.mode === 'arrive'
+                ? 'coming down…'
+                : this.mode === 'lock'
+                  ? 'target locked · considering…'
+                  : this.mode === 'strike'
+                    ? `${this.current?.effect ?? 'type'} in progress`
+                    : this.candidate
+                      ? 'scanning the type…'
+                      : this.settings.followMouse
+                        ? `${this.fragments.length} marks · hover to choose`
+                        : `${this.fragments.length} marks · exploring`;
   }
   private frame = (now: number) => {
     if (!this.host || !this.spider || this.hidden || (this.paused && !this.reduced.matches)) return;
@@ -714,7 +1087,9 @@ export class Cr4wler {
       this.restore();
       return;
     }
-    const dt = Math.min(Math.max(0, (now - this.previous) / 1000), 0.033);
+    const elapsed = Math.max(0, (now - this.previous) / 1000);
+    const dt = Math.min(elapsed, 0.033);
+    const strikeAtFrameStart = this.current;
     this.previous = now;
     const quiet = this.reduced.matches;
     if (!quiet && !this.paused) {
@@ -730,64 +1105,72 @@ export class Cr4wler {
       !this.scanning
     )
       void this.scan();
-    const pace =
-      this.settings.personality === 'dreamy'
-        ? 1.35
-        : this.settings.personality === 'feral'
-          ? 0.8
-          : 1;
+    const profile = huntProfiles[this.settings.personality];
     let grip: SpiderOptions['grip'];
     let selector: SpiderOptions['selector'];
     if (!quiet && !this.paused) {
-      if (this.mode === 'arrive' && this.phaseTime > 1.8) {
+      this.updateHover();
+      this.scrollEdge(dt);
+      if (this.geometryDirty) this.refreshGeometry();
+      if (this.mode === 'arrive' && this.phaseTime > profile.arrive) {
         this.mode = 'scan';
         this.phaseTime = 0;
         this.updateActivity();
       }
-      if (this.mode === 'aftermath' && this.phaseTime > 0.45 * pace) {
+      if (this.mode === 'aftermath' && this.phaseTime > profile.rest) {
         this.mode = 'scan';
         this.phaseTime = 0;
         this.updateActivity();
       }
       if (this.mode === 'scan' && !this.candidate && !this.limitReached) {
         this.followPointer();
-        if (this.phaseTime > 0.35 * pace && this.time >= this.nextChoice) this.choose();
+        if (!this.hover && this.phaseTime > profile.choice && this.time >= this.nextChoice)
+          this.choose();
+      }
+      if (this.candidate) {
+        if (!fresh(this.candidate)) this.cancelCandidate();
+        else this.targetDestination(this.candidate);
       }
       const candidate = this.candidate;
       if (candidate) {
         this.candidateAge += dt;
         if (
           this.mode === 'scan' &&
-          this.candidateAge > 0.68 * pace &&
+          this.candidateAge > profile.approachMin &&
           (Math.hypot(
             this.spider.position.x - this.destination.x,
             this.spider.position.y - this.destination.y,
-          ) < 70 ||
-            this.candidateAge > 1.8 * pace)
+          ) < 55 ||
+            (this.candidateAge > profile.approachMax &&
+              Math.hypot(
+                this.spider.position.x - this.destination.x,
+                this.spider.position.y - this.destination.y,
+              ) < 105))
         ) {
           this.mode = 'lock';
           this.phaseTime = 0;
           this.updateActivity();
         }
-        if (this.mode === 'lock' && this.phaseTime > 0.72 * pace) this.strike();
+        if (this.mode === 'lock' && this.phaseTime > profile.lock) this.strike();
         else
           selector = {
             rect: candidate.rect,
             progress:
               this.mode === 'lock'
-                ? clamp(this.phaseTime / (0.72 * pace), 0, 1)
-                : clamp(this.candidateAge / (0.68 * pace), 0, 1),
+                ? clamp(this.phaseTime / profile.lock, 0, 1)
+                : clamp(this.candidateAge / profile.approachMin, 0, 1),
             phase: this.mode === 'lock' ? 'lock' : 'scan',
             color: this.palette()[(this.nextId - 1) % 5],
           };
       }
       if (this.current) {
         const record = this.current;
-        record.progress = clamp(
-          this.phaseTime / ((record.effect === 'peel' ? 1.08 : 0.86) * pace),
-          0,
-          1,
-        );
+        record.target.rect = record.target.range.getBoundingClientRect();
+        this.targetDestination(record.target);
+        // Physics uses capped dt; an atomic strike uses elapsed foreground time so
+        // a slow frame cannot stretch the promised 180–420ms interruption window.
+        if (record === strikeAtFrameStart) record.strikeElapsed += elapsed;
+        record.progress = clamp(record.strikeElapsed / record.strikeDuration, 0, 1);
         paint(record);
         selector = {
           rect: record.target.rect,
@@ -795,43 +1178,49 @@ export class Cr4wler {
           phase: 'strike',
           color: record.color,
         };
-        if (record.effect === 'peel' || record.effect === 'shear') {
-          const shard = record.shards[0];
-          grip = {
-            point: {
-              x: record.target.rect.x + (shard?.dx ?? 0) * record.progress,
-              y:
-                record.target.rect.y +
-                record.target.rect.height / 2 +
-                (shard?.dy ?? 0) * record.progress,
-            },
-            progress: record.progress,
-            color: record.color,
-          };
-        }
+        grip = this.strikeGrip(record);
         if (record.progress === 1) {
           this.current = null;
           this.mode = 'aftermath';
           this.phaseTime = 0;
+          this.updateHover();
           this.updateActivity();
         }
+      }
+      // Attention changes immediately; a committed strike finishes in <=420ms.
+      if (this.hover && this.hover.target !== this.candidate && !this.occupied(this.hover.target)) {
+        const target = this.hover.target;
+        selector = { rect: target.rect, progress: 0, phase: 'scan', color: this.palette()[0] };
       }
     }
     const destination = quiet
       ? { x: innerWidth * 0.72, y: Math.min(140, innerHeight * 0.3) }
       : this.destination;
-    this.spider.update(quiet ? 0 : dt, this.time, destination, {
+    const spiderOptions: SpiderOptions = {
       ...this.settings,
       reducedMotion: quiet,
       descending: !quiet && this.mode === 'arrive',
       grip,
       selector,
       surface: this.surface,
-      pointer: this.pointer,
+      pointer: this.pointerActive ? this.pointer : undefined,
+      attention: this.hover
+        ? {
+            x: this.hover.target.rect.x + this.hover.target.rect.width / 2,
+            y: this.hover.target.rect.y + this.hover.target.rect.height / 2,
+          }
+        : undefined,
+      pursuing: !!this.candidate && this.candidateSource === 'hover',
+    };
+    this.lastSpiderOptions = spiderOptions;
+    this.spider.update(quiet ? 0 : dt, this.time, destination, {
+      ...spiderOptions,
+      surfaceDelta: this.takeSurfaceDelta(),
     });
     this.spider.render();
     if (this.time >= this.nextTelemetry || quiet) {
-      this.nextTelemetry = this.time + 0.2;
+      this.nextTelemetry = this.time + 0.1;
+      this.updateActivity();
       const canvas = this.root?.querySelector<HTMLCanvasElement>('canvas.visitor');
       if (canvas) {
         const position = this.spider.position;
@@ -843,7 +1232,7 @@ export class Cr4wler {
           ? 'quiet'
           : this.candidate || this.current
             ? 'hunt'
-            : this.settings.followMouse && this.time - this.pointerAt < 4
+            : this.settings.followMouse && this.pointerActive
               ? 'follow'
               : 'explore';
       }

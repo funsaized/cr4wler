@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Cr4wler \u2014 a little web mischief",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Summon a neon spider that borrows the words on your page. Playful, local, and instantly reversible.",
   "minimum_chrome_version": "105",
   "permissions": ["activeTab", "scripting"],

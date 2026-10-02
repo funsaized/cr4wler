@@ -43,8 +43,8 @@ export function fresh(target: Target): boolean {
   return (
     r.width > 12 &&
     r.height > 5 &&
-    r.top > 35 &&
-    r.bottom < innerHeight - 88 &&
+    r.top >= 6 &&
+    r.bottom <= innerHeight - 6 &&
     r.left >= 0 &&
     r.right <= innerWidth
   );
@@ -68,6 +68,135 @@ function nextAfter(node: Node, root: Node, descend: boolean): Node | null {
   }
   return null;
 }
+/** Build one bounded, visible source-line range without changing the page. */
+function targetFromText(text: Text, offsetHint: number, hover = false): Target | null {
+  const element = text.parentElement;
+  if (!element || !eligible(element)) return null;
+  // Cap the text read too; giant source/code nodes are not a useful target.
+  if (text.length < 4 || text.length > 12000) return null;
+  const raw = text.data;
+  let offset = Math.min(offsetHint, Math.max(0, raw.length - 4));
+  while (offset > 0 && !/\s/.test(raw[offset - 1]) && offsetHint - offset < 32) offset--;
+  while (offset < raw.length && /\s/.test(raw[offset])) offset++;
+  let end = Math.min(raw.length, offset + 64);
+  if (end < raw.length) {
+    const space = raw.lastIndexOf(' ', end);
+    if (space > offset + 12) end = space;
+  }
+  while (end > offset && /\s/.test(raw[end - 1])) end--;
+  if (end - offset < 4) return null;
+  const range = document.createRange();
+  range.setStart(text, offset);
+  range.setEnd(text, end);
+  let rects = range.getClientRects();
+  // Long paragraphs often wrap: shorten the candidate until one source line fits.
+  while (rects.length > 1 && end - offset > 9) {
+    end = offset + Math.max(4, Math.floor((end - offset) * 0.68));
+    range.setEnd(text, end);
+    rects = range.getClientRects();
+  }
+  if (rects.length !== 1) return null;
+  const rect = rects[0];
+  if (
+    rect.width < 22 ||
+    rect.width > innerWidth * 0.75 ||
+    rect.height < 5 ||
+    rect.top < (hover ? 6 : 45) ||
+    rect.bottom > innerHeight - (hover ? 6 : 95) ||
+    rect.left < 0 ||
+    rect.right > innerWidth ||
+    rect.height > 110
+  )
+    return null;
+  const style = getComputedStyle(element);
+  if (
+    style.visibility !== 'visible' ||
+    style.opacity === '0' ||
+    style.display === 'none' ||
+    style.color === 'rgba(0, 0, 0, 0)'
+  )
+    return null;
+  // Fully clipped or covered text cannot become an apparent detached floating word.
+  const center = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+  if (center && !element.contains(center) && !center.contains(element)) return null;
+  return {
+    range,
+    element,
+    node: text,
+    text: range.toString(),
+    rect,
+    font: style.font,
+    letterSpacing: style.letterSpacing,
+    color: style.color,
+  };
+}
+
+const identities = new WeakMap<HTMLElement, number>();
+let nextIdentity = 1;
+/** Opaque, session-local element identity: never page text, ids or classes. */
+export function targetIdentity(target: Target): string {
+  let id = identities.get(target.element);
+  if (!id) {
+    id = nextIdentity++;
+    identities.set(target.element, id);
+  }
+  return `t${id}`;
+}
+
+/** Pointer work stays local: at most 100 nodes / 12 measured text ranges.
+ * An excluded hit is a hard boundary; never climb out of a form or editor. */
+export function targetAtPoint(
+  x: number,
+  y: number,
+  available: (target: Target) => boolean,
+): Target | null {
+  const hit = document.elementFromPoint(x, y);
+  if (!(hit instanceof HTMLElement) || !eligible(hit)) return null;
+  const semantic = hit.closest('p,h1,h2,h3,h4,h5,h6,a,li,dt,dd,blockquote,figcaption');
+  let root = semantic instanceof HTMLElement && eligible(semantic) ? semantic : hit;
+  if (root === document.body || root === document.documentElement) return null;
+  // Small inline/image hits can borrow nearby text from a safe local parent.
+  if (
+    (!root.firstChild || root.tagName === 'IMG') &&
+    root.parentElement &&
+    eligible(root.parentElement) &&
+    root.parentElement !== document.body &&
+    root.parentElement !== document.documentElement
+  )
+    root = root.parentElement;
+  const caret = document.caretRangeFromPoint?.(x, y);
+  const caretNode = caret?.startContainer;
+  let best: Target | null = null;
+  let bestDistance = Infinity;
+  let ranges = 0;
+  const offer = (node: Text, offset: number) => {
+    if (++ranges > 12) return;
+    const target = targetFromText(node, offset, true);
+    if (!target || !available(target)) return;
+    const r = target.rect;
+    const distance = Math.hypot(
+      Math.max(r.left - x, 0, x - r.right),
+      Math.max(r.top - y, 0, y - r.bottom),
+    );
+    if (distance <= 90 && distance < bestDistance) {
+      best = target;
+      bestDistance = distance;
+    }
+  };
+  if (caretNode?.nodeType === Node.TEXT_NODE && root.contains(caretNode))
+    offer(caretNode as Text, caret!.startOffset);
+  if (bestDistance <= 12) return best;
+  let node: Node | null = root;
+  for (let seen = 0; node && seen < 100 && ranges < 12; seen++) {
+    const current: Node = node;
+    const allowed = current.nodeType !== Node.ELEMENT_NODE || eligible(current as HTMLElement);
+    node = nextAfter(current, root, allowed);
+    if (allowed && current.nodeType === Node.TEXT_NODE && current !== caretNode)
+      offer(current as Text, 0);
+  }
+  return best;
+}
+
 /** Viewport seeds find deep-page text immediately; the session cursor also explores
  * progressively. At most 1,800 visited nodes / 80 ranges, in ~2ms cooperative slices. */
 export function scanTargets(signal: AbortSignal): Promise<Target[]> {
@@ -119,71 +248,15 @@ export function scanTargets(signal: AbortSignal): Promise<Target[]> {
       node = cursor.next;
     }
     const offer = (text: Text, offsetHint: number) => {
-      const element = text.parentElement;
-      if (!element || !eligible(element)) return;
-      // Cap the text read too; giant source/code nodes are not a useful target.
-      if (text.length < 4 || text.length > 12000) return;
-      const raw = text.data;
-      let offset = Math.min(offsetHint, Math.max(0, raw.length - 4));
-      while (offset > 0 && !/\s/.test(raw[offset - 1]) && offsetHint - offset < 32) offset--;
-      while (offset < raw.length && /\s/.test(raw[offset])) offset++;
-      let end = Math.min(raw.length, offset + 64);
-      if (end < raw.length) {
-        const space = raw.lastIndexOf(' ', end);
-        if (space > offset + 12) end = space;
-      }
-      while (end > offset && /\s/.test(raw[end - 1])) end--;
-      if (end - offset < 4 || used.get(text)?.has(offset)) return;
-      const range = document.createRange();
-      range.setStart(text, offset);
-      range.setEnd(text, end);
-      let rects = range.getClientRects();
-      // Long paragraphs often wrap: shorten the candidate until one source line fits.
-      while (rects.length > 1 && end - offset > 9) {
-        end = offset + Math.max(4, Math.floor((end - offset) * 0.68));
-        range.setEnd(text, end);
-        rects = range.getClientRects();
-      }
-      if (rects.length !== 1) return;
-      const rect = rects[0];
-      if (
-        rect.width < 22 ||
-        rect.width > innerWidth * 0.75 ||
-        rect.height < 5 ||
-        rect.top < 45 ||
-        rect.bottom > innerHeight - 95 ||
-        rect.left < 0 ||
-        rect.right > innerWidth ||
-        rect.height > 110
-      )
-        return;
-      const style = getComputedStyle(element);
-      if (
-        style.visibility !== 'visible' ||
-        style.opacity === '0' ||
-        style.display === 'none' ||
-        style.color === 'rgba(0, 0, 0, 0)'
-      )
-        return;
-      // Fully clipped or covered text cannot become an apparent detached floating word.
-      const center = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
-      if (center && !element.contains(center) && !center.contains(element)) return;
+      const target = targetFromText(text, offsetHint);
+      if (!target || used.get(text)?.has(target.range.startOffset)) return;
       let offsets = used.get(text);
       if (!offsets) {
         offsets = new Set();
         used.set(text, offsets);
       }
-      offsets.add(offset);
-      result.push({
-        range,
-        element,
-        node: text,
-        text: range.toString(),
-        rect,
-        font: style.font,
-        letterSpacing: style.letterSpacing,
-        color: style.color,
-      });
+      offsets.add(target.range.startOffset);
+      result.push(target);
     };
     const slice = () => {
       if (signal.aborted) {

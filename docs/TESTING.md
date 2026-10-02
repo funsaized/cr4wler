@@ -12,11 +12,11 @@ npm run package
 
 ## What each test proves
 
-`npm test` exercises real Chromium DOM and animation behavior in two local fixtures: the night garden and a light reference document containing over 11,000 elements. It checks protected controls, exact source DOM/layout preservation, no observed site actions or requests, pause/resume, Reset/Escape, SPA source replacement, existing page highlights and concurrent edits. Persistent records must survive paused scrolling away and back, resizing, and more than 26 seconds of running time. Deep discovery must reach volume 60. Additional checks cover a measurable lock-before-strike delay, diverse effects, opt-in cursor following, and changing reduced-motion preferences.
+`npm test` exercises real Chromium DOM and animation behavior in two local fixtures: the night garden and light and dark reference documents containing over 11,000 elements. It checks protected controls, exact source DOM/layout preservation, no observed site actions or requests, pause/resume, Reset/Escape, SPA source replacement, existing page highlights and concurrent edits. Persistent records must survive paused scrolling away and back, resizing, and more than 26 seconds of running time. Deep discovery must reach volume 60. Additional checks cover exact hover preemption, pointer jitter and protected targets, three distinct lock/strike timing profiles, diverse effects, bidirectional edge crawling, immediate stopping, manual-scroll priority, and changing reduced-motion preferences.
 
 The packaged content script has a separate idempotency harness with Chrome messaging explicitly mocked. Popup controls are tested with mocked Chrome APIs, including the 600px popup height limit. These two harnesses do **not** prove installation or extension permissions.
 
-`npm run test:extension` loads the actual unmodified MV3 package into a persistent Chromium context through the DevTools extension loader. It verifies scripting is denied before a gesture, triggers Chrome's real toolbar action, and then exercises Summon, Feral, intensity, cursor following, and Pause/Resume through the real popup page and real Chrome APIs. It records a long session on the dense light fixture, scrolls to volume 30 and back, asserts old record IDs return, presses Escape, and compares the source DOM and form values. The recording includes a restored frame. Requests, navigation, site clicks, input/change events and submissions are checked.
+`npm run test:extension` loads the actual unmodified MV3 package into a persistent Chromium context through the DevTools extension loader. It verifies scripting is denied before a gesture, triggers Chrome's real toolbar action, and then exercises Summon, Feral, intensity, cursor following, and Pause/Resume through the real popup page and real Chrome APIs. It records real pointer sessions on both dense light and dark fixtures: an immediate hover redirect, hunts in all three temperaments, top/bottom edge scrolling and center stops, then a paused excursion to volume 30 and back. It asserts old record IDs return, presses Escape, and compares the source DOM and form values. The recording includes a restored frame. Requests, navigation, site clicks, input/change events and submissions are checked.
 
 The popup page is addressed in a browser tab after toolbar activation. Native popup-window opening/closing/focus behavior is still a manual compatibility check; the test does not claim otherwise. No Chrome APIs or permissions are replaced in this installed-extension test.
 
@@ -38,7 +38,7 @@ npm run capture
 node scripts/performance.mjs
 ```
 
-Capture requires a clean committed source tree. It records an actual browser session, screenshots the accumulated composition and return scroll, and measures frame intervals and tasks over 50ms. The separate performance sample omits video and screenshots to distinguish capture overhead. Results describe the tested software-rendered container, not a performance guarantee on every site or device.
+Capture requires a clean committed source tree. It records an actual pointer-controlled browser session, screenshots the accumulated composition and return scroll, and measures input-to-selection response, visible-page frame intervals and tasks over 50ms. The pointer ring is recording instrumentation and follows real pointer events. The separate performance sample omits video and screenshots to distinguish capture overhead. Results describe the tested software-rendered container, not a performance guarantee on every site or device.
 
 The record cap is 512. DOM projection is capped at 72 records and 16 shards per record; excess visible settled marks share one canvas. The automated ordinary-session tests do not exhaust all 512 records or certify pathological layouts. Use representative pages and Chrome's Performance panel for a broader release gate.
 
@@ -52,7 +52,9 @@ The record cap is 512. DOM projection is capped at 72 records and 16 shards per 
 - Change the OS reduced-motion preference during a session. New hunts stop; existing marks remain still until Reset.
 - Inspect permission and network panels. There are no host permissions or runtime network services.
 
-## Release evidence
+## Previous release evidence (v0.2)
+
+The v0.3 implementation and test scenario are above. The following captures belong to v0.2 and will be replaced by source-bound v0.3 captures in the release evidence commit.
 
 Runtime source: `1dd4e83a94a63fad6762c1b5c81c8834cec2abf2`. Later evidence commits change documentation and captured assets only.
 
