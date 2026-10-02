@@ -1,91 +1,162 @@
 {
-  "capture": {
-    "sourceCommit": "f9f276ef95e50e91b9af054b102113bb60dad467",
+  "sourceCommit": "dc2d77e814a72d151ca1cba935c1cf24675e9f8c",
+  "runtimeSourceCommit": "88f7d9ee68a28e97e111d0654bbc5c7c19b5a757",
+  "runtimeSourceTree": "fb5dd3b0f04055f2d0228a7888c04f372cde157d",
+  "runtimeChanged": false,
+  "captureCiRun": "https://github.com/funsaized/cr4wler/actions/runs/37044012741",
+  "buildAndInstalledExtensionCiRun": "https://github.com/funsaized/cr4wler/actions/runs/37044012537",
+  "sourceArtifacts": {
+    "evidence": 11243927386,
+    "losslessSourceParts": [11243252723, 11243387814]
+  },
+  "installedExtensionCapture": {
+    "sourceCommit": "dc2d77e814a72d151ca1cba935c1cf24675e9f8c",
     "runtimeSourceTree": "fb5dd3b0f04055f2d0228a7888c04f372cde157d",
     "surface": "Actual installed MV3 extension on its real public GitHub repository",
     "url": "https://github.com/funsaized/cr4wler",
     "freshSignedOutProfile": true,
-    "viewport": {
-      "width": 1200,
-      "height": 1000
+    "window": {
+      "width": 1440,
+      "height": 1080
+    },
+    "capture": {
+      "method": "FFmpeg x11grab of the actual headed Chromium window",
+      "requestedFps": 30,
+      "codec": "Lossless RGB H.264 (CRF 0)",
+      "includesNativeTabsAndAddressBar": true,
+      "command": [
+        "-y",
+        "-hide_banner",
+        "-loglevel",
+        "warning",
+        "-f",
+        "x11grab",
+        "-framerate",
+        "30",
+        "-video_size",
+        "1440x1080",
+        "-draw_mouse",
+        "0",
+        "-i",
+        ":99",
+        "-c:v",
+        "libx264rgb",
+        "-preset",
+        "fast",
+        "-tune",
+        "zerolatency",
+        "-crf",
+        "0",
+        "-threads",
+        "2",
+        "-pix_fmt",
+        "rgb24",
+        "-fps_mode",
+        "passthrough",
+        "-progress",
+        "pipe:1",
+        "artifacts/github-demo/window-source.mkv"
+      ],
+      "sourceBytes": 34272821,
+      "sourceSha256": "fee371a52811d35182f9967b575625d597135db13f87289f7682b6ae518c2078",
+      "measuredCadence": {
+        "frames": 1094,
+        "durationSeconds": 36.433,
+        "averageFps": 30.000274476436196,
+        "medianIntervalMs": 33.00000000000125,
+        "p95IntervalMs": 34.00000000000247,
+        "maximumIntervalMs": 65.99999999999895,
+        "timing": "Actual X11 capture timestamps; passthrough encoding, no frame interpolation."
+      }
     },
     "passed": true,
     "timeline": [
       {
         "stage": "summon-feral-max",
-        "atSeconds": 5.273
+        "atSeconds": 0
       },
       {
         "stage": "feral-manual-scroll",
-        "atSeconds": 7.252
+        "atSeconds": 3.583
       },
       {
         "stage": "switch-curious-follow-on",
-        "atSeconds": 16.402
+        "atSeconds": 12.674
       },
       {
         "stage": "curious-hover-1",
-        "atSeconds": 16.693
+        "atSeconds": 14.754
       },
       {
         "stage": "curious-hover-2",
-        "atSeconds": 19.679
+        "atSeconds": 17.262
       },
       {
         "stage": "curious-pointer-bottom-edge",
-        "atSeconds": 22.426
+        "atSeconds": 20.24
       },
       {
         "stage": "curious-hover-3",
-        "atSeconds": 27.572
+        "atSeconds": 25.335
       },
       {
         "stage": "curious-pointer-top-edge",
-        "atSeconds": 30.005
+        "atSeconds": 28.522
       },
       {
         "stage": "persistent-aftermath-returned",
-        "atSeconds": 36.128
+        "atSeconds": 34.887
       }
     ],
     "hoverTargets": [
       {
         "index": 0,
-        "x": 73.671875,
-        "y": 514.234375,
+        "x": 145.671875,
+        "y": 418.234375,
         "text": "Development"
       },
       {
         "index": 1,
-        "x": 70.78125,
-        "y": 415.234375,
-        "text": "Nothing is clicked, submitted, fetched, uploaded, or stored. All fragment text l"
+        "x": 220.25,
+        "y": 615.9375,
+        "text": " runs real Chromium DOM/interaction tests, a packaged content-script harness wit"
       },
       {
         "index": 2,
-        "x": 70.78125,
-        "y": 471.84375,
-        "text": "Discovery combines viewport hit testing with a progressive document cursor. Each"
+        "x": 145.0078125,
+        "y": 582.84375,
+        "text": "POC boundaries"
       }
     ],
+    "nativeWindowBounds": {
+      "left": 0,
+      "top": 0,
+      "width": 1439,
+      "height": 1079,
+      "windowState": "normal"
+    },
+    "viewport": {
+      "width": 1439,
+      "height": 992
+    },
     "theme": {
       "colorMode": "auto",
       "darkTheme": "dark",
       "prefersDark": true,
       "background": "rgb(13, 17, 23)"
     },
-    "startScrollY": 2597,
-    "clipStartSeconds": 5.273,
+    "startScrollY": 2664,
+    "clipStartSeconds": 0,
     "manualScroll": {
-      "initial": 2597,
-      "after": 3977
+      "initial": 2664,
+      "after": 4044
     },
-    "clipEndSeconds": 36.128,
+    "clipEndSeconds": 34.887,
     "pointerScroll": {
-      "initial": 3977,
-      "advanced": 4834,
-      "stopped": 4846,
-      "returned": 3975
+      "initial": 4044,
+      "advanced": 4975,
+      "stopped": 5005,
+      "returned": 4049
     },
     "browser": "153.0.8010.12",
     "hostAudit": {
@@ -94,166 +165,166 @@
       "personalities": ["feral", "curious"]
     },
     "rig": {
-      "samples": 1798,
-      "maxReachRatio": 0.9999298981033288,
-      "maxBoneRatio": 0.9312804130947424,
+      "samples": 1959,
+      "maxReachRatio": 0.9999962461303826,
+      "maxBoneRatio": 0.9296707028285295,
       "finite": true,
       "recoveries": [
         {
           "type": "jumping spider",
           "phase": "none",
           "reason": "",
-          "at": 5387.1
+          "at": 7278.7
         },
         {
           "type": "jumping spider",
           "phase": "anticipate",
           "reason": "scroll",
-          "at": 7236.9
+          "at": 9128.6
         },
         {
           "type": "jumping spider",
           "phase": "flight",
           "reason": "scroll",
-          "at": 7287
+          "at": 9178.6
         },
         {
           "type": "jumping spider",
           "phase": "land",
           "reason": "scroll",
-          "at": 7437
+          "at": 9328.5
         },
         {
           "type": "jumping spider",
           "phase": "none",
           "reason": "",
-          "at": 7536.9
+          "at": 9411.9
         },
         {
           "type": "jumping spider",
           "phase": "anticipate",
           "reason": "scroll",
-          "at": 8420.2
+          "at": 10311.9
         },
         {
           "type": "jumping spider",
           "phase": "flight",
           "reason": "scroll",
-          "at": 8470.3
+          "at": 10361.8
         },
         {
           "type": "jumping spider",
           "phase": "land",
           "reason": "scroll",
-          "at": 8620.2
+          "at": 10511.9
         },
         {
           "type": "jumping spider",
           "phase": "none",
           "reason": "",
-          "at": 8703.6
+          "at": 10611.9
         },
         {
           "type": "jumping spider",
           "phase": "anticipate",
           "reason": "scroll",
-          "at": 9603.5
+          "at": 11495.2
         },
         {
           "type": "jumping spider",
           "phase": "flight",
           "reason": "scroll",
-          "at": 9653.5
+          "at": 11545.2
         },
         {
           "type": "jumping spider",
           "phase": "land",
           "reason": "scroll",
-          "at": 9803.6
+          "at": 11695.2
         },
         {
           "type": "jumping spider",
           "phase": "none",
           "reason": "",
-          "at": 9886.9
+          "at": 11795.2
         },
         {
           "type": "jumping spider",
           "phase": "anticipate",
           "reason": "scroll",
-          "at": 10786.8
+          "at": 12678.5
         },
         {
           "type": "jumping spider",
           "phase": "flight",
           "reason": "scroll",
-          "at": 10836.8
+          "at": 12728.5
         },
         {
           "type": "jumping spider",
           "phase": "land",
           "reason": "scroll",
-          "at": 10986.8
+          "at": 12878.4
         },
         {
           "type": "jumping spider",
           "phase": "none",
           "reason": "",
-          "at": 11070.1
+          "at": 12978.5
         },
         {
           "type": "jumping spider",
           "phase": "anticipate",
           "reason": "scroll",
-          "at": 11986.7
+          "at": 13861.7
         },
         {
           "type": "jumping spider",
           "phase": "flight",
           "reason": "scroll",
-          "at": 12020.1
+          "at": 13911.7
         },
         {
           "type": "jumping spider",
           "phase": "land",
           "reason": "scroll",
-          "at": 12170.1
+          "at": 14061.8
         },
         {
           "type": "jumping spider",
           "phase": "none",
           "reason": "",
-          "at": 12270.1
+          "at": 14145.1
         },
         {
           "type": "jumping spider",
           "phase": "anticipate",
           "reason": "hunt",
-          "at": 14703.3
+          "at": 17078.3
         },
         {
           "type": "jumping spider",
           "phase": "flight",
           "reason": "hunt",
-          "at": 14753.3
+          "at": 17128.3
         },
         {
           "type": "jumping spider",
           "phase": "land",
           "reason": "hunt",
-          "at": 14903.3
+          "at": 17278.3
         },
         {
           "type": "jumping spider",
           "phase": "none",
           "reason": "",
-          "at": 15003.3
+          "at": 17378.3
         },
         {
           "type": "widow",
           "phase": "none",
           "reason": "",
-          "at": 16436.6
+          "at": 19211.5
         }
       ],
       "types": ["jumping spider", "widow"]
@@ -261,255 +332,291 @@
     "phases": [
       {
         "phase": "arrive",
-        "at": 5337
+        "at": 7212
       },
       {
         "phase": "scan",
-        "at": 5737
+        "at": 7612
       },
       {
         "phase": "lock",
-        "at": 6587
+        "at": 8661.9
       },
       {
         "phase": "strike",
-        "at": 6670.3
+        "at": 8745.3
       },
       {
         "phase": "aftermath",
-        "at": 6853.6
+        "at": 8928.7
       },
       {
         "phase": "scan",
-        "at": 6953.7
-      },
-      {
-        "phase": "lock",
-        "at": 7220.3
+        "at": 9028.6
       },
       {
         "phase": "recover",
-        "at": 7236.9
+        "at": 9128.6
       },
       {
         "phase": "scan",
-        "at": 7553.6
+        "at": 9428.5
       },
       {
         "phase": "lock",
-        "at": 7853.6
-      },
-      {
-        "phase": "strike",
-        "at": 7936.9
-      },
-      {
-        "phase": "aftermath",
-        "at": 8120.2
-      },
-      {
-        "phase": "scan",
-        "at": 8220.3
+        "at": 10295.2
       },
       {
         "phase": "recover",
-        "at": 8420.2
+        "at": 10311.9
       },
       {
         "phase": "scan",
-        "at": 8720.2
+        "at": 10628.6
       },
       {
         "phase": "lock",
-        "at": 9270.2
+        "at": 11195.1
       },
       {
         "phase": "strike",
-        "at": 9353.6
+        "at": 11278.5
       },
       {
         "phase": "aftermath",
-        "at": 9536.9
+        "at": 11461.9
       },
       {
         "phase": "recover",
-        "at": 9603.5
+        "at": 11495.2
       },
       {
         "phase": "scan",
-        "at": 9903.5
+        "at": 11811.8
       },
       {
         "phase": "lock",
-        "at": 10453.5
+        "at": 12495.1
       },
       {
         "phase": "strike",
-        "at": 10536.8
-      },
-      {
-        "phase": "aftermath",
-        "at": 10720.2
+        "at": 12578.4
       },
       {
         "phase": "recover",
-        "at": 10786.8
+        "at": 12678.5
       },
       {
         "phase": "scan",
-        "at": 11086.8
+        "at": 12995.1
       },
       {
         "phase": "lock",
-        "at": 11786.7
+        "at": 13611.8
       },
       {
         "phase": "strike",
-        "at": 11870.1
+        "at": 13695
       },
       {
         "phase": "recover",
-        "at": 11986.7
+        "at": 13861.7
       },
       {
         "phase": "scan",
-        "at": 12286.7
+        "at": 14161.7
       },
       {
         "phase": "lock",
-        "at": 12886.7
+        "at": 14778.4
       },
       {
         "phase": "strike",
-        "at": 12970
+        "at": 14861.7
       },
       {
         "phase": "aftermath",
-        "at": 13153.4
+        "at": 15045.1
       },
       {
         "phase": "scan",
-        "at": 13253.4
+        "at": 15145.1
       },
       {
         "phase": "lock",
-        "at": 13570
+        "at": 15345.1
       },
       {
         "phase": "strike",
-        "at": 13653.4
+        "at": 15428.4
       },
       {
         "phase": "aftermath",
-        "at": 13836.7
+        "at": 15611.6
       },
       {
         "phase": "scan",
-        "at": 13936.7
+        "at": 15711.7
       },
       {
         "phase": "lock",
-        "at": 14203.4
+        "at": 15961.7
       },
       {
         "phase": "strike",
-        "at": 14286.6
+        "at": 16044.9
       },
       {
         "phase": "aftermath",
-        "at": 14470
+        "at": 16228.3
       },
       {
         "phase": "scan",
-        "at": 14570
+        "at": 16328.3
       },
       {
         "phase": "lock",
-        "at": 15070
+        "at": 16578.3
       },
       {
         "phase": "strike",
-        "at": 15153.3
+        "at": 16661.7
       },
       {
         "phase": "aftermath",
-        "at": 15336.6
+        "at": 16845
       },
       {
         "phase": "scan",
-        "at": 15436.6
+        "at": 16945
       },
       {
         "phase": "lock",
-        "at": 15753.3
+        "at": 17444.9
       },
       {
         "phase": "strike",
-        "at": 15836.7
+        "at": 17528.3
       },
       {
         "phase": "aftermath",
-        "at": 16020
+        "at": 17711.6
       },
       {
         "phase": "scan",
-        "at": 16119.9
+        "at": 17811.6
       },
       {
         "phase": "lock",
-        "at": 16486.6
-      },
-      {
-        "phase": "scan",
-        "at": 16653.2
-      },
-      {
-        "phase": "lock",
-        "at": 18086.5
+        "at": 18061.6
       },
       {
         "phase": "strike",
-        "at": 18286.5
+        "at": 18178.2
       },
       {
         "phase": "aftermath",
-        "at": 18603.1
+        "at": 18361.6
       },
       {
         "phase": "scan",
-        "at": 18886.5
+        "at": 18461.6
       },
       {
         "phase": "lock",
-        "at": 20836.4
+        "at": 18761.5
       },
       {
         "phase": "strike",
-        "at": 21053.1
+        "at": 18844.9
       },
       {
         "phase": "aftermath",
-        "at": 21353.1
+        "at": 19028.2
       },
       {
         "phase": "scan",
-        "at": 21636.4
+        "at": 19128.2
       },
       {
         "phase": "lock",
-        "at": 27352.8
+        "at": 19694.9
       },
       {
         "phase": "strike",
-        "at": 27552.8
+        "at": 19911.5
       },
       {
         "phase": "aftermath",
-        "at": 27869.5
+        "at": 20228.2
       },
       {
         "phase": "scan",
-        "at": 28152.8
+        "at": 20511.5
+      },
+      {
+        "phase": "lock",
+        "at": 21228.1
+      },
+      {
+        "phase": "strike",
+        "at": 21444.7
+      },
+      {
+        "phase": "aftermath",
+        "at": 21744.8
+      },
+      {
+        "phase": "scan",
+        "at": 22028.1
+      },
+      {
+        "phase": "lock",
+        "at": 24211.3
+      },
+      {
+        "phase": "strike",
+        "at": 24428
+      },
+      {
+        "phase": "aftermath",
+        "at": 24728
+      },
+      {
+        "phase": "scan",
+        "at": 25011.3
+      },
+      {
+        "phase": "lock",
+        "at": 30577.8
+      },
+      {
+        "phase": "strike",
+        "at": 30794.4
+      },
+      {
+        "phase": "aftermath",
+        "at": 31094.4
+      },
+      {
+        "phase": "scan",
+        "at": 31211
+      },
+      {
+        "phase": "lock",
+        "at": 32261
+      },
+      {
+        "phase": "strike",
+        "at": 32477.6
+      },
+      {
+        "phase": "aftermath",
+        "at": 32777.7
+      },
+      {
+        "phase": "scan",
+        "at": 33061
       }
     ],
     "effects": ["shear", "scatter", "erase", "disassemble", "peel"],
@@ -520,119 +627,235 @@
       "submit": 0
     },
     "exactRestore": true,
-    "errors": []
+    "errors": [],
+    "framePacing": {
+      "samples": 2100,
+      "medianMs": 16.69999999999891,
+      "p95Ms": 16.799999999999272,
+      "longTasks": [
+        {
+          "at": 7212.699999999997,
+          "duration": 71
+        },
+        {
+          "at": 17995.199999999997,
+          "duration": 55
+        },
+        {
+          "at": 18087.699999999997,
+          "duration": 54
+        },
+        {
+          "at": 33795.8,
+          "duration": 65
+        },
+        {
+          "at": 33915.59999999999,
+          "duration": 79
+        },
+        {
+          "at": 40377.7,
+          "duration": 52
+        },
+        {
+          "at": 40490.90000000001,
+          "duration": 72
+        }
+      ]
+    }
   },
-  "sourceVideo": {
-    "name": "github-demo.webm",
-    "bytes": 4928853,
-    "durationSeconds": 38.44,
-    "dimensions": [1200, 1000],
-    "fps": 25,
-    "sha256": "09fd3604f513d8cf65453d20b5f8cd35e0484ae01887756de141bfdaf5d8df38",
-    "ciRun": "https://github.com/funsaized/cr4wler/actions/runs/37037501450",
-    "artifactId": 11241341735
-  },
-  "runtimeSourceCommit": "88f7d9ee68a28e97e111d0654bbc5c7c19b5a757",
   "gif": {
     "path": "docs/cr4wler-demo.gif",
-    "durationMs": 30900,
-    "frames": 309,
-    "fps": 10,
-    "dimensions": [720, 783],
+    "durationMs": 32920,
+    "frames": 816,
+    "nominalFps": 25,
+    "encodedAverageFps": 24.787363304981774,
+    "delayHistogramMs": {
+      "40": 811,
+      "80": 3,
+      "120": 2
+    },
+    "dimensions": [1200, 900],
     "loop": 0,
-    "gifBytes": 15814747,
-    "sha256": "92070a08b58eaad60626d07f8a7688f1b5fe9af29c93f0ef55dca2057a060e9a",
-    "sourceClipSeconds": [5.273, 36.128],
-    "crop": [920, 1000, 16, 0],
-    "scaleWidth": 720,
-    "paletteColors": 64,
-    "dither": "none",
-    "gifsicle": "1.96 -O3 --lossy=80",
-    "retiming": "None; real elapsed-time sampling at 10fps."
+    "bytes": 34023129,
+    "sha256": "45ce3a8f8c31aaf449859e5c3e497b0e0d7de4bce0ddc20bf6ba3ba480a83107",
+    "sourceClipSeconds": [2, 34.887],
+    "crop": "None; entire 1440\u00d71080 desktop containing the whole native Chromium window.",
+    "scaleWidth": 1200,
+    "paletteColors": 256,
+    "paletteStatsMode": "diff",
+    "dither": "bayer, scale 3",
+    "optimization": "gifsicle 1.96 -O3; lossless optimization, no lossy flag.",
+    "retiming": "None. 25fps real-time sampling of measured 30fps source; identical still frames combined without changing their total duration. No interpolation.",
+    "setupTrim": "Exactly 2.000s removed from the beginning; all retained decoded RGB frames and delays verified identical.",
+    "reviewSheets": 17
   },
   "webm": {
     "path": "docs/github-demo.webm",
-    "bytes": 12694667,
-    "durationSeconds": 30.88,
-    "dimensions": [1200, 1000],
-    "fps": 25,
-    "sha256": "c205167793ba6f00311b0e5cbf962613c32d62556f6db8978533f2b975db06c6",
-    "conversion": "Continuous source excerpt 5.273\u201336.128 seconds, VP9 CRF 22, no speed changes."
+    "bytes": 15545835,
+    "durationSeconds": 32.9,
+    "dimensions": [1440, 1080],
+    "frames": 987,
+    "encodedFps": 30,
+    "encodedAverageFps": 30.0,
+    "pixelFormat": "yuv444p",
+    "codec": "VP9 CRF 16, 4:4:4 chroma, BT.709",
+    "sha256": "db7b75d9209999e0a9ced21ce2e13677b292c61dcc2ddcf772b7c614b1394131",
+    "sourceClipSeconds": [2, 34.887],
+    "retiming": "None; original captured timestamps, no interpolation.",
+    "reviewSheets": 21
   },
-  "visualReview": {
-    "framesReviewed": 309,
-    "method": "All decoded final GIF frames inspected in 20 numbered contact sheets; original full-viewport screenshots and real popup control screenshots also inspected. Final GIF playback screenshots reviewed across two loop boundaries.",
-    "content": "Public GitHub README in a fresh signed-out profile; no account chrome or private page content.",
-    "oneVisitorThroughout": true,
-    "personalityChange": "Intentional Feral at maximum intensity to Curious with Follow ON through actual popup.",
-    "noCutsResummonsOrResetsInExcerpt": true,
-    "pageInteraction": "Autonomous feeding, five real wheel gestures, three hovered text targets, bottom-edge scrolling, top-edge return, and persistent aftermath.",
-    "loop": "Ordinary infinite repeat of a continuous excerpt; the loop returns to its beginning.",
-    "webmReview": "Same source interval at full viewport; original source screenshots and GIF sequence reviewed. The WebM was not individually reviewed at every 25fps frame."
+  "colorDiagnosis": {
+    "rootCause": "The 64-color global GIF palette removed the bright chromatic accents before lossy optimization. The original video and runtime colors remain vivid. The 10fps 720px export additionally reduced motion cadence and detail.",
+    "originalSourceSample": {
+      "dimensions": [1200, 1000],
+      "maxChroma": 175,
+      "brightPixels": 76011,
+      "brightColorfulPixels": 14482,
+      "brightColorfulShare": 0.19052505558406022,
+      "uniqueColors": 83636
+    },
+    "originalGifSample": {
+      "dimensions": [720, 783],
+      "maxChroma": 31,
+      "brightPixels": 49869,
+      "brightColorfulPixels": 0,
+      "brightColorfulShare": 0.0,
+      "uniqueColors": 63
+    },
+    "unoptimized64ColorGif": {
+      "name": "compact.gif",
+      "brightColorfulPixels": 0,
+      "maxChroma": 31
+    },
+    "paletteEntriesBefore": 64,
+    "paletteEntriesAfter": 256,
+    "finding": "Neon colors were present in the original video and runtime. The 64-color palette had already removed bright chromatic accents before lossy GIF optimization."
   },
-  "gifPlayback": {
-    "purpose": "Final GIF playback across two loop boundaries; not extension installation.",
-    "browser": "151.0.7922.173",
-    "elapsedMs": 65145,
+  "colorComparison": {
+    "method": "Matched lossless RGB source frames at 10, 20 and 30 seconds, Lanczos-scaled to 1200x900, against final GIF at 8, 18 and 28 seconds. Below native browser UI, source chroma >50 and maximum channel >110; color retained when GIF chroma >35. RGB errors are on 0-255 channels.",
     "samples": [
       {
-        "atMs": 186,
-        "sha256": "1fc95fb7723d8e27e00d4293f4ad5a899017edc86fd6b5a62a684ab34d8b939c"
+        "gifFrame": 200,
+        "sourceBrightColorfulPixels": 36670,
+        "colorRetainedShare": 0.9972184346877556,
+        "meanAbsoluteRgbErrorOnColorfulPixels": 5.744195982183438,
+        "gifBrightColorfulPixels": 37311,
+        "sourceAtSeconds": 10,
+        "gifAtSeconds": 8
       },
       {
-        "atMs": 5124,
-        "sha256": "fec6f07d868071594960562ce653bb266cf95e456505760e7bbdf0fce65ad224"
+        "gifFrame": 449,
+        "sourceBrightColorfulPixels": 37355,
+        "colorRetainedShare": 0.9964663365011377,
+        "meanAbsoluteRgbErrorOnColorfulPixels": 6.18680230223531,
+        "gifBrightColorfulPixels": 37942,
+        "sourceAtSeconds": 20,
+        "gifAtSeconds": 18
       },
       {
-        "atMs": 10124,
-        "sha256": "bb46e135f6f21c938828f57fdf1ad253ef74023acce3178bb3e23203005cd575"
-      },
-      {
-        "atMs": 15151,
-        "sha256": "bfa20dc81ccdf84ffc54aad93d7a77370905a0dc3e5875f52cf6b5031664fe6c"
-      },
-      {
-        "atMs": 20156,
-        "sha256": "2b1eab87e5f20c93556dad5af440d9140a08a7a92980b2f97e4b2a64f3fe1ff0"
-      },
-      {
-        "atMs": 25165,
-        "sha256": "68a37484ab0ba8192d97a281e971c55082d702a097c41b3b8c51949b45c2504b"
-      },
-      {
-        "atMs": 30142,
-        "sha256": "7f7fae8af628bc6bd37c5453afb3930916b54ea91f4ecfc942b10316ff1405b3"
-      },
-      {
-        "atMs": 35125,
-        "sha256": "5f515f2fefbe7053d3b8aa60831118e9ee316c3b11f186e5377bb109fdf30411"
-      },
-      {
-        "atMs": 40151,
-        "sha256": "40934e132be9e98ee27f521a038411d15c29cfeb1b988f99a743713b2a414e21"
-      },
-      {
-        "atMs": 45254,
-        "sha256": "360ffa860076b1368eb4d8f455b36be73fb5eb1052de2b4659a89eaf16062745"
-      },
-      {
-        "atMs": 50213,
-        "sha256": "98c578f4db3b9910e53ce49f2edeb07d43d0d34c216e2a295c8cee751cf7f21e"
-      },
-      {
-        "atMs": 55142,
-        "sha256": "7b8725f69cfcc92376686595ebf5250eee8da4d52307c9424ad698bf68aba0ba"
-      },
-      {
-        "atMs": 60158,
-        "sha256": "ad3fe48838f769f65eb203ea5f4d3b6872323567e095d777943ccf75e7d5d1f9"
-      },
-      {
-        "atMs": 65144,
-        "sha256": "b17aacb359c9d20feba0f4101aa7f7a2a1d1b8ab2099ab3dfc3e187a88c36f5c"
+        "gifFrame": 695,
+        "sourceBrightColorfulPixels": 38098,
+        "colorRetainedShare": 0.99690272455247,
+        "meanAbsoluteRgbErrorOnColorfulPixels": 5.599471538313472,
+        "gifBrightColorfulPixels": 38739,
+        "sourceAtSeconds": 30,
+        "gifAtSeconds": 28
       }
-    ],
-    "uniqueSampleCount": 14,
-    "requests": []
+    ]
+  },
+  "visualReview": {
+    "gifFramesReviewed": 816,
+    "gifContactSheets": 17,
+    "webmFramesReviewed": 987,
+    "webmContactSheets": 21,
+    "method": "Every decoded final GIF and WebM frame inspected in numbered contact sheets; native full-resolution first/last GIF and video playback screenshots also inspected. Final GIF played for 70 seconds across two ordinary loop boundaries.",
+    "includesNativeTabsAndAddressBar": true,
+    "spatialCrop": false,
+    "profile": "Fresh signed-out Chromium, public owner repository. No secrets or private account content captured.",
+    "oneVisitorThroughout": true,
+    "personalityChange": "Feral at maximum intensity to Curious with Follow ON through the real extension popup API.",
+    "noCutsResummonsOrResetsInExcerpt": true,
+    "setupTrim": "Removed exactly the first 2.000 seconds of setup. All retained GIF decoded RGB frames and durations verified identical to the pretrim encode.",
+    "loop": "Ordinary infinite repeat; returns to the beginning of the continuous excerpt.",
+    "limitations": "Source averaged 30.0003fps with a maximum 66ms capture interval and occasional 52-79ms browser long tasks. This is not a 60fps recording. GIF sampling is 25fps; identical still frames are losslessly combined, giving 24.79 encoded frames per second. No interpolation or speed changes."
+  },
+  "playback": {
+    "gif": {
+      "purpose": "Final full-window GIF playback across two ordinary loop boundaries; not extension installation.",
+      "browser": "151.0.7922.173",
+      "elapsedMs": 70148,
+      "samples": [
+        {
+          "atMs": 221,
+          "sha256": "9a3ef31fb2e57ca9cfbd6a97501bfdb24654da73d3981d8e438ebc8d468ae3d5"
+        },
+        {
+          "atMs": 5101,
+          "sha256": "b69e9e14f64375d5992e68ac29a79145dba3d770e07a8d90316b5ebbd93d8aa0"
+        },
+        {
+          "atMs": 10170,
+          "sha256": "09337bde21b151b73a77d2b062d1e3669e5f5e1ebda0cb8ffbe6079b18a11238"
+        },
+        {
+          "atMs": 15128,
+          "sha256": "2df8148ab68a578fa86828491d1b83940814a2e6899268e4150c3b51a83441d3"
+        },
+        {
+          "atMs": 20117,
+          "sha256": "737b0eea46d1eb3fda33a04c047d29663aacc6c491a21e436f966b5f8e94ca8d"
+        },
+        {
+          "atMs": 25124,
+          "sha256": "33fb11105ad44f1e0e81f92d3971b329efa565d28a91bbf4dc9b8ca0cc79027b"
+        },
+        {
+          "atMs": 30144,
+          "sha256": "65fe1bad0822b5e517919801900c463228b896116f252d0feb36711a1566de32"
+        },
+        {
+          "atMs": 35124,
+          "sha256": "6bba2f50f7ba90bc112aa9aada62035d7319167a11071c8dc6ad6de81942f2da"
+        },
+        {
+          "atMs": 40117,
+          "sha256": "ee7f30a38be9d8e55b629cd58c6aae5f8a852abebd975f38cc824592d6bb1bb5"
+        },
+        {
+          "atMs": 45116,
+          "sha256": "ac4aebdf1f4801b0d42fa7696f455fb032d9bf8ec5e93c8e8f6c75c855a40bcd"
+        },
+        {
+          "atMs": 50137,
+          "sha256": "0b4c8ecd17c8bcebadfbfa7a7925174f4b571d7a2669a1d850b1d2c526f764b3"
+        },
+        {
+          "atMs": 55128,
+          "sha256": "cb660c06967099b5ff51ba4d6ef80d8d12e68024ef3b9b187959d320dbba2153"
+        },
+        {
+          "atMs": 60144,
+          "sha256": "e9f647d969c6674cd45dbd8db93b5b118af4e4d239eab022079f89a3285fef6b"
+        },
+        {
+          "atMs": 65123,
+          "sha256": "b7156e2ebf6500e7a990ef9236793486a1236ee95fd0419502a3b6aa812c327c"
+        },
+        {
+          "atMs": 70145,
+          "sha256": "200431ca747068b0394063739eaeebcdab9bc593612b6c02c746b0ae31dda5a8"
+        }
+      ],
+      "uniqueSampleCount": 15,
+      "requests": []
+    },
+    "video": {
+      "duration": 32.9,
+      "width": 1440,
+      "height": 1080,
+      "paused": false,
+      "error": null
+    }
   }
 }

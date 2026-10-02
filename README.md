@@ -4,9 +4,9 @@
 
 cr4wler is a Chrome extension for the sake of _whimsey_ that climbs over a real page, locks onto phrases with a head-mounted beam, 'eats' its typography. A persistent composition accumulates as you scroll. The original page stays in place. Press **Escape** and everything returns immediately.
 
-![cr4wler on its GitHub README: Feral at maximum intensity, then Curious with cursor following.](docs/cr4wler-demo.gif)
+![Full Chromium window: cr4wler in neon color, Feral at maximum intensity, then Curious following the cursor.](docs/cr4wler-demo.gif)
 
-[Watch the night-archive demo](docs/demo.webm) · [Installed extension: daylight](docs/extension-demo.webm) · [Installed extension: night](docs/extension-night-demo.webm) · [Privacy](PRIVACY.md) · [Testing and limitations](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
+[Full browser demo · 30fps](docs/github-demo.webm) · [Watch the night-archive demo](docs/demo.webm) · [Installed extension: daylight](docs/extension-demo.webm) · [Installed extension: night](docs/extension-night-demo.webm) · [Privacy](PRIVACY.md) · [Testing and limitations](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
 
 ## Try it
 
