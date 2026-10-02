@@ -1,0 +1,30 @@
+{
+  "sourceCommit": "27e939736b87480f17401a7415d92416ad45e4eb",
+  "hoverSmoke": {
+    "selectionLatencyMsUpperBound": 70,
+    "dreamyCandidateLatencyMsUpperBound": 230,
+    "unsafeFormExcluded": true,
+    "manualWheelNeedsFreshIntent": true,
+    "blurFocusDoesNotRearm": true,
+    "exactRestore": true
+  },
+  "atomicSmoke": {
+    "dreamyStrikeBudgetMs": 420,
+    "latestPendingHoverWins": true,
+    "earlierPendingNotStruck": true,
+    "edgeRestTravelPx": 1800,
+    "reducedMotionStopsHuntsAndEdge": true
+  },
+  "scrollContact": {
+    "frames": 103,
+    "steps": 28,
+    "maxPlantedPageSlipPx": 0,
+    "plantedPairs": 483,
+    "minContacts": 5,
+    "bodyTravelPx": 3.2839969213774323,
+    "scrollTravelPx": 618,
+    "pausedScrollTranslatedPx": 80,
+    "pausedGaitUnchanged": true,
+    "pausedBodyUnchanged": true
+  }
+}

@@ -1,226 +1,432 @@
 {
-  "sourceCommit": "1dd4e83a94a63fad6762c1b5c81c8834cec2abf2",
-  "surface": "Actual installed unpacked extension; real Chrome APIs; CDP toolbar action",
+  "sourceCommit": "27e939736b87480f17401a7415d92416ad45e4eb",
+  "surface": "Actual installed unpacked extension; real Chrome APIs; CDP toolbar action; pointer-driven dense fixtures",
   "passed": true,
-  "persistentRecordIds": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
-  "effects": ["peel", "scatter", "shear", "disassemble", "erase"],
-  "phases": [
+  "sessions": [
     {
-      "phase": "arrive",
-      "at": 943.9
+      "theme": "light",
+      "pointerInstrumentation": "Visible ring follows actual pointer events. No Chrome APIs mocked.",
+      "hoverPreemption": {
+        "abandoned": "reference-target-8-13",
+        "next": "reference-target-8-4",
+        "originalPoint": {
+          "x": 521.9453125,
+          "y": 706.0625
+        },
+        "redirectedPoint": {
+          "x": 515.8046875,
+          "y": 227.375
+        }
+      },
+      "edgeScroll": {
+        "initial": 12625,
+        "advanced": 13372,
+        "returned": 12806,
+        "centerStops": true
+      },
+      "persistentRecordIds": ["1", "2", "3", "4", "5"],
+      "responses": [
+        {
+          "target": "reference-target-8-13",
+          "personality": "feral",
+          "inputToSelectionMs": 42.59999999997672
+        },
+        {
+          "target": "reference-target-8-4",
+          "personality": "feral",
+          "inputToSelectionMs": 1
+        },
+        {
+          "target": "reference-target-8-9",
+          "personality": "feral",
+          "inputToSelectionMs": 43.19999999998254
+        },
+        {
+          "target": "reference-target-8-16",
+          "personality": "feral",
+          "inputToSelectionMs": 30.499999999994543
+        },
+        {
+          "target": "reference-target-8-7",
+          "personality": "dreamy",
+          "inputToSelectionMs": 42.59999999997672
+        },
+        {
+          "target": "reference-target-8-11",
+          "personality": "curious",
+          "inputToSelectionMs": 48.99999999997635
+        }
+      ],
+      "effects": ["shear", "scatter", "erase", "peel"],
+      "phases": [
+        {
+          "phase": "arrive",
+          "at": 1637.2
+        },
+        {
+          "phase": "scan",
+          "at": 2153.9
+        },
+        {
+          "phase": "lock",
+          "at": 2903.8
+        },
+        {
+          "phase": "strike",
+          "at": 2987.1
+        },
+        {
+          "phase": "aftermath",
+          "at": 3153.8
+        },
+        {
+          "phase": "scan",
+          "at": 3320.4
+        },
+        {
+          "phase": "lock",
+          "at": 4153.7
+        },
+        {
+          "phase": "strike",
+          "at": 4237.1
+        },
+        {
+          "phase": "aftermath",
+          "at": 4403.7
+        },
+        {
+          "phase": "scan",
+          "at": 4537.1
+        },
+        {
+          "phase": "lock",
+          "at": 5253.7
+        },
+        {
+          "phase": "strike",
+          "at": 5337
+        },
+        {
+          "phase": "aftermath",
+          "at": 5537.1
+        },
+        {
+          "phase": "scan",
+          "at": 5637
+        },
+        {
+          "phase": "lock",
+          "at": 7787
+        },
+        {
+          "phase": "strike",
+          "at": 8420.3
+        },
+        {
+          "phase": "aftermath",
+          "at": 8853.5
+        },
+        {
+          "phase": "scan",
+          "at": 9270.2
+        },
+        {
+          "phase": "lock",
+          "at": 9686.9
+        },
+        {
+          "phase": "strike",
+          "at": 9986.8
+        },
+        {
+          "phase": "aftermath",
+          "at": 10270.2
+        },
+        {
+          "phase": "scan",
+          "at": 10603.4
+        },
+        {
+          "phase": "lock",
+          "at": 11353.5
+        },
+        {
+          "phase": "strike",
+          "at": 11470.1
+        },
+        {
+          "phase": "aftermath",
+          "at": 11703.5
+        },
+        {
+          "phase": "scan",
+          "at": 11870.1
+        },
+        {
+          "phase": "lock",
+          "at": 14553.3
+        },
+        {
+          "phase": "scan",
+          "at": 14653.3
+        },
+        {
+          "phase": "paused",
+          "at": 17019.9
+        },
+        {
+          "phase": "scan",
+          "at": 18036.6
+        }
+      ],
+      "metrics": {
+        "frameSamples": 579,
+        "medianFrameMs": 33.299999999999955,
+        "p95FrameMs": 50.099999999998545,
+        "p99FrameMs": 66.80000000000109,
+        "over50ms": 31,
+        "longTasks": [
+          {
+            "at": 1809.5,
+            "duration": 65
+          },
+          {
+            "at": 9990,
+            "duration": 61
+          },
+          {
+            "at": 11473.600000000006,
+            "duration": 52
+          },
+          {
+            "at": 18537.5,
+            "duration": 225
+          }
+        ]
+      },
+      "exactRestore": true,
+      "requests": [],
+      "errors": []
     },
     {
-      "phase": "scan",
-      "at": 2877.1
-    },
-    {
-      "phase": "lock",
-      "at": 3727
-    },
-    {
-      "phase": "strike",
-      "at": 4343.7
-    },
-    {
-      "phase": "aftermath",
-      "at": 5243.7
-    },
-    {
-      "phase": "scan",
-      "at": 5643.7
-    },
-    {
-      "phase": "lock",
-      "at": 6460.3
-    },
-    {
-      "phase": "strike",
-      "at": 7026.9
-    },
-    {
-      "phase": "aftermath",
-      "at": 7743.5
-    },
-    {
-      "phase": "scan",
-      "at": 8110.2
-    },
-    {
-      "phase": "lock",
-      "at": 8926.9
-    },
-    {
-      "phase": "strike",
-      "at": 9510.1
-    },
-    {
-      "phase": "aftermath",
-      "at": 10243.5
-    },
-    {
-      "phase": "scan",
-      "at": 10593.5
-    },
-    {
-      "phase": "lock",
-      "at": 11410.1
-    },
-    {
-      "phase": "strike",
-      "at": 11993.4
-    },
-    {
-      "phase": "aftermath",
-      "at": 12726.7
-    },
-    {
-      "phase": "scan",
-      "at": 13143.4
-    },
-    {
-      "phase": "lock",
-      "at": 13959.9
-    },
-    {
-      "phase": "strike",
-      "at": 14626.6
-    },
-    {
-      "phase": "aftermath",
-      "at": 15410
-    },
-    {
-      "phase": "scan",
-      "at": 15793.2
-    },
-    {
-      "phase": "lock",
-      "at": 16659.9
-    },
-    {
-      "phase": "strike",
-      "at": 17259.8
-    },
-    {
-      "phase": "aftermath",
-      "at": 18193.1
-    },
-    {
-      "phase": "scan",
-      "at": 18609.8
-    },
-    {
-      "phase": "lock",
-      "at": 19526.5
-    },
-    {
-      "phase": "strike",
-      "at": 20109.8
-    },
-    {
-      "phase": "aftermath",
-      "at": 21026.3
-    },
-    {
-      "phase": "scan",
-      "at": 21459.6
-    },
-    {
-      "phase": "lock",
-      "at": 22942.9
-    },
-    {
-      "phase": "strike",
-      "at": 23609.6
-    },
-    {
-      "phase": "aftermath",
-      "at": 24559.6
-    },
-    {
-      "phase": "scan",
-      "at": 24992.9
-    },
-    {
-      "phase": "lock",
-      "at": 25992.9
-    },
-    {
-      "phase": "strike",
-      "at": 26859.4
-    },
-    {
-      "phase": "paused",
-      "at": 27776.2
-    },
-    {
-      "phase": "strike",
-      "at": 28659.4
-    },
-    {
-      "phase": "aftermath",
-      "at": 28892.7
-    },
-    {
-      "phase": "scan",
-      "at": 29409.4
-    },
-    {
-      "phase": "lock",
-      "at": 30392.7
-    },
-    {
-      "phase": "strike",
-      "at": 31159.3
-    },
-    {
-      "phase": "aftermath",
-      "at": 32092.6
-    },
-    {
-      "phase": "scan",
-      "at": 32609.2
-    },
-    {
-      "phase": "lock",
-      "at": 33675.9
-    },
-    {
-      "phase": "scan",
-      "at": 34259.2
+      "theme": "night",
+      "pointerInstrumentation": "Visible ring follows actual pointer events. No Chrome APIs mocked.",
+      "hoverPreemption": {
+        "abandoned": "reference-target-8-13",
+        "next": "reference-target-8-4",
+        "originalPoint": {
+          "x": 521.9453125,
+          "y": 706.0625
+        },
+        "redirectedPoint": {
+          "x": 515.8046875,
+          "y": 227.375
+        }
+      },
+      "edgeScroll": {
+        "initial": 12625,
+        "advanced": 13350,
+        "returned": 12769,
+        "centerStops": true
+      },
+      "persistentRecordIds": ["1", "2", "3", "4", "5"],
+      "responses": [
+        {
+          "target": "reference-target-8-13",
+          "personality": "feral",
+          "inputToSelectionMs": 37.50000000002319
+        },
+        {
+          "target": "reference-target-8-4",
+          "personality": "feral",
+          "inputToSelectionMs": 30.000000000017508
+        },
+        {
+          "target": "reference-target-8-9",
+          "personality": "feral",
+          "inputToSelectionMs": 31.80000000001155
+        },
+        {
+          "target": "reference-target-8-16",
+          "personality": "feral",
+          "inputToSelectionMs": 46.00000000000546
+        },
+        {
+          "target": "reference-target-8-7",
+          "personality": "dreamy",
+          "inputToSelectionMs": 62.00000000001182
+        },
+        {
+          "target": "reference-target-8-11",
+          "personality": "curious",
+          "inputToSelectionMs": 26.300000000017462
+        }
+      ],
+      "effects": ["shear", "scatter", "erase", "peel"],
+      "phases": [
+        {
+          "phase": "arrive",
+          "at": 1094.7
+        },
+        {
+          "phase": "scan",
+          "at": 1561.3
+        },
+        {
+          "phase": "lock",
+          "at": 2278
+        },
+        {
+          "phase": "strike",
+          "at": 2378
+        },
+        {
+          "phase": "aftermath",
+          "at": 2561.3
+        },
+        {
+          "phase": "scan",
+          "at": 2661.3
+        },
+        {
+          "phase": "lock",
+          "at": 3611.3
+        },
+        {
+          "phase": "strike",
+          "at": 3711.2
+        },
+        {
+          "phase": "aftermath",
+          "at": 3911.2
+        },
+        {
+          "phase": "scan",
+          "at": 4011.2
+        },
+        {
+          "phase": "lock",
+          "at": 4661.2
+        },
+        {
+          "phase": "strike",
+          "at": 4794.6
+        },
+        {
+          "phase": "aftermath",
+          "at": 4994.6
+        },
+        {
+          "phase": "scan",
+          "at": 5127.9
+        },
+        {
+          "phase": "lock",
+          "at": 7411.1
+        },
+        {
+          "phase": "strike",
+          "at": 7994.4
+        },
+        {
+          "phase": "aftermath",
+          "at": 8461
+        },
+        {
+          "phase": "scan",
+          "at": 8777.7
+        },
+        {
+          "phase": "lock",
+          "at": 9194.3
+        },
+        {
+          "phase": "strike",
+          "at": 9461.1
+        },
+        {
+          "phase": "aftermath",
+          "at": 9794.3
+        },
+        {
+          "phase": "scan",
+          "at": 10127.7
+        },
+        {
+          "phase": "lock",
+          "at": 10860.9
+        },
+        {
+          "phase": "strike",
+          "at": 11027.6
+        },
+        {
+          "phase": "aftermath",
+          "at": 11194.2
+        },
+        {
+          "phase": "scan",
+          "at": 11327.6
+        },
+        {
+          "phase": "paused",
+          "at": 16494
+        },
+        {
+          "phase": "scan",
+          "at": 17644
+        }
+      ],
+      "metrics": {
+        "frameSamples": 576,
+        "medianFrameMs": 33.30000000000018,
+        "p95FrameMs": 66.59999999999854,
+        "p99FrameMs": 83.39999999999964,
+        "over50ms": 39,
+        "longTasks": [
+          {
+            "at": 1105.5999999999767,
+            "duration": 135
+          },
+          {
+            "at": 1685.3999999999942,
+            "duration": 62
+          },
+          {
+            "at": 3312.2999999999884,
+            "duration": 54
+          },
+          {
+            "at": 6758.899999999994,
+            "duration": 52
+          },
+          {
+            "at": 10678.699999999983,
+            "duration": 51
+          },
+          {
+            "at": 11030.5,
+            "duration": 92
+          },
+          {
+            "at": 11236.099999999977,
+            "duration": 59
+          },
+          {
+            "at": 18143.899999999994,
+            "duration": 228
+          }
+        ]
+      },
+      "exactRestore": true,
+      "requests": [],
+      "errors": []
     }
   ],
-  "metrics": {
-    "frameSamples": 1263,
-    "medianFrameMs": 33.20000000000073,
-    "p95FrameMs": 50,
-    "p99FrameMs": 83.19999999999993,
-    "over50ms": 51,
-    "longTasks": [
-      {
-        "start": 21319.29999999999,
-        "duration": 57
-      },
-      {
-        "start": 23616.100000000006,
-        "duration": 58
-      },
-      {
-        "start": 26670.79999999999,
-        "duration": 154
-      },
-      {
-        "start": 26870.600000000006,
-        "duration": 217
-      },
-      {
-        "start": 35207.600000000006,
-        "duration": 221
-      }
-    ]
-  },
-  "exactRestore": true,
-  "errors": [],
   "browser": "153.0.8010.12",
-  "requests": []
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  }
 }

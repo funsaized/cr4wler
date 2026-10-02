@@ -1,0 +1,141 @@
+{
+  "sourceCommit": "27e939736b87480f17401a7415d92416ad45e4eb",
+  "sampleRate": 120,
+  "travelPx": 715.8910531638176,
+  "profiles": [
+    {
+      "personality": "dreamy",
+      "arrivedMs": 2042,
+      "maxFrameDisplacement": 3.25,
+      "plantedSlide": 0,
+      "minSupportContacts": 4,
+      "maxReach": 340.2,
+      "sample": [
+        {
+          "ms": 100,
+          "distance": 709
+        },
+        {
+          "ms": 500,
+          "distance": 576
+        },
+        {
+          "ms": 1000,
+          "distance": 381
+        }
+      ],
+      "gripError": 0,
+      "quietUnchanged": true,
+      "stoppedHoldFrames": 0,
+      "hoverCancelsHold": true,
+      "gripOwnershipAndCrossBodyContact": true,
+      "headEmitterMatchesRender": true
+    },
+    {
+      "personality": "curious",
+      "arrivedMs": 1100,
+      "maxFrameDisplacement": 6.04,
+      "plantedSlide": 0,
+      "minSupportContacts": 4,
+      "maxReach": 345.5,
+      "sample": [
+        {
+          "ms": 100,
+          "distance": 698
+        },
+        {
+          "ms": 500,
+          "distance": 431
+        },
+        {
+          "ms": 1000,
+          "distance": 69
+        }
+      ],
+      "gripError": 0,
+      "quietUnchanged": true,
+      "stoppedHoldFrames": 0,
+      "hoverCancelsHold": true,
+      "gripOwnershipAndCrossBodyContact": true,
+      "headEmitterMatchesRender": true
+    },
+    {
+      "personality": "feral",
+      "arrivedMs": 817,
+      "maxFrameDisplacement": 10.69,
+      "plantedSlide": 0,
+      "minSupportContacts": 4,
+      "maxReach": 294.3,
+      "sample": [
+        {
+          "ms": 100,
+          "distance": 666
+        },
+        {
+          "ms": 500,
+          "distance": 256
+        },
+        {
+          "ms": 1000,
+          "distance": 0
+        }
+      ],
+      "gripError": 0,
+      "quietUnchanged": true,
+      "stoppedHoldFrames": 3,
+      "hoverCancelsHold": true,
+      "gripOwnershipAndCrossBodyContact": true,
+      "headEmitterMatchesRender": true
+    }
+  ],
+  "surfaceValidation": [
+    {
+      "personality": "dreamy",
+      "scrollPx": 1080,
+      "plantedComparisons": 704,
+      "surfaceRelativeSlip": 0,
+      "minSupportContacts": 4,
+      "stepsWhileBodyStill": 40,
+      "maximumWalkingReach": 329.7,
+      "pausedTranslationExact": true,
+      "pausedPoseAndSwingProgressUnchanged": true,
+      "largeJumpReach": 177.16,
+      "repeatedPausedScrollBoundedReach": 569.36,
+      "quietScrollPersistsWithoutAnimation": true,
+      "quietLargeJumpBounded": true,
+      "capturedGripAbsolute": true
+    },
+    {
+      "personality": "curious",
+      "scrollPx": 1080,
+      "plantedComparisons": 671,
+      "surfaceRelativeSlip": 0,
+      "minSupportContacts": 4,
+      "stepsWhileBodyStill": 64,
+      "maximumWalkingReach": 250.84,
+      "pausedTranslationExact": true,
+      "pausedPoseAndSwingProgressUnchanged": true,
+      "largeJumpReach": 155.47,
+      "repeatedPausedScrollBoundedReach": 544.06,
+      "quietScrollPersistsWithoutAnimation": true,
+      "quietLargeJumpBounded": true,
+      "capturedGripAbsolute": true
+    },
+    {
+      "personality": "feral",
+      "scrollPx": 1080,
+      "plantedComparisons": 616,
+      "surfaceRelativeSlip": 0,
+      "minSupportContacts": 4,
+      "stepsWhileBodyStill": 114,
+      "maximumWalkingReach": 163.46,
+      "pausedTranslationExact": true,
+      "pausedPoseAndSwingProgressUnchanged": true,
+      "largeJumpReach": 127.08,
+      "repeatedPausedScrollBoundedReach": 127.08,
+      "quietScrollPersistsWithoutAnimation": true,
+      "quietLargeJumpBounded": true,
+      "capturedGripAbsolute": true
+    }
+  ]
+}

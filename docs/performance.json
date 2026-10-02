@@ -1,34 +1,190 @@
 {
-  "sourceCommit": "1dd4e83a94a63fad6762c1b5c81c8834cec2abf2",
-  "surface": "Dense light playground, volume30/top/return, without video recording or screenshots",
+  "sourceCommit": "27e939736b87480f17401a7415d92416ad45e4eb",
+  "surface": "Dense night fixture, real pointer hunts, temperament changes and edge scrolling; no video or screenshots",
   "browser": "153.0.8010.12",
-  "durationSeconds": 24,
-  "frameSamples": 1425,
-  "medianFrameMs": 16.699999999999818,
-  "p95FrameMs": 16.700000000000728,
-  "p99FrameMs": 33.29999999999927,
-  "over50ms": 7,
-  "longTasks": [
+  "durationSeconds": 14.521,
+  "pointerInstrumentation": "Visible ring follows actual pointer events. No Chrome APIs mocked.",
+  "hoverPreemption": {
+    "abandoned": "reference-target-8-13",
+    "next": "reference-target-8-4",
+    "originalPoint": {
+      "x": 521.9453125,
+      "y": 706.0625
+    },
+    "redirectedPoint": {
+      "x": 515.8046875,
+      "y": 227.375
+    }
+  },
+  "edgeScroll": {
+    "initial": 12627,
+    "advanced": 13451,
+    "returned": 12850,
+    "centerStops": true
+  },
+  "persistentRecordIds": ["1", "2", "3", "4", "5"],
+  "responses": [
     {
-      "start": 451.5,
-      "duration": 61
+      "target": "reference-target-8-13",
+      "personality": "feral",
+      "inputToSelectionMs": 14.300000000372506
     },
     {
-      "start": 16909.799999999814,
-      "duration": 80
+      "target": "reference-target-8-4",
+      "personality": "feral",
+      "inputToSelectionMs": 32.700000000745035
     },
     {
-      "start": 21740.799999999814,
-      "duration": 96
+      "target": "reference-target-8-9",
+      "personality": "feral",
+      "inputToSelectionMs": 16
     },
     {
-      "start": 21837,
-      "duration": 82
+      "target": "reference-target-8-16",
+      "personality": "feral",
+      "inputToSelectionMs": 15.900000001490298
     },
     {
-      "start": 22751.299999999814,
-      "duration": 101
+      "target": "reference-target-8-7",
+      "personality": "dreamy",
+      "inputToSelectionMs": 13.699999999999818
+    },
+    {
+      "target": "reference-target-8-11",
+      "personality": "curious",
+      "inputToSelectionMs": 16.200000001117587
     }
   ],
-  "fragments": 5
+  "effects": ["shear", "scatter", "erase", "peel"],
+  "phases": [
+    {
+      "phase": "arrive",
+      "at": 626.4
+    },
+    {
+      "phase": "scan",
+      "at": 926.4
+    },
+    {
+      "phase": "lock",
+      "at": 1543
+    },
+    {
+      "phase": "strike",
+      "at": 1626.3
+    },
+    {
+      "phase": "aftermath",
+      "at": 1809.7
+    },
+    {
+      "phase": "scan",
+      "at": 1909.7
+    },
+    {
+      "phase": "lock",
+      "at": 2376.3
+    },
+    {
+      "phase": "strike",
+      "at": 2459.7
+    },
+    {
+      "phase": "aftermath",
+      "at": 2642.9
+    },
+    {
+      "phase": "scan",
+      "at": 2742.9
+    },
+    {
+      "phase": "lock",
+      "at": 3359.6
+    },
+    {
+      "phase": "strike",
+      "at": 3443
+    },
+    {
+      "phase": "aftermath",
+      "at": 3626.3
+    },
+    {
+      "phase": "scan",
+      "at": 3726.2
+    },
+    {
+      "phase": "lock",
+      "at": 5409.5
+    },
+    {
+      "phase": "strike",
+      "at": 5876.1
+    },
+    {
+      "phase": "aftermath",
+      "at": 6309.5
+    },
+    {
+      "phase": "scan",
+      "at": 6592.8
+    },
+    {
+      "phase": "lock",
+      "at": 6926.2
+    },
+    {
+      "phase": "strike",
+      "at": 7126.1
+    },
+    {
+      "phase": "aftermath",
+      "at": 7426.1
+    },
+    {
+      "phase": "scan",
+      "at": 7709.5
+    },
+    {
+      "phase": "lock",
+      "at": 7926.1
+    },
+    {
+      "phase": "strike",
+      "at": 8009.4
+    },
+    {
+      "phase": "aftermath",
+      "at": 8192.7
+    },
+    {
+      "phase": "scan",
+      "at": 8292.8
+    },
+    {
+      "phase": "paused",
+      "at": 12925.9
+    },
+    {
+      "phase": "scan",
+      "at": 13709.2
+    }
+  ],
+  "metrics": {
+    "frameSamples": 861,
+    "medianFrameMs": 16.699999999999818,
+    "p95FrameMs": 16.799999999999272,
+    "p99FrameMs": 16.80000000000109,
+    "over50ms": 2,
+    "longTasks": [
+      {
+        "at": 617,
+        "duration": 68
+      },
+      {
+        "at": 14205.5,
+        "duration": 55
+      }
+    ]
+  }
 }

@@ -18,7 +18,7 @@ The packaged content script has a separate idempotency harness with Chrome messa
 
 `npm run test:extension` loads the actual unmodified MV3 package into a persistent Chromium context through the DevTools extension loader. It verifies scripting is denied before a gesture, triggers Chrome's real toolbar action, and then exercises Summon, Feral, intensity, cursor following, and Pause/Resume through the real popup page and real Chrome APIs. It records real pointer sessions on both dense light and dark fixtures: an immediate hover redirect, hunts in all three temperaments, top/bottom edge scrolling and center stops, then a paused excursion to volume 30 and back. It asserts old record IDs return, presses Escape, and compares the source DOM and form values. The recording includes a restored frame. Requests, navigation, site clicks, input/change events and submissions are checked.
 
-The popup page is addressed in a browser tab after toolbar activation. Native popup-window opening/closing/focus behavior is still a manual compatibility check; the test does not claim otherwise. No Chrome APIs or permissions are replaced in this installed-extension test.
+The popup page is addressed in a browser tab after toolbar activation. Native popup-window opening/closing/focus behavior is still a manual compatibility check; the test does not claim otherwise. No Chrome APIs or permissions are replaced in this installed-extension test. The fixture sidebar belongs to its standalone engine and stays inactive during installed-extension recordings; settings are changed through the real extension popup page.
 
 ## Environment boundary
 
@@ -52,22 +52,30 @@ The record cap is 512. DOM projection is capped at 72 records and 16 shards per 
 - Change the OS reduced-motion preference during a session. New hunts stop; existing marks remain still until Reset.
 - Inspect permission and network panels. There are no host permissions or runtime network services.
 
-## Previous release evidence (v0.2)
+## Release evidence (v0.3)
 
-The v0.3 implementation and test scenario are above. The following captures belong to v0.2 and will be replaced by source-bound v0.3 captures in the release evidence commit.
+Runtime source: `27e939736b87480f17401a7415d92416ad45e4eb`. The release evidence commit changes documentation and captured assets only.
 
-Runtime source: `1dd4e83a94a63fad6762c1b5c81c8834cec2abf2`. Later evidence commits change documentation and captured assets only.
+[CI run 36993698123](https://github.com/funsaized/cr4wler/actions/runs/36993698123) passed on that exact source: TypeScript, formatting, all **16 browser tests**, actual installed-extension integration on both themes, and packaging.
 
-[CI run 36987401786](https://github.com/funsaized/cr4wler/actions/runs/36987401786) passed on that exact source. TypeScript, formatting, all **11 browser tests**, actual installed-extension integration, and packaging passed.
+| Recording                                               | Duration | Input → selection | Median / p95 frame interval |
+| ------------------------------------------------------- | -------- | ----------------- | --------------------------- |
+| [Installed extension, daylight](extension-demo.webm)    | 20.80s   | 1–49ms            | 33.3 / 50.1ms               |
+| [Installed extension, night](extension-night-demo.webm) | 20.60s   | 26–62ms           | 33.3 / 66.6ms               |
+| [Standalone night playground](demo.webm)                | 19.96s   | 13–74ms           | 16.7 / 33.4ms               |
 
-- [Installed extension video](extension-demo.webm): **37.76 seconds**, Chromium 153.0.8010.12, 1440×1000. All five effects appear. Nine earlier record IDs survived the excursion to volume 30 and return. The source restored exactly; no page errors, requests, navigation or site actions were observed. [Raw result and phase timings](extension-evidence.json).
-- [Night-garden playground video](demo.webm): **36.16 seconds**, same browser and viewport. All five effects, mouse guidance, pause, scroll and return, then exact restoration. No observed page requests or errors. [Capture data](evidence.json). The [popup screenshot](popup.png) uses mocked Chrome APIs.
-- [Dense-page sample without recording](performance.json): 1,425 frame intervals over 24 seconds while visiting volume 30, the top, and returning. Median and p95 were **16.7ms**, p99 **33.3ms**. Five long tasks were observed, ranging **61–101ms**; these occasional stalls remain a POC performance limitation on a large document.
-- Recording has material overhead in the software-rendered environments: the local capture p95 was 33.3ms, and the installed CI recording p95 was 50ms. The CI recording includes screenshot pauses and tasks up to 221ms. These measurements are reported separately rather than treated as animation-only benchmarks.
-- Two local release builds were byte-identical, and CI produced the same ZIP digest.
+All recordings use Chromium 153.0.8010.12 at 1440×1000 and real pointer events. Each shows an immediate hover redirect, all three temperaments, four effects, deliberate bidirectional edge scrolling, a paused deep-scroll excursion and exact restoration. Five earlier record IDs survived the excursion to volume 30 and return. There were no observed page errors, requests, navigation or site actions in either installed session. [Installed results and phase timings](extension-evidence.json) · [Standalone capture data](evidence.json). The [popup screenshot](popup.png) uses mocked Chrome APIs; the installed sessions use the actual extension popup page and real Chrome APIs.
+
+The [dense-page sample without recording](performance.json) ran the same pointer scenario for 14.52 seconds, collecting 861 frame intervals. Median was **16.7ms**, p95 **16.8ms**, and p99 **16.8ms**. Pointer-to-selection was **14–33ms**. Two long tasks of 55ms and 68ms were observed. These are measurements from one synthetic page in a software-rendered container, not a guarantee across websites or devices.
+
+Capture has material overhead. The installed recordings include screenshots, popup control changes and tasks up to 228ms; their p95 intervals are reported separately above. Performance on arbitrary large or complex pages remains a POC limitation.
+
+Additional [interaction checks](interaction-v3-validation.json) verify the latest pending hover wins during an atomic strike, the 1,800px edge-visit budget, and fresh intent after manual scrolling. [Procedural gait checks](spider-v3-validation.json) measured zero planted-foot slip over 1,080px of surface movement in each temperament, at least four support contacts, exact paused translation and bounded poses after 32,000px document jumps. These are local development measurements, separate from the CI browser suite.
+
+Two local release builds were byte-identical, and the downloaded CI package matched those bytes.
 
 ```text
-561f28952cf13dd8853c77f5b1af5bb768c46b6a10f07bda03ed1d64f73a14bf  cr4wler-0.2.0.zip
+c74b912d95d2e976ca8bc6c1ac1c9fdfca336cdd517867734dd29f961d690763  cr4wler-0.3.0.zip
 ```
 
-CI artifacts: [installed-extension evidence](https://github.com/funsaized/cr4wler/actions/runs/36987401786/artifacts/11218490469) · [unpacked package and digest](https://github.com/funsaized/cr4wler/actions/runs/36987401786/artifacts/11217988950). Repository access is required. GitHub's retention applies to artifact links; the checked-in videos, screenshots and JSON remain with the source.
+CI artifacts: [installed-extension evidence](https://github.com/funsaized/cr4wler/actions/runs/36993698123/artifacts/11220413980) · [unpacked package and digest](https://github.com/funsaized/cr4wler/actions/runs/36993698123/artifacts/11220862937). Repository access is required. GitHub's retention applies to artifact links; the checked-in videos, screenshots and JSON remain with the source.

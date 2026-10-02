@@ -1,28 +1,249 @@
 {
-  "sourceCommit": "1dd4e83a94a63fad6762c1b5c81c8834cec2abf2",
-  "capturedAt": "2026-10-02T09:02:34.922Z",
+  "sourceCommit": "27e939736b87480f17401a7415d92416ad45e4eb",
+  "capturedAt": "2026-10-02T10:07:29.052Z",
+  "surface": "Standalone pointer-controlled night reference playground; not an installed extension",
   "browser": "153.0.8010.12",
-  "surface": "Local playground. Not an installed extension. Popup screenshot uses mocked chrome.tabs.",
   "viewport": {
     "width": 1440,
     "height": 1000
   },
-  "elapsedMs": 35688,
-  "fragmentCount": 6,
-  "effects": ["shear", "disassemble", "erase", "scatter", "peel"],
-  "restoreExact": true,
-  "pageRequestsAfterActivation": [],
-  "pageErrors": [],
-  "metrics": {
-    "frameSamples": 1826,
-    "medianFrameMs": 16.699999999999818,
-    "p95FrameMs": 33.30000000000109,
-    "p99FrameMs": 66.70000000000073,
-    "over50ms": 27,
-    "longTasks": [56]
+  "pointerInstrumentation": "Visible ring follows actual pointer events. No Chrome APIs mocked.",
+  "hoverPreemption": {
+    "abandoned": "reference-target-8-13",
+    "next": "reference-target-8-4",
+    "originalPoint": {
+      "x": 521.9453125,
+      "y": 706.0625
+    },
+    "redirectedPoint": {
+      "x": 515.8046875,
+      "y": 227.375
+    }
   },
-  "extensionLoad": {
-    "status": "blocked",
-    "reason": "Loading of unpacked extensions is disabled by the administrator."
-  }
+  "edgeScroll": {
+    "initial": 12627,
+    "advanced": 13457,
+    "returned": 12862,
+    "centerStops": true
+  },
+  "persistentRecordIds": ["1", "2", "3", "4", "5"],
+  "responses": [
+    {
+      "target": "reference-target-8-13",
+      "personality": "feral",
+      "inputToSelectionMs": 74
+    },
+    {
+      "target": "reference-target-8-4",
+      "personality": "feral",
+      "inputToSelectionMs": 61.400000001117405
+    },
+    {
+      "target": "reference-target-8-9",
+      "personality": "feral",
+      "inputToSelectionMs": 15.700000001490025
+    },
+    {
+      "target": "reference-target-8-16",
+      "personality": "feral",
+      "inputToSelectionMs": 12.80000000111795
+    },
+    {
+      "target": "reference-target-8-7",
+      "personality": "dreamy",
+      "inputToSelectionMs": 18.300000000372165
+    },
+    {
+      "target": "reference-target-8-11",
+      "personality": "curious",
+      "inputToSelectionMs": 15.900000000745422
+    }
+  ],
+  "effects": ["shear", "scatter", "erase", "peel"],
+  "phases": [
+    {
+      "phase": "arrive",
+      "at": 1252.6
+    },
+    {
+      "phase": "scan",
+      "at": 1835.9
+    },
+    {
+      "phase": "lock",
+      "at": 2652.5
+    },
+    {
+      "phase": "strike",
+      "at": 2735.9
+    },
+    {
+      "phase": "aftermath",
+      "at": 2919.1
+    },
+    {
+      "phase": "scan",
+      "at": 3019.1
+    },
+    {
+      "phase": "lock",
+      "at": 3752.5
+    },
+    {
+      "phase": "strike",
+      "at": 3852.5
+    },
+    {
+      "phase": "aftermath",
+      "at": 4019.1
+    },
+    {
+      "phase": "scan",
+      "at": 4119.1
+    },
+    {
+      "phase": "lock",
+      "at": 4819.1
+    },
+    {
+      "phase": "strike",
+      "at": 4902.5
+    },
+    {
+      "phase": "aftermath",
+      "at": 5085.7
+    },
+    {
+      "phase": "scan",
+      "at": 5202.4
+    },
+    {
+      "phase": "lock",
+      "at": 8102.2
+    },
+    {
+      "phase": "strike",
+      "at": 8652.2
+    },
+    {
+      "phase": "aftermath",
+      "at": 9085.6
+    },
+    {
+      "phase": "scan",
+      "at": 9368.9
+    },
+    {
+      "phase": "lock",
+      "at": 9718.9
+    },
+    {
+      "phase": "strike",
+      "at": 9935.5
+    },
+    {
+      "phase": "aftermath",
+      "at": 10235.6
+    },
+    {
+      "phase": "scan",
+      "at": 10518.8
+    },
+    {
+      "phase": "lock",
+      "at": 11202.2
+    },
+    {
+      "phase": "scan",
+      "at": 11235.5
+    },
+    {
+      "phase": "lock",
+      "at": 13785.4
+    },
+    {
+      "phase": "strike",
+      "at": 13885.4
+    },
+    {
+      "phase": "aftermath",
+      "at": 14068.7
+    },
+    {
+      "phase": "scan",
+      "at": 14168.7
+    },
+    {
+      "phase": "paused",
+      "at": 16268.6
+    },
+    {
+      "phase": "scan",
+      "at": 17201.9
+    }
+  ],
+  "metrics": {
+    "frameSamples": 856,
+    "medianFrameMs": 16.699999999999818,
+    "p95FrameMs": 33.400000000000546,
+    "p99FrameMs": 99.90000000000009,
+    "over50ms": 28,
+    "longTasks": [
+      {
+        "at": 1247,
+        "duration": 82
+      },
+      {
+        "at": 1727.7999999988824,
+        "duration": 77
+      },
+      {
+        "at": 1853.8999999985099,
+        "duration": 52
+      },
+      {
+        "at": 2004.8999999985099,
+        "duration": 67
+      },
+      {
+        "at": 5636.5,
+        "duration": 116
+      },
+      {
+        "at": 5863.799999998882,
+        "duration": 90
+      },
+      {
+        "at": 6865,
+        "duration": 71
+      },
+      {
+        "at": 7303.89999999851,
+        "duration": 66
+      },
+      {
+        "at": 7552.299999998882,
+        "duration": 113
+      },
+      {
+        "at": 7823,
+        "duration": 71
+      },
+      {
+        "at": 7910.39999999851,
+        "duration": 75
+      },
+      {
+        "at": 8175.199999999255,
+        "duration": 83
+      },
+      {
+        "at": 17648.799999998882,
+        "duration": 60
+      }
+    ]
+  },
+  "exactRestore": true,
+  "pageErrors": [],
+  "pageRequestsAfterActivation": []
 }
