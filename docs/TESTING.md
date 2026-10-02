@@ -49,3 +49,13 @@ npm run capture
 ```
 
 Capture requires Playwright's Chromium and FFmpeg. It runs a real 22-second playground session, records the video, captures actual browser screenshots, and measures frame intervals and long tasks. Results describe one software-rendered container, not a performance guarantee on every site or device. Keep background tabs, recording overhead, and display refresh rate in mind. Use Chrome's Performance panel on representative ordinary pages before a public release.
+
+## Recorded result — 2026-10-02
+
+- Runtime source captured at `773ccde34829b701636de628607f7ecab2f358d2`; later evidence/report commits do not change runtime code.
+- TypeScript and formatting checks passed. Seven browser integration checks passed, including preservation of a pre-existing CSS highlight and edits made by the page during animation. The compact popup separately passed its 600px height check after final styling.
+- Actual browser video: [26.36-second WebM](demo.webm), 1440×1000, Chromium 141.0.7390.37. [Capture data](evidence.json) records the source commit. This is the local playground; the [popup image](popup.png) uses mocked Chrome APIs.
+- Final capture: four fragments at the screenshot checkpoint, exact source DOM restoration, zero observed page requests after activation, and zero page errors. The recorder is configured not to alter input/editor caret styles.
+- Without recording or screenshots: 725 frame samples over 12 seconds, median 16.7ms, p95 16.7ms, and zero observed tasks over 50ms. [Raw sample](performance.json). With recording/screenshots, p95 was 16.8ms and one 83ms long task was observed. These are container samples, not universal frame-rate claims.
+- The real extension load check failed with the documented administrator-policy error. This remains a manual release blocker, not a skipped passing check.
+- Two successive release builds produced byte-identical ZIPs; the final archive ships alongside its SHA-256 digest.

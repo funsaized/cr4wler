@@ -1,0 +1,11 @@
+{
+  "sourceCommit": "773ccde34829b701636de628607f7ecab2f358d2",
+  "surface": "Local playground without video recording or screenshots",
+  "browser": "141.0.7390.37",
+  "durationSeconds": 12,
+  "frameSamples": 725,
+  "medianFrameMs": 16.699999999999818,
+  "p95FrameMs": 16.700000000000728,
+  "longTasks": [],
+  "fragments": 3
+}
