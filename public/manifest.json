@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Cr4wler — a little web mischief",
+  "version": "0.1.0",
+  "description": "Summon a neon spider that borrows the words on your page. Playful, local, and instantly reversible.",
+  "minimum_chrome_version": "105",
+  "permissions": ["activeTab", "scripting"],
+  "action": { "default_popup": "popup.html", "default_title": "Summon Cr4wler" },
+  "background": { "service_worker": "background.js" },
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'none'"
+  }
+}

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Cr4wler</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="playground.html" target="_blank"
+        ><span class="mark">✳</span> cr4wler<span class="version">POC / 001</span></a
+      >
+      <p class="eyebrow">A LITTLE WEB MISCHIEF</p>
+      <h1>Your tab.<br />Its playground.</h1>
+      <p class="intro">
+        Meet your eight-legged creative director.<br />Excellent taste. Questionable manners.
+      </p>
+      <div class="specimen" aria-hidden="true">
+        <svg viewBox="0 0 340 132">
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path class="silk" d="M183 0V56" />
+            <g class="legs">
+              <path
+                d="M181 67L112 27 58 78 30 89M181 68L127 45 79 103 51 108M182 73L127 90 102 119 78 120M183 78L146 101 130 125M188 67L252 19 286 57 311 70M188 71L258 56 280 91 321 102M188 75L245 83 259 110 294 117M188 79L218 107 233 128"
+              />
+              <path d="M181 60L189 63 190 81 182 78Z" />
+            </g>
+            <g class="nodes">
+              <circle cx="112" cy="27" r="1.8" />
+              <circle cx="58" cy="78" r="1.8" />
+              <circle cx="127" cy="45" r="1.8" />
+              <circle cx="79" cy="103" r="1.8" />
+              <circle cx="252" cy="19" r="1.8" />
+              <circle cx="286" cy="57" r="1.8" />
+              <circle cx="258" cy="56" r="1.8" />
+              <circle cx="280" cy="91" r="1.8" />
+            </g>
+          </g></svg
+        ><span>SPECIMEN C–08</span>
+      </div>
+    </header>
+    <main>
+      <div class="setting-label"><span>Temperament</span><span>pick a personality</span></div>
+      <div class="choices" role="group" aria-label="Temperament">
+        <button data-personality="curious" aria-pressed="true">Curious <span>✦</span></button
+        ><button data-personality="dreamy" aria-pressed="false">Dreamy <span>☾</span></button
+        ><button data-personality="feral" aria-pressed="false">Feral <span>↯</span></button>
+      </div>
+      <div class="setting-label intensity-label">
+        <label for="intensity">Mischief level</label><output id="level">Playful</output>
+      </div>
+      <input type="range" id="intensity" min="0" max="100" value="55" aria-label="Mischief level" />
+      <div class="range-label"><span>polite guest</span><span>art school dropout</span></div>
+      <button id="summon" class="primary">Summon your spider <span>↗</span></button>
+      <div class="secondary">
+        <button id="pause" disabled>Pause</button
+        ><button id="restore" disabled>Restore page</button>
+      </div>
+      <p id="status" role="status">Only this tab. Everything goes back with Esc.</p>
+    </main>
+    <footer>
+      <a id="playground" href="playground.html" target="_blank"
+        >Try the playground <span>↗</span></a
+      ><span class="local"><i></i>100% local</span>
+    </footer>
+    <script src="popup.js"></script>
+  </body>
+</html>

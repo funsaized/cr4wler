@@ -1,0 +1,29 @@
+{
+  "name": "cr4wler",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A tiny neon troublemaker for the open web.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "dev": "npm run build && node scripts/serve.mjs",
+    "package": "npm run build && python3 scripts/package.py",
+    "capture": "node scripts/capture.mjs",
+    "test:extension": "npm run build && node scripts/extension-check.mjs",
+    "format": "prettier --write src public scripts tests *.json *.md docs .github",
+    "format:check": "prettier --check src public scripts tests *.json *.md docs .github"
+  },
+  "devDependencies": {
+    "@types/chrome": "0.1.37",
+    "esbuild": "0.25.11",
+    "playwright": "1.56.1",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3"
+  }
+}
