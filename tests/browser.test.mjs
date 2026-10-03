@@ -447,12 +447,14 @@ test(
       const before = await page.locator('main').innerHTML();
       await start(page);
       await waitForPiece(page);
-      await page.waitForTimeout(2200);
+      await page.locator(`${root} .piece`).nth(1).waitFor({ state: 'attached' });
       await page.locator('#demo-pause').click();
+      // Active projections may mount first after virtualization; persistence is identity,
+      // including multiplicity, rather than incidental overlay DOM order.
       const ids = await page
         .locator(`${root} .piece`)
-        .evaluateAll((nodes) => nodes.map((n) => n.dataset.recordId));
-      assert.ok(ids.length > 0);
+        .evaluateAll((nodes) => nodes.map((n) => n.dataset.recordId).sort());
+      assert.ok(ids.length >= 2);
       const highlights = await page.evaluate(() =>
         [...CSS.highlights]
           .filter(([n]) => n.startsWith('cr4wler-') && !n.endsWith('-selection'))
@@ -475,7 +477,7 @@ test(
       assert.deepEqual(
         await page
           .locator(`${root} .piece`)
-          .evaluateAll((nodes) => nodes.map((n) => n.dataset.recordId)),
+          .evaluateAll((nodes) => nodes.map((n) => n.dataset.recordId).sort()),
         ids,
       );
       await page.setViewportSize({ width: 1200, height: 1000 });
@@ -483,7 +485,7 @@ test(
       assert.deepEqual(
         await page
           .locator(`${root} .piece`)
-          .evaluateAll((nodes) => nodes.map((n) => n.dataset.recordId)),
+          .evaluateAll((nodes) => nodes.map((n) => n.dataset.recordId).sort()),
         ids,
       );
       assert.equal(await page.locator('main').innerHTML(), before);
