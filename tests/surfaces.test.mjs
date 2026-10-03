@@ -195,6 +195,63 @@ test('contacts use viewport geometry for document, fixed, clipped and nested scr
   }
 });
 
+test('dense supports share ancestor safety reads without keeping stale paint or scroll geometry', async () => {
+  const page = await fixture();
+  try {
+    const result = await page.evaluate(() => {
+      document.body.innerHTML = `<div id="shared" style="position:absolute;left:200px;top:180px;width:650px;height:500px;overflow:auto">${Array.from({ length: 32 }, (_, i) => `<p style="margin:0;height:26px">Visible shared support number ${i} keeps every careful foot safe.</p>`).join('')}</div>`;
+      map.clear();
+      const shared = document.querySelector('#shared');
+      for (const p of shared.children) map.add(p.firstChild, p, 'text');
+      const body = { x: 500, y: 350 };
+      for (let i = 0; i < 5; i++) map.measure(body, [], []);
+      let sharedSafetyReads = 0;
+      const getStyle = getComputedStyle;
+      globalThis.getComputedStyle = (element, ...args) => {
+        const style = getStyle(element, ...args);
+        return new Proxy(style, {
+          get(object, property) {
+            if (element === shared && property === 'clipPath') sharedSafetyReads++;
+            const value = Reflect.get(object, property, object);
+            return typeof value === 'function' ? value.bind(object) : value;
+          },
+        });
+      };
+      map.measure(body, [], []);
+      const before = map.segments;
+      globalThis.getComputedStyle = getStyle;
+      shared.scrollTop = 52;
+      map.measure(body, [], []);
+      const scrolled = map.segments;
+      const moved = before.find((s) => scrolled.some((next) => next.id === s.id));
+      const delta = scrolled.find((s) => s.id === moved?.id)?.a.y - moved?.a.y;
+      shared.style.clipPath = 'inset(0 20%)';
+      map.measure(body, [], []);
+      const clipped = map.segments;
+      shared.style.clipPath = 'none';
+      map.measure(body, [], []);
+      const returned = map.segments;
+      return {
+        sharedSafetyReads,
+        before: before.length,
+        delta,
+        clipped: clipped.length,
+        returned: returned.length,
+      };
+    });
+    assert.ok(result.before >= 8, JSON.stringify(result));
+    assert.ok(
+      result.sharedSafetyReads <= 1,
+      'one ancestor inspection per refresh: ' + JSON.stringify(result),
+    );
+    assert.equal(result.delta, -52, 'nested scrolling still remeasures planted fractions');
+    assert.equal(result.clipped, 0, 'new unsupported ancestor paint releases all supports');
+    assert.ok(result.returned >= 8, 'removing the paint guard makes support available again');
+  } finally {
+    await page.close();
+  }
+});
+
 for (const personality of ['curious', 'dreamy', 'feral']) {
   test(`${personality} perches, traverses, reverses and releases invalid contacts with fixed bones`, async () => {
     const page = await fixture();

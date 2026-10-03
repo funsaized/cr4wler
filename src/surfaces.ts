@@ -212,6 +212,13 @@ export class PageSurfaces {
   ) {
     const rectCache = new Map<Element, DOMRect>();
     const styleCache = new Map<Element, CSSStyleDeclaration>();
+    // Many text anchors share a clipping chain. Cache scalar paint facts only
+    // within this read pass: computed-style objects alone still repeat native
+    // property reads, while a cache across passes could keep stale author paint.
+    const paintCache = new Map<
+      Element,
+      { visible: boolean; clipsX: boolean; clipsY: boolean; radius: number | null }
+    >();
     const styleFor = (element: Element) => {
       let style = styleCache.get(element);
       if (!style) {
@@ -219,6 +226,32 @@ export class PageSurfaces {
         styleCache.set(element, style);
       }
       return style;
+    };
+    const paintFor = (element: Element) => {
+      let paint = paintCache.get(element);
+      if (!paint) {
+        const style = styleFor(element);
+        let visible =
+          style.visibility === 'visible' &&
+          style.display !== 'none' &&
+          !(parseFloat(style.opacity) < 0.05) &&
+          !paintClipped(style);
+        const rotate = style.getPropertyValue('rotate');
+        if (rotate && rotate !== 'none' && rotate !== '0deg') visible = false;
+        if (style.transform !== 'none') {
+          const matrix = new DOMMatrixReadOnly(style.transform);
+          if (!matrix.is2D || Math.abs(matrix.b) > 0.001 || Math.abs(matrix.c) > 0.001)
+            visible = false;
+        }
+        paint = {
+          visible,
+          clipsX: /auto|scroll|hidden|clip/.test(style.overflowX),
+          clipsY: /auto|scroll|hidden|clip/.test(style.overflowY),
+          radius: radiusFor(style),
+        };
+        paintCache.set(element, paint);
+      }
+      return paint;
     };
     const rectFor = (element: Element) => {
       let rect = rectCache.get(element);
@@ -258,31 +291,11 @@ export class PageSurfaces {
           visible = false;
           break;
         }
-        const style = styleFor(parent);
+        const paint = paintFor(parent);
+        const clips = paint.clipsX || paint.clipsY;
+        const radius = paint.radius;
         if (
-          style.visibility !== 'visible' ||
-          style.display === 'none' ||
-          parseFloat(style.opacity) < 0.05 ||
-          paintClipped(style)
-        ) {
-          visible = false;
-          break;
-        }
-        const rotate = style.getPropertyValue('rotate');
-        if (rotate && rotate !== 'none' && rotate !== '0deg') {
-          visible = false;
-          break;
-        }
-        if (style.transform !== 'none') {
-          const matrix = new DOMMatrixReadOnly(style.transform);
-          if (!matrix.is2D || Math.abs(matrix.b) > 0.001 || Math.abs(matrix.c) > 0.001) {
-            visible = false;
-            break;
-          }
-        }
-        const clips = /auto|scroll|hidden|clip/.test(`${style.overflowX} ${style.overflowY}`);
-        const radius = radiusFor(style);
-        if (
+          !paint.visible ||
           (parent === element && anchor.kind !== 'text' && radius === null) ||
           (clips && (parent !== element || anchor.kind === 'text') && radius !== 0)
         ) {
@@ -297,11 +310,11 @@ export class PageSurfaces {
           const r = rectFor(parent);
           const sx = r.width / Math.max(1, parent.offsetWidth),
             sy = r.height / Math.max(1, parent.offsetHeight);
-          if (/auto|scroll|hidden|clip/.test(style.overflowX)) {
+          if (paint.clipsX) {
             left = Math.max(left, r.left + parent.clientLeft * sx);
             right = Math.min(right, r.left + (parent.clientLeft + parent.clientWidth) * sx);
           }
-          if (/auto|scroll|hidden|clip/.test(style.overflowY)) {
+          if (paint.clipsY) {
             top = Math.max(top, r.top + parent.clientTop * sy);
             bottom = Math.min(bottom, r.top + (parent.clientTop + parent.clientHeight) * sy);
           }
@@ -334,7 +347,7 @@ export class PageSurfaces {
           max = 1;
         if (anchor.kind !== 'text') {
           // The straight part of a rounded boundary stops before the corner arc.
-          const radius = radiusFor(styleFor(element))!;
+          const radius = paintFor(element).radius!;
           const rect = rectFor(element);
           const scale =
             Math.abs(dx) > Math.abs(dy)
