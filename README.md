@@ -4,7 +4,7 @@ A small Chrome extension that puts a neon spider on the page you're reading. It 
 
 [![Animated demo: a neon jumping spider walks, loosens image tiles and bends a card.](docs/cr4wler-demo.gif)](docs/cr4wler-demo.webm)
 
-The full 15.84-second clip, looping at normal speed with frames sampled at 10fps. [Watch the original 25fps video](docs/cr4wler-demo.webm).
+A 14.44-second excerpt, looping at normal speed with frames sampled at 10fps. [Watch the full 15.84-second video at 25fps](docs/cr4wler-demo.webm).
 
 [Download v0.4.1](https://github.com/funsaized/cr4wler/releases/tag/v0.4.1) · [Changelog](CHANGELOG.md) · [Privacy](PRIVACY.md)
 

@@ -72,13 +72,13 @@ Native browser UI zoom from 100% to 110% was verified. CDP page scale is separat
 
 ## README media provenance
 
-The [original video](cr4wler-demo.webm) reuses the approved final 15.84s normal-speed material session, byte-for-byte: 1440×1000, 25fps, VP8, SHA-256 `eec9eeb712e46e98dedab0be563e0ab69ff67ebb7c5c79370beaedf1e8590dcd`. It shows the installed visitor on the synthetic material fixture. The [inline GIF](cr4wler-demo.gif) covers the entire clip at 720×500, sampled at 10fps with a 96-color palette and ordered dithering. Its 158 frames retain 15.84s wall-clock duration: 100ms per frame and a final 140ms hold, looping indefinitely. No cuts, cropping, interpolation or playback-speed change were applied. The original video is unchanged. These reviewed pixels are reused demonstration media, not a new release acceptance capture; current installed/native checks remain separate.
+The [original video](cr4wler-demo.webm) reuses the approved final 15.84s normal-speed material session, byte-for-byte: 1440×1000, 25fps, VP8, SHA-256 `eec9eeb712e46e98dedab0be563e0ab69ff67ebb7c5c79370beaedf1e8590dcd`. It shows the installed visitor on the synthetic material fixture. The [inline GIF](cr4wler-demo.gif) uses the 1.40s–15.84s excerpt at 720×500, sampled at 10fps with a 96-color palette and ordered dithering. The initial inactive page and offscreen arrival were trimmed so the loop starts with the dock and spider visible, avoiding the brief bright-page flash. Its 144 frames retain 14.44s wall-clock duration: 100ms per frame and a final 140ms hold, looping indefinitely. The loop still cuts back to its opening shot; no cropping, interpolation or playback-speed change was applied. The original video is unchanged. These reviewed pixels are reused demonstration media, not a new release acceptance capture; current installed/native checks remain separate.
 
 Reproduce the GIF with FFmpeg (the reviewed encode used FFmpeg 7.1.5):
 
 ```sh
 ffmpeg -i docs/cr4wler-demo.webm \
-  -filter_complex '[0:v]fps=10,scale=720:500:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle' \
+  -filter_complex '[0:v]trim=start=1.4,setpts=PTS-STARTPTS,fps=10,scale=720:500:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle' \
   -loop 0 -final_delay 14 docs/cr4wler-demo.gif
 ```
 
