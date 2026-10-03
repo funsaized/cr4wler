@@ -72,6 +72,14 @@ Native browser UI zoom from 100% to 110% was verified. CDP page scale is separat
 
 ## README media provenance
 
-The [demo](cr4wler-demo.webm) reuses the approved final 15.84s normal-speed material session, byte-for-byte: 1440×1000, 25fps, VP8, SHA-256 `eec9eeb712e46e98dedab0be563e0ab69ff67ebb7c5c79370beaedf1e8590dcd`. It shows the installed visitor on the synthetic material fixture. The [JPEG preview](cr4wler-demo.jpg) is its full-size frame at 7.00s. No video re-encoding, cuts, cropping, frame interpolation or playback-speed change occurred. These reviewed pixels are reused demonstration media, not a new cleanup acceptance capture; current installed/native checks remain separate.
+The [original video](cr4wler-demo.webm) reuses the approved final 15.84s normal-speed material session, byte-for-byte: 1440×1000, 25fps, VP8, SHA-256 `eec9eeb712e46e98dedab0be563e0ab69ff67ebb7c5c79370beaedf1e8590dcd`. It shows the installed visitor on the synthetic material fixture. The [inline GIF](cr4wler-demo.gif) covers the entire clip at 720×500, sampled at 10fps with a 96-color palette and ordered dithering. Its 158 frames retain 15.84s wall-clock duration: 100ms per frame and a final 140ms hold, looping indefinitely. No cuts, cropping, interpolation or playback-speed change were applied. The original video is unchanged. These reviewed pixels are reused demonstration media, not a new release acceptance capture; current installed/native checks remain separate.
+
+Reproduce the GIF with FFmpeg (the reviewed encode used FFmpeg 7.1.5):
+
+```sh
+ffmpeg -i docs/cr4wler-demo.webm \
+  -filter_complex '[0:v]fps=10,scale=720:500:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle' \
+  -loop 0 -final_delay 14 docs/cr4wler-demo.gif
+```
 
 The earlier 32.92s whole-browser GitHub capture used source `dc2d77e814a72d151ca1cba935c1cf24675e9f8c`. Its [GIF](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/docs/cr4wler-demo.gif), [WebM](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/docs/github-demo.webm), [capture CI](https://github.com/funsaized/cr4wler/actions/runs/37044012741), and [capture script](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/scripts/github-demo.mjs) remain recoverable with their original provenance in Git history.
