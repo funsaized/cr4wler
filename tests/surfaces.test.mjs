@@ -532,55 +532,61 @@ test('Feral gap hops touch down on measured narrow, offset and partly clipped de
   }
 });
 
-test('feet can perch on real image and button boundaries while source content and actions remain intact', async () => {
-  const page = await fixture();
-  try {
-    const result = await page.evaluate(() => {
-      const button = document.querySelector('button');
-      button.style.cssText = 'left:800px;top:365px;width:240px;height:60px';
-      globalThis.actions = 0;
-      document.addEventListener('click', () => actions++);
-      const original = document.body.innerHTML;
-      const spider = new Spider(document.querySelector('canvas'));
-      spider.resize(1200, 850);
-      const body = { x: 900, y: 280 };
-      const opts = { personality: 'curious', intensity: 0.6, reducedMotion: false };
-      spider.update(0, 0, body, { ...opts, reducedMotion: true });
-      spider.age = 2;
-      const kinds = new Set();
-      for (let f = 0; f < 240; f++) {
-        const surfaces = map.update(
-          f / 60,
-          revision,
-          spider.position,
-          body,
-          spider.feet,
-          spider.contactIds,
-          spider.surfaceContacts,
-        );
-        spider.update(1 / 60, f / 60, body, { ...opts, surfaces });
-        spider.render();
-        for (const leg of spider.diagnostics.legs) if (leg.contact) kinds.add(leg.contact.kind);
-      }
-      // Canvas style dimensions are ours; compare the actual host surfaces instead.
-      return {
-        kinds: [...kinds],
-        actions,
-        button: button.outerHTML,
-        image: document.querySelector('img').outerHTML,
-        originalButton: original.match(/<button[^]*?<\/button>/)[0],
-        originalImage: original.match(/<img[^>]*>/)[0],
-      };
-    });
-    assert.ok(result.kinds.includes('image'), JSON.stringify(result));
-    assert.ok(result.kinds.includes('button'), JSON.stringify(result));
-    assert.equal(result.actions, 0);
-    assert.equal(result.button, result.originalButton);
-    assert.equal(result.image, result.originalImage);
-  } finally {
-    await page.close();
-  }
-});
+// Real Chromium CPU slowdown can exhaust discovery's budget during a cold read.
+// Nearby supports must still become usable without changing the pointer target.
+for (const cpuRate of [1, 50])
+  test(`feet can perch on real image and button boundaries with ${cpuRate}x CPU slowdown while preserving page content and actions`, async () => {
+    const page = await fixture();
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
+    try {
+      const result = await page.evaluate((cpuRate) => {
+        const button = document.querySelector('button');
+        button.style.cssText = 'left:800px;top:365px;width:240px;height:60px';
+        globalThis.actions = 0;
+        document.addEventListener('click', () => actions++);
+        const original = document.body.innerHTML;
+        const spider = new Spider(document.querySelector('canvas'));
+        spider.resize(1200, 850);
+        const body = { x: 900, y: 280 };
+        const opts = { personality: 'curious', intensity: 0.6, reducedMotion: false };
+        spider.update(0, 0, body, { ...opts, reducedMotion: true });
+        spider.age = 2;
+        const kinds = new Set();
+        for (let f = 0; f < (cpuRate === 1 ? 240 : 480); f++) {
+          const surfaces = map.update(
+            f / 60,
+            revision,
+            spider.position,
+            body,
+            spider.feet,
+            spider.contactIds,
+            spider.surfaceContacts,
+          );
+          spider.update(1 / 60, f / 60, body, { ...opts, surfaces });
+          spider.render();
+          for (const leg of spider.diagnostics.legs) if (leg.contact) kinds.add(leg.contact.kind);
+        }
+        // Canvas style dimensions are ours; compare the actual host surfaces instead.
+        return {
+          kinds: [...kinds],
+          discovery: map.diagnostics,
+          actions,
+          button: button.outerHTML,
+          image: document.querySelector('img').outerHTML,
+          originalButton: original.match(/<button[^]*?<\/button>/)[0],
+          originalImage: original.match(/<img[^>]*>/)[0],
+        };
+      }, cpuRate);
+      assert.ok(result.kinds.includes('image'), JSON.stringify(result));
+      assert.ok(result.kinds.includes('button'), JSON.stringify(result));
+      assert.equal(result.actions, 0);
+      assert.equal(result.button, result.originalButton);
+      assert.equal(result.image, result.originalImage);
+    } finally {
+      await page.close();
+    }
+  });
 
 test('reflow, hidden/covered text and masked damage invalidate surfaces; opt-outs and rotated boxes fall back', async () => {
   const page = await fixture();

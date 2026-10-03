@@ -49,6 +49,8 @@ export class PageSurfaces {
   private reads = 0;
   private discoveries = 0;
   private refreshes = 0;
+  private discoveryCursor = 0;
+  private discoveryPending = false;
 
   get diagnostics() {
     return {
@@ -69,6 +71,8 @@ export class PageSurfaces {
     this.segments = [];
     this.nextDiscovery = this.nextRefresh = 0;
     this.revision = -1;
+    this.discoveryCursor = 0;
+    this.discoveryPending = false;
   }
   /** A borrowed line is no longer visible support. Other edges remain usable. */
   mask(node: Text) {
@@ -92,7 +96,10 @@ export class PageSurfaces {
   ): readonly PageSurface[] {
     const moved = Math.hypot(body.x - this.center.x, body.y - this.center.y) > 45;
     const dirty = revision !== this.revision;
-    if (time >= this.nextDiscovery && (moved || dirty || !this.anchors.size)) {
+    if (
+      time >= this.nextDiscovery &&
+      (moved || dirty || !this.anchors.size || this.discoveryPending)
+    ) {
       this.nextDiscovery = time + 0.24;
       this.center = { ...body };
       this.discoveries++;
@@ -105,7 +112,7 @@ export class PageSurfaces {
         });
         if (!node.isConnected || !nearby) this.anchors.delete(node);
       }
-      this.discover(body, destination, feet);
+      this.discoveryPending = this.discover(body, destination, feet);
     }
     if (dirty || time >= this.nextRefresh) {
       this.nextRefresh = time + 0.15;
@@ -151,8 +158,12 @@ export class PageSurfaces {
     const visited = new Set<HTMLElement>();
     let textBudget = 48;
     const start = performance.now();
-    for (const p of seeds) {
-      if (performance.now() - start > 2 || this.anchors.size >= LIMIT) break;
+    // Resume unfinished probes on the next throttled pass. A cold paint/layout
+    // read can use the budget before later nearby supports have been visited.
+    for (; this.discoveryCursor < seeds.length; this.discoveryCursor++) {
+      if (this.anchors.size >= LIMIT) break;
+      if (performance.now() - start > 2) return true;
+      const p = seeds[this.discoveryCursor]!;
       const x = clamp(p.x, 2, innerWidth - 2),
         y = clamp(p.y, 2, innerHeight - 2);
       const hit = document.elementFromPoint(x, y);
@@ -182,6 +193,8 @@ export class PageSurfaces {
         }
       }
     }
+    this.discoveryCursor = 0;
+    return false;
   }
 
   private measure(
