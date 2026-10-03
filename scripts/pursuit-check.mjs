@@ -1,4 +1,4 @@
-/** Item 6: real input, installed MV3, read-only recording instrumentation. */
+/** Installed MV3 pointer and navigation checks. */
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { serve } from './serve.mjs';
 
-const directory = 'artifacts/item6/pursuit';
+const directory = 'artifacts/extension-evidence/pursuit';
 await mkdir(directory, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'cr4wler-pursuit-'));
 const server = await serve(0);

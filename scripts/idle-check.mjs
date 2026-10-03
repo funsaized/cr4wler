@@ -1,4 +1,4 @@
-/** Item-5 pixels from the production MV3 bundle, with controlled RNG choices only. */
+/** Installed MV3 idle checks with controlled RNG choices. */
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { serve } from './serve.mjs';
 
-const directory = 'artifacts/item5/idle';
+const directory = 'artifacts/extension-evidence/idle';
 await mkdir(directory, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'cr4wler-idle-'));
 const server = await serve(0),

@@ -3,7 +3,6 @@ import type { Personality } from './types';
 import type { MaterialPaint } from './materials';
 
 export type Effect = 'peel' | 'shear' | 'scatter' | 'disassemble' | 'erase';
-export const effects: readonly Effect[] = ['peel', 'scatter', 'shear', 'disassemble', 'erase'];
 export interface Shard {
   kind?: 'text' | 'tile' | 'thread';
   source?: { x: number; y: number; width: number; height: number };

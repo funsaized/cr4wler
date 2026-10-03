@@ -1,4 +1,4 @@
-/** Item 8: installed interruption matrix plus actual demo controls/touch/persistence pixels. */
+/** Headed installed interruption and demo first-use checks. */
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { serve } from './serve.mjs';
-const dir = 'artifacts/item8/walkthrough';
+const dir = 'artifacts/extension-evidence/first-run';
 await mkdir(dir, { recursive: true });
 const server = await serve(0),
   base = `http://127.0.0.1:${server.address().port}`;

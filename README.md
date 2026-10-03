@@ -2,15 +2,15 @@
 
 **A tiny neon troublemaker for the open web.** Eight legs. Excellent taste. Questionable manners.
 
-cr4wler is a Chrome extension for the sake of _whimsey_ that climbs over a real page, locks onto phrases with a head-mounted beam, 'eats' its typography. A persistent composition accumulates as you scroll. The original page stays in place. Press **Escape** and everything returns immediately.
+cr4wler is a Chrome extension that walks over a real page, hunts its typography and leaves a reversible trail of fragments. The page stays usable. **Escape** restores it immediately.
 
-![Full Chromium window: cr4wler in neon color, Feral at maximum intensity, then Curious following the cursor.](docs/cr4wler-demo.gif)
+[![Watch the normal-speed demo: a neon jumping spider loosens image tiles and bends a card.](docs/cr4wler-demo.jpg)](docs/cr4wler-demo.webm)
 
-[Full browser demo · 30fps](docs/github-demo.webm) · [Runtime performance](docs/RUNTIME-PERFORMANCE.md) · [Privacy](PRIVACY.md) · [Testing and limitations](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
+[Watch demo · 15.84s · normal speed](docs/cr4wler-demo.webm) · [Performance](docs/RUNTIME-PERFORMANCE.md) · [Privacy](PRIVACY.md) · [Testing](docs/TESTING.md) · [Contributing](CONTRIBUTING.md)
 
-## Try it
+## Install
 
-Requires Node.js 22.12+ and npm. Python 3 is needed only to package the ZIP.
+Requires Node.js 22.12+ and npm. Python 3 is needed to package a ZIP.
 
 ```sh
 git clone https://github.com/funsaized/cr4wler.git
@@ -19,114 +19,78 @@ npm ci
 npm run build
 ```
 
-1. Open `chrome://extensions` in a Chrome profile where local extensions are allowed.
-2. Turn on **Developer mode**, choose **Load unpacked**, and select this project's `dist/` directory.
-3. Open a regular website, click cr4wler in the extension toolbar, and choose **Summon your spider**.
-4. The popup closes after a successful launch. Reopen it to try Curious, Dreamy, or Feral. Use the intensity slider to change the force of the typographic effects. Enable **Follow my cursor**, hover a word to choose its next target, then guide it toward the top or bottom edge to crawl through the page.
-5. Pause from the popup or floating dock. **Restore** or **Escape** removes the visitor and every fragment.
+1. Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `dist/`.
+2. Open a regular website, click cr4wler in the toolbar, and choose **Summon your spider**. The popup closes after a successful launch; failures leave it open for retry.
+3. Reopen the popup to change temperament, intensity or **Follow my cursor**. Use the floating dock or popup to Pause, Resume or Restore.
 
-The popup's **Try the playground** link opens the bundled night garden. Its **Daylight stress test** link opens an ordinary document with 1,800 fictional references across 60 sections; **Night archive** switches the same dense fixture to dark colors. For the standalone version:
+Local extensions must be allowed by your browser/profile. Restricted pages such as `chrome://` cannot host the effect. This extension has not been submitted to the Chrome Web Store.
+
+The popup links to a bundled playground and light/dark stress pages. To run the standalone demo:
 
 ```sh
 npm run dev
 # http://127.0.0.1:4173
 ```
 
-The playground runs the same animation and interaction engine directly. It does not require extension installation and is not evidence that extension permissions work.
-
-The demo site welcomes one spider automatically when each page is ready. Pause keeps it still; Restore or Escape leaves it off until you choose Summon. Reduced motion shows a quiet, static visitor. Cached history returns preserve your active, paused or restored choice. The extension still needs its toolbar Summon action on other websites.
+Both use the same engine. The demo starts automatically; extension use on other websites requires a toolbar action. `?autostart=off` disables demo startup for controlled checks.
 
 ## A small set of controls
 
-**Active** means this document has one visitor. **Pause** freezes its motion and hunt; your existing trail stays anchored while you scroll. **Resume** continues. **Restore** or **Escape** removes the visitor and all its owned masks, highlights and fragments, while keeping page and user edits. It does not undo actions you took on the website. Temperament changes the anatomy and next hunt immediately without clearing the trail or creating another visitor; a committed impact keeps its owned footprint. Intensity changes the force of future effects. Follow my cursor lets hovering guide the next hunt; turn it off to explore freely. Touch users can use the controls and ordinary scrolling; cursor guidance requires a pointer.
+- **Temperament:** Curious is a long-legged widow with precise bites; Dreamy is a rounded orb-weaver with slow steps and gentle peeling; Feral is a compact jumping spider with quick pounces and local shredding. Changing it updates the anatomy and next hunt without clearing the trail. A committed impact keeps its footprint.
+- **Intensity:** changes the force of future effects.
+- **Follow my cursor:** a stable hover guides the next hunt. Moving elsewhere cancels an uncommitted hunt; an impact already in progress finishes before the latest target takes over. Pointer jitter stays on the same target. It never activates a page control.
+- **Pause / Resume:** freezes or continues motion and hunts. Existing marks stay anchored while you scroll.
+- **Restore / Escape:** removes the visitor and its effects while preserving current page content, styles and user edits.
 
-A compact, keyboard-dismissible hint appears on the first successful launch. Mouse/trackpad users get hover guidance; touch-only users get automatic exploration, Pause and Restore guidance. The follow help makes clear that cursor guidance needs a mouse or trackpad. Input capability, rather than screen width, selects the copy. The hint is remembered as shown, even if you leave before dismissing it. No hint timer or repeating tutorial runs. Reduced motion keeps a static visitor and disables new hunts and edge crawling.
+Hold the pointer near the top or bottom edge to crawl through the nearest eligible scroll container. Move toward the center to stop. Each visit stops after six seconds or 1,800px, at a maximum 440px/s; leave/re-enter or move again to continue. Wheel, touch, navigation keys, scrollbar use and external scrolling take priority and require fresh pointer movement before edge crawling resumes. Pause, blur, leaving, disabling follow and reduced motion stop scrolling. Recovery from rapid page movement never scrolls the page itself.
 
-| Boundary                                   | Behavior                                                                                                                                                                                                                                                                  |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Reopen the extension popup                 | Shows this tab’s live settings if active; otherwise your saved next-launch preferences. Status alone keeps the popup open. Successful Summon closes the native popup. Failures keep retry and the playground link available.                                              |
-| Change settings                            | Saves temperament, intensity and follow mode for future launches on that extension/demo origin. Already-active tabs keep their own settings. No live cross-tab synchronization.                                                                                           |
-| Reload or navigate an extension tab        | Clears that document’s visitor and trail. Summon explicitly again through the toolbar. An in-page route change keeps the visitor and releases sources that the app changes/removes.                                                                                       |
-| Fresh demo page, reload or site navigation | Automatically starts one visitor using that origin’s saved preferences. `?autostart=off` opts out. Restore stays off within the current document, repeated bundle loads and a cached history return. A cached active/paused return keeps that intent, with a fresh trail. |
-| New tab                                    | Demo pages auto-start; extension use requires its own toolbar action. Activity, Pause and page content are never saved.                                                                                                                                                   |
-| Extension update/browser restart           | Next-launch preferences and hint history survive while the extension ID/profile storage remains. Reload an existing tab after an extension update before summoning again; there is no automatic reinjection.                                                              |
-| Cleared/denied storage                     | Clearing origin data resets preferences and hint history. Denied/full storage leaves play and Restore available; persistence is unavailable. Uninstall/reinstall or a new unpacked path/ID may reset extension data.                                                      |
+Touch users can operate the controls and scroll normally; cursor guidance needs a mouse or trackpad. A dismissible first-launch hint follows input capability and is remembered as shown. Reduced motion keeps a static visitor and disables new hunts and edge crawling.
 
-The popup and bundled playground share the extension origin; a separately hosted demo uses its own origin. Only preferences and a hint flag are stored; never page text, images, marks or browsing history. No additional permission is needed.
+| Boundary                            | Behavior                                                                                                                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reopen the popup                    | Shows this tab's live settings when active; otherwise saved next-launch preferences. Status checks keep it open.                                                                                  |
+| Change settings                     | Saves temperament, intensity and follow preference on the extension/demo origin. Active tabs keep independent settings.                                                                           |
+| Reload or navigate an extension tab | Clears that document's visitor and trail. Summon again through the toolbar. In-page route changes release changed/removed sources.                                                                |
+| Demo reload or new page             | Starts with that origin's preferences unless `?autostart=off`. Restore stays off during bundle reentry and cached history returns. Cached active/paused returns retain intent with a fresh trail. |
+| Extension update or browser restart | Preferences/hint survive with the same extension ID and profile data. Reload existing tabs after an update before summoning; no automatic reinjection.                                            |
+| Clear origin data                   | Resets saved preferences and the hint. Activity, Pause, marks and page content are never saved.                                                                                                   |
 
-## What makes it move
+The popup and bundled demo share the extension's origin data. A hosted demo has its own preferences. Injected content writes no visited-site storage.
 
-- Eight planted feet, analytic inverse kinematics, articulated knees, crisp neon leg cores and luminous joints. A compact braced body, forward eyes and little palps turn toward your next target. All procedural; no animated images or external assets.
-- Silk arrival and spring-driven movement. The head points toward a live target; a sweeping selector settles into a lock box, pauses in anticipation, then strikes. A gripping front leg follows the contact point during peeling and shearing.
-- Source-colored letters and short fragments tear at the claw's contact. Curious removes a small selected piece; Feral shreds a local area; Dreamy peels and unravels more slowly. Same-origin raster images loosen into recognizable tiles, compact cards and plain buttons flex with short border threads, and thin rules snap with a little recoil.
-- Every committed mark keeps its identity, color, and displacement as you scroll away and return. Reflow updates its anchor to the original live range. Nothing times out. Restore, Escape, or refresh clears the whole composition.
-- Optional cursor following resolves the actual eligible material under your pointer. Text inside a card stays text; its empty space or edge chooses the card. The eyes and selector acknowledge it promptly; a stable hover replaces a wandering target, approach or lock. Only an already-started strike finishes before the latest hover takes over.
-- Small moving selector accents and low-contrast local pulses; no full-page flashes or high-contrast strobing. Reduced motion shows a still visitor, disables scanning/strikes and retains existing aftermath without continuous animation.
+## Page effects and safety
 
-## Take the lead
+The spider plants feet on measured text and object edges, then notices, investigates, locks, prepares and strikes. Source-colored text tears at the claw; already-loaded same-origin raster images loosen into tiles; simple cards/buttons flex; thin rules recoil. Marks retain their identity as you scroll away and return. Removed, edited, hidden or newly ineligible sources release their effects.
 
-With **Follow my cursor** enabled, hover an eligible phrase or link. Small pointer jitter stays on the same target. Moving to another element changes the next hunt; it does not activate that element. Inputs and protected widgets remain excluded.
+A fixed Shadow DOM overlay holds the fragments; page HTML is never cloned. Forms, inputs, editors, submitters, dialogs, live regions, iframes and recognized sensitive widgets are excluded. Authors can exclude a subtree with `data-cr4wler-ignore`. Plain buttons outside forms may receive an inert visual treatment, without invoking their handlers. Sensitive-widget recognition is conservative and cannot identify every private page.
 
-Hold near the top or bottom edge for a deliberate crawl. Speed increases toward the edge, with a 440px/s ceiling. Move back toward the center to stop immediately. Each edge visit rests after six seconds or 1,800px; move again or leave/re-enter the zone to continue. Wheel, touch and navigation-key scrolling take priority and require fresh pointer movement before edge crawling resumes. Pause, leaving the page, losing focus, disabling follow or reduced motion stops scrolling.
-
-| Temperament | How it feels                                                      | Stable hover / lock / strike |
-| ----------- | ----------------------------------------------------------------- | ---------------------------- |
-| Dreamy      | Orb-weaver: rounded and tufted, buoyant steps, deliberate peeling | 140 / 460 / 420ms            |
-| Curious     | Widow: round abdomen, narrow waist, long purposeful stalking legs | 75 / 200 / 300ms             |
-| Feral       | Jumping spider: compact body, large front eyes, short pounces     | 35 / 75 / 180ms              |
-
-These are intended timing budgets. Body approach and browser frame cadence also affect completion time. A strike already in progress is briefly atomic; moving during it queues your latest target. Each temperament is a different procedural spider type, with its own anatomy, gait, acquisition, effect ordering and rhythm. Curious is a widow with a round abdomen, narrow waist and long stalking legs. Dreamy is a rounded, gently tufted orb-weaver with slow buoyant steps. Feral is a compact jumping spider with large front eyes, quick scuttles and short crouched pounces.
-
-Rapid scrolling releases planted contacts before they exceed their fixed leg reach. The spider crouches, tucks its feet for a short hop, lands on the new visible surface, and chooses nearby text. An offscreen strike keeps its committed mark while releasing its grip. Repeated scrolls cannot drag airborne feet or restart a hop indefinitely. Reduced motion and paused geometry use a calm bounded reset. Recovery never scrolls the page.
-
-## Privacy: a guest, not a wrecking ball
-
-No page content is clicked, submitted, fetched, uploaded, or stored. All fragment text lives only in this page's memory while the effect is active. There are no runtime dependencies, trackers, telemetry, fonts from CDNs, or remote services. See [PRIVACY.md](PRIVACY.md).
-
-The controller adds a fixed Shadow DOM overlay. It copies short text and samples a bounded number of already-loaded same-origin image pixels; it never clones page HTML, scripts, controls or embedded content. Plain `type="button"` controls outside forms can receive an inert visual treatment. Inputs, submitters, forms, editors, dialogs, embedded frames, hidden content, live regions, and conservatively recognized payment/authentication/private widgets stay protected. Authors can opt out any subtree with `data-cr4wler-ignore`. Nothing activates a page control or rewrites its data.
+Cross-origin images, unsupported paint and exhausted bitmap budgets use an outline treatment. No image is fetched for an effect. There are no runtime dependencies, network services, trackers or telemetry; text and sampled pixels stay in document memory. See [Privacy](PRIVACY.md).
 
 ## Development
 
 ```sh
+npx playwright install chromium
 npm run typecheck
 npm run lint
 npm run format:check
-npx playwright install chromium
 npm test
 npm run test:extension
+# Headless Linux needs Xvfb for the native toolbar popup:
+xvfb-run -a -s "-screen 0 1280x900x24" npm run test:popup
 npm run package
 ```
 
-`npm test` runs real Chromium DOM/interaction tests, a packaged content-script harness with mocked messaging, and popup tests with mocked Chrome APIs. `test:extension` separately loads the actual extension, verifies denial before a gesture, triggers Chrome’s toolbar action, and exercises the real popup page and isolated-world controller with unmodified permissions and real Chrome APIs. It records pointer-controlled videos and screenshots on dense light and dark pages and fails loudly if browser policy blocks installation. See [the validation record](docs/TESTING.md), including the remaining manual compatibility checklist.
+The package command creates a versioned ZIP and SHA-256 digest under ignored `artifacts/`. Sorted entries, fixed timestamps and modes make repeated builds byte-identical with the same lockfile and toolchain. Unzip before **Load unpacked**. Build output includes the synthetic fixtures used by browser checks and the bundled demos.
 
-`npm run package` creates `artifacts/cr4wler-0.4.1.zip` and its SHA-256 digest. ZIP entry order, timestamps, and modes are fixed. With the lockfile and the same toolchain, repeated builds produce identical bytes. Unzip before selecting **Load unpacked**. This has not been submitted to the Chrome Web Store.
+`npm test` covers real Chromium behavior, geometry and mocked Chrome messaging. Installation, real permissions, material pixels and native-popup behavior have separate checks. See [Testing](docs/TESTING.md) for their scope and remaining compatibility limits.
 
-Useful files:
+| Source                                                | Responsibility                                         |
+| ----------------------------------------------------- | ------------------------------------------------------ |
+| `src/engine.ts`                                       | Lifecycle, hunts, persistent marks and restoration     |
+| `src/spider.ts`                                       | Anatomy, gait, inverse kinematics and Canvas rendering |
+| `src/targets.ts`, `src/surfaces.ts`                   | Bounded discovery and safe page geometry               |
+| `src/materials.ts`, `src/effects.ts`                  | Snapshots, fragment treatments and projections         |
+| `src/content.ts`, `src/popup.ts`, `src/playground.ts` | Extension activation and shared controls               |
 
-| File                | Responsibility                                             |
-| ------------------- | ---------------------------------------------------------- |
-| `src/spider.ts`     | Procedural gait, IK, canvas rendering, silk and grip       |
-| `src/targets.ts`    | Pruned and bounded safe text scanning                      |
-| `src/engine.ts`     | Hunt sequence, persistent records, virtualization and undo |
-| `src/effects.ts`    | Seeded fragment treatments and bounded projections         |
-| `src/content.ts`    | Idempotent isolated-world message controller               |
-| `src/popup.ts`      | Explicit per-tab activation and settings                   |
-| `src/playground.ts` | Standalone demo controls                                   |
+Discovery uses viewport hit tests and a progressive document cursor, bounded to 1,800 visited nodes and 80 useful ranges per pass in roughly 2ms slices. Geometry is acquired and invalidated by page changes, with throttled safety refreshes. A session retains at most **512 records**, **72 DOM projections**, **16 shards per record** and **1,048,576 snapshot pixels**. Excess visible settled marks share one canvas; reaching the record cap stops new hunts and asks for Restore. Marks are never silently evicted. Device pixel ratio is capped at 2; Pause and hidden tabs stop hunting.
 
-Discovery combines viewport hit testing with a progressive document cursor. Each pass is bounded to 1,800 visited nodes and 80 useful ranges, in roughly 2 ms slices, so deep reference sections can be reached without rescanning an entire document each frame. Layout is read on acquisition and coalesced scroll/resize/content events, not on every animation frame.
-
-A session keeps up to **512 persistent records** and at most **72 DOM projections**, each with no more than 16 shards. Offscreen records retain their source ranges and transforms without mounted DOM. If reflow makes more than 72 records visible together, the excess settled marks use one shared canvas. At 512 marks the spider stops making new ones and explicitly asks for Restore; it never silently evicts old visible aftermath. A source removed, changed, hidden, or made ineligible by its page is safely released rather than overwriting that page's edits.
-
-Material inspection stays local. Text bites contain at most 16 / 30 / 20 characters for Curious / Feral / Dreamy. Objects are limited to 360×220 CSS pixels (horizontal rules to 480×8); panel descendants and labels are bounded. Image/panel snapshots are at most 256×192 pixels, sharing a session budget of 1,048,576 pixels. At most nine image tiles are retained, with only one / four / two moving for Curious / Feral / Dreamy at full quality. Settled pieces leave animation; there is only one active strike.
-
-Cross-origin, SVG/data/blob images, unsupported paint styles and exhausted bitmap budgets keep their source pixels and receive only a small outline treatment. Supported panels have simple text, uniform solid borders and pixel radii; gradients, shadows, transformed surfaces and complex controls fall back conservatively. No image is fetched for an effect. Non-text masks use an owned temporary attribute and CSS rule, leaving application styles and values intact. Restore removes only owned masks and projections.
-
-Device pixel ratio is capped at 2. Hunting stops when paused or the tab is hidden. Paused marks still follow document scrolling and reflow. No particles are allocated, and no record survives a page refresh.
-
-## POC boundaries
-
-Protected browser pages, the Chrome Web Store, PDFs, and other extensions' pages cannot be scripted. The built-in playground has its own direct engine. Shadow roots and iframes are deliberately not traversed. CSS-transformed pages, hostile page styles, unusual vertical text, animated layouts, extreme zoom, and live collaborative editors need broader compatibility work. Discovery is incremental and does not promise to visit every eligible phrase. Preferences use localStorage on the extension or demo origin. See the lifecycle rules above.
-
-Inspiration behind the implementation: [rybinfx](https://x.com/rybinfx/status/2105700296760688790?s=20)
-
-MIT licensed, made for **fun**. Contributions with fewer legs are also welcome.
+Measured surface CPU work improved by 35–43%, but dense mixed-frame tails remain around 100ms on the tested SwiftShader executor. This is not a 60 FPS claim. See [Performance](docs/RUNTIME-PERFORMANCE.md) for reproduction and limits.

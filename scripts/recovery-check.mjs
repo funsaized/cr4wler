@@ -1,4 +1,4 @@
-/** Item 7: actual installed MV3, real navigation and captured production Canvas pixels. */
+/** Headed installed MV3 scroll recovery checks. */
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { serve } from './serve.mjs';
 
-const directory = 'artifacts/item7/recovery';
+const directory = 'artifacts/extension-evidence/recovery';
 await mkdir(directory, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'cr4wler-recovery-'));
 const server = await serve(0),

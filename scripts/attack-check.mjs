@@ -1,4 +1,4 @@
-/** Focused item-4 pixels from the unmodified installed MV3 content bundle. */
+/** Installed MV3 attack phases and interruption checks. */
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { serve } from './serve.mjs';
 
-const directory = 'artifacts/item4/attack';
+const directory = 'artifacts/extension-evidence/attack';
 await mkdir(directory, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'cr4wler-attack-'));
 const server = await serve(0);

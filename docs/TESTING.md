@@ -1,4 +1,6 @@
-# Validation and release checks
+# Testing
+
+Use Node.js 22.12+, npm, Python 3, Chromium and FFmpeg. Headed checks on Linux also need Xvfb. Run browser harnesses sequentially; the aggregate suite and installed-extension matrix use port 4173.
 
 ```sh
 npm ci
@@ -8,203 +10,68 @@ npm run lint
 npm run format:check
 npm test
 npm run test:extension
+xvfb-run -a -s "-screen 0 1280x900x24" npm run test:popup
 npm run package
 ```
 
-## What each test proves
+CI runs these static, aggregate, installed-extension, native-popup and packaging checks, and uploads packages and extension evidence. Generated files belong in ignored `artifacts/`; do not commit run output or hand-edit `dist/`.
 
-`npm test` exercises Chromium DOM and animation behavior in the night garden and dense light/dark reference fixtures. It covers:
+## Coverage
 
-- Protected controls, source DOM/layout preservation, page-owned highlights and concurrent edits, no observed site actions or requests, and SPA replacement.
-- Pause/Resume, Reset/Escape, repeated activation, pagehide and cached navigation, hidden tabs, reduced motion, and pending-work cancellation.
-- Persistent marks after scrolling away/back, resizing and more than 26 seconds of animation; discovery deep into volume 60.
-- Hover preemption, pointer jitter, protected targets, distinct temperament rhythms, bidirectional edge scrolling, and manual-scroll priority.
-- Fixed leg reach, finite joints, gait support, large frame deltas, rapid wheel/fling reversals, document jumps, and offscreen mid-strike recovery.
-- Bounds caching, mutation/font invalidation, read-before-write batching, adaptive quality hysteresis, complete shard text, and pinch zoom with nested scrolling.
+| Check                    | Scope                                                                                                                                                                                                                                                                                                                            |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test`               | Real Chromium DOM/interaction and procedural geometry; restoration with author edits, protected controls, no observed requests/site actions, repeated activation, navigation, Pause, reduced motion, cached geometry, clipping, budgets, pointer intent, attacks, idle and recovery. Chrome messaging and popup APIs are mocked. |
+| `npm run test:extension` | Unmodified installed MV3 bundle, real Chrome APIs and toolbar grant. Denial before a gesture; light/night pointer sessions; hero capture; all three species in both material themes; exact Restore and protected fields. Its popup page is opened in a tab.                                                                      |
+| `npm run test:popup`     | Actual headed toolbar popup: acknowledgement before closing, idempotency, live status, first-use dismissal, species/settings, persistence across reload/new tabs, restricted-page failure and retry.                                                                                                                             |
 
-The packaged content-script idempotency harness and popup tests mock Chrome messaging. They do **not** prove installation or extension permissions. The popup tests enforce the 600px height limit, visible footer and no horizontal overflow across all temperaments and active/error states. Historical profiling results are recorded in the [runtime investigation](RUNTIME-PERFORMANCE.md).
+Use `?autostart=off` on controlled fixtures so the standalone engine does not compete with the installed extension. A blocked installation must fail; never bypass browser policy or broaden permissions to make a check pass.
 
-`npm run test:extension` loads the unmodified MV3 package into a disposable persistent Chromium context through the DevTools extension loader. It verifies scripting is denied before a toolbar gesture, triggers the real action, and exercises the real popup page and Chrome APIs. Light/night pointer sessions cover all three anatomies, immediate hover redirects, rapid-scroll recovery, edge crawling, persistent deep-scroll return, and exact restoration. Protected form values, page actions, requests, navigation and errors are checked. The shared hero session adds a focused cursor-following capture.
+Materials include text, same-origin image tiles, cards/buttons, thin rules and cross-origin outline fallback. Tests cover ownership under source/style/child edits, nested scrolling, Pause/reduced motion and Reset with user edits. Snapshots are at most 256×192 pixels within a 1,048,576-pixel session budget. The 80-image fixture exercises the 72-projection limit and overflow canvas. Synthetic stress checks do not certify arbitrary pathological pages.
 
-The popup page in that test runs in a browser tab after toolbar activation. Native popup-window behavior is tested separately:
+## Focused installed checks
 
-```sh
-xvfb-run -a -s "-screen 0 1280x900x24" npm run test:popup
-```
-
-This headed check loads the packaged extension, triggers its actual toolbar popup and observes closure only after acknowledgement. It checks successful/idempotent launch, active-status menus, restricted-page failures, preserved settings, one visitor, and exact restoration. It requires Xvfb on headless Linux. Neither installed-extension check bypasses browser policy; a blocked load fails loudly. A permitted local installed-extension run is documented in the runtime report, not a guarantee about every environment.
-
-Use **`?autostart=off`** for controlled playground/reference fixtures so the standalone engine does not compete with an installed extension. Ordinary site visits still autostart. Reset remains off across bundle reentry and cached navigation; an active or paused session can resume once on a cached return.
-
-## Performance
-
-`tests/materials.test.mjs` drives the shared engine through all three temperaments on `materials.html` in light/night themes. It checks recognizable source-colored text, bounded source-image tiles, cards/buttons, rule recoil and cross-origin outline fallback. It also covers scroll return, nested scrolling, interruption, Pause/reduced motion, source/style/child changes, exact Reset with user edits, protected controls and the bitmap/DOM budgets. `npm run test:extension` repeats the material matrix with the actual installed content bundle and saves screenshots plus normal/3× playback sequences under `artifacts/extension-evidence/materials/`. The slow sequences repeat captured frames without interpolation.
-
-Material snapshots are at most 256×192 pixels with a 1,048,576-pixel session budget; mounted tile canvases add bounded copies. Unsupported origins/paint and budget exhaustion use stable outline treatments rather than reading unsafe pixels or evicting earlier damage. A compact panel uses at most 24 inspected descendant nodes and 160 text characters. The controlled 80-image stress test reaches the 72 DOM projection limit and shared overflow canvas; it does not certify arbitrary pathological documents.
-
-```sh
-npm run perf:runtime
-```
-
-The [runtime investigation](RUNTIME-PERFORMANCE.md) and [measurement evidence](runtime-performance.json) retain the current before/after comparison: matched host-only/runtime workloads, frame distributions, long frames, active/settled shard counts, DOM retention and memory trends. The harness covers dense-page destruction, mouse-follow, scrolling, resizing, pinch zoom, page mutations, Pause and repeated launch/reset. The report includes commands for live public pages, longer sessions, baseline revisions and headed runs.
-
-Timing runs omit video/screenshots. Installed-extension recordings are correctness/visual evidence, not comparable performance samples. A session caps retained records at 512 and DOM projections at 72, with at most 16 shards per record; excess visible settled marks share one canvas. Ordinary tests do not exhaust these caps or certify pathological layouts. Headless results do not establish steady on-screen 60 FPS on representative hardware.
-
-## Capture and artifact retention
-
-`tests/attack.test.mjs` checks the shared notice → investigate → lock → prepare → strike → settle hunt, including the exact text range selected before commitment. Named preparation times in `hunt-profiles.ts` are 200ms for Curious, 90ms for Feral and 420ms for Dreamy. Pointer replacement cancels uncommitted preparation; a committed impact finishes before latest intent starts, while at most three existing fragments briefly settle. Pause freezes the hunt and impact clocks; changed/removed/hidden sources and manual/nested scroll safely abandon or finish owned state.
-
-For focused installed-extension pixels, run `npm run build && node scripts/attack-check.mjs`. It records three normal and 3× slow sequences, actual preparation/impact/aftermath screenshots, exact footprints and interruption evidence on `anticipation.html` under `artifacts/item4/attack/`. Recording labels are fixture instrumentation; slow playback repeats captured frames without interpolation. Use the full installed-extension matrix above for other materials and page contacts.
-
-`tests/idle.test.mjs` checks deterministic weighted gestures, multi-second quiet gaps,
-per-action cooldowns, seven supports during idle, fixed reach, immediate interruption
-of every gesture into an exact preparation grip and normal gait, dock Pause, real hover
-hunts, Reset/repeated activation, manual/nested scrolling, stale surfaces, species changes, resize, visibility
-events and static reduced motion. Visibility events in that aggregate regression are
-controlled lifecycle fixtures, not evidence of native browser tab switching.
-
-Run `npm run build && node scripts/idle-check.mjs` for actual installed-MV3 idle
-pixels on the synthetic `idle.html?autostart=off` fixture at 1440×1000/DPR 1.
-It captures 26 seconds per species with a real pointer held stationary inside
-the protected input at (144,260), plus real pointer
-interruption and subsequent preparation. The production engine and renderer use
-Curious seed 42 and Feral/Dreamy seed 7, reset once before arrival finishes;
-only random choices are controlled. No animation clocks or geometry are changed.
-Screenshots for each gesture and normal/3× slow WebM sequences are saved under
-`artifacts/item5/idle/`. Slow playback repeats captured pixels without interpolation.
-The temporary tending strand belongs to that canvas frame and disappears on return,
-interruption, invalidation or Reset. Diagnostic geometry supports assertions;
-the screenshots and recordings supply visual evidence. Cursor-follow mode lets the
-physical arrival finish before adopting a quiet resting destination.
-
-Idle eligibility uses recent real movement/navigation, unresolved hover/hunt intent
-and active edge travel. A stationary pointer inside blank or protected content, or
-over a completed/occupied hunt target, can rest without additional destruction or
-scrolling. Cumulative pointer movement of at least 3px immediately releases the
-idle gesture and renews its quiet delay, even over protected content or with
-following disabled. Same-position events and movement inside that deadband leave
-the gesture and delay intact. The dedicated
-stationary-pointer regressions retain pointer presence while checking Pause,
-reduced motion and subsequent movement.
-
-`tests/pointer.test.mjs` adds moving-line stability, adjacent text boundary tremor,
-latest uncommitted intent, independent settling, stale edge leases, nested edge
-ownership, native control clicks and species/controlled lifecycle regressions.
-Two real-clock idle regressions keep a pointer in protected content, preserve an
-actual gesture and its quiet delay through repeated same-position/sub-3px events,
-then verify immediate interruption at the cumulative threshold with following
-both enabled and disabled.
-Dirty hover intent is resolved once per animation frame before commitment. A
-cumulative 3px deadband protects a target from tremor; crossing 8px inside an
-unselected source restarts its explicit species dwell (35/75/140ms). The head
-can acknowledge raw input on the next available rendered frame. Blank/protected
-stops retain recent-input idle behavior. Pursuit scales bounded physical speed
-with filtered input; it preserves all contact and inverse-kinematics constraints.
-
-Edge visits choose the nearest eligible vertical scroll container within 32
-ancestors, otherwise the document once the walk reaches the body. An exhausted
-walk stops rather than assuming document ownership. The same container owns the visit at its
-boundary; it never spills into document navigation. Speed ramps after 240ms,
-with the existing 1,800px/6s visit limits and a 3s lease since meaningful pointer
-movement. Wheel, touch, keyboard, scrollbar/pointer presses and external scrolling
-disarm intent. Own nested scroll steps are recognized separately. Committed
-impact and settling never auto-scroll. Pause freezes the existing hunt while
-clearing pointer intent; blur, visibility, reduced motion, type changes and Reset
-discard the relevant pending intention.
-
-Run `npm run build && node scripts/pursuit-check.mjs` for installed-extension
-normal/3× slow sequences and screenshots under `artifacts/item6/pursuit/`. The
-synthetic fixture captures slow tracking, sweeps/reversals, exact preparation,
-jitter, committed redirection, document/nested edges and boundaries, wheel and
-PageDown overrides, native controls, Pause, controlled blur and reduced motion.
-Its ring/labels and bounded trace are recording instrumentation; no animation
-clock, source geometry or hunt is substituted. Feedback timing measures receipt
-of a real pointer event to completion of the next canvas render under the stated
-capture conditions, not hardware input or photon latency. Controlled blur and
-visibility checks do not establish native background visual behavior. Performance
-runs remain separate from captures. Prior executor dense-frame tails of
-100–150ms remain a series optimization concern; this item makes no 60 FPS claim.
-
-`tests/recovery.test.mjs` checks ordinary scroll continuity versus missing/moved
-stance, one entrance through continued wheel bursts and reversal, quiet-time
-rearming, duration, finite fixed reach, Pause, Reset, per-stage species changes,
-controlled backgrounding, resize and static reduced motion. Real browser checks
-retain document/nested navigation ownership and resume on the next pointer input.
-Feral's measured gap hops keep their prior supported touchdown path.
-
-Run `npm run build && xvfb-run -a -s "-screen 0 1440x1080x24" node scripts/recovery-check.mjs`
-(or use an existing desktop DISPLAY) for headed installed-MV3 item-7 pixels on `pointer.html?autostart=off`. Output is in `artifacts/item7/recovery/`.
-Each normal clip includes an uninterrupted real wheel burst/reversal followed by
-new pointer pursuit; its 3× slow clip repeats actual captured pixels. Separate
-stage screenshots use the real engine Pause to freeze anticipation, flight and
-landing. Diagnostic traces verify bounded limbs, one recovery, input feedback and
-released selectors/grips; they are distinct from screenshot/video evidence.
-The harness also exercises PageDown, actual native scrollbar drag, nested wheel,
-resize, CDP page-scale zoom, controlled visibility and reduced motion. CDP zoom
-is not native browser UI zoom; controlled visibility is not native background
-visual proof. Capture costs are not performance measurements.
-
-The attack capture focuses the dock before short preparation windows and activates
-Pause with Enter. This exercises the real dock control while avoiding Playwright's
-pointer-click stability wait consuming Feral's 90ms anticipation. Native toolbar
-mouse behavior remains covered by `npm run test:popup`. Run harnesses that serve on
-port 4173 sequentially; the aggregate browser suite and installed-extension matrix
-both use it.
-
-Keep generated output under ignored `artifacts/`:
-
-| Producer                  | Output                                                               |
-| ------------------------- | -------------------------------------------------------------------- |
-| `npm run test:extension`  | `artifacts/extension-evidence/` and raw `artifacts/extension-video/` |
-| `npm run test:popup`      | `artifacts/extension-evidence/popup/`                                |
-| `npm run perf:runtime`    | `artifacts/runtime-performance.json` by default                      |
-| `scripts/github-demo.mjs` | `artifacts/github-demo/`                                             |
-| `npm run package`         | Versioned ZIP and digest under `artifacts/`                          |
-
-CI uploads extension evidence and packages. The manual **Record GitHub repository demo** workflow captures the native browser and uploads its source video. Keep only the README demo and its provenance, plus the current runtime report/data, in `docs/`; superseded screenshots, alternate videos and old profiling JSON are available in Git history rather than duplicated in the current tree. Local run output is disposable but is not deleted by the test commands.
-
-### README demo provenance
-
-[The GIF](cr4wler-demo.gif), [full browser WebM](github-demo.webm), and [capture evidence](hero-evidence.json) document a historical recording, not the latest runtime. Captured source: `dc2d77e814a72d151ca1cba935c1cf24675e9f8c`; [capture CI](https://github.com/funsaized/cr4wler/actions/runs/37044012741).
-
-The continuous 32.92-second excerpt shows the actual installed extension on its public GitHub repository, first Feral and then Curious following the cursor. Chromium 153.0.8010.12 ran in a fresh signed-out profile on a 1440×1080 Xvfb desktop. FFmpeg captured the whole native window, including tabs and address bar, at approximately 30fps; the GIF samples at 25fps without interpolation. The harness checks one visitor, bounded finite limbs, scrolling, persistent damage and exact restoration. Pointer rings and labels are recording instrumentation, not extension UI.
-
-To capture a new native-window session, install FFmpeg and Xvfb, then run:
+These scripts retain installed-product assertions and captures beyond the aggregate suite. Build once, then run the relevant script:
 
 ```sh
 npm run build
-xvfb-run -a -s "-screen 0 1440x1080x24" node scripts/github-demo.mjs
+node scripts/attack-check.mjs
+node scripts/idle-check.mjs
+node scripts/pursuit-check.mjs
+xvfb-run -a -s "-screen 0 1440x1080x24" node scripts/recovery-check.mjs
+xvfb-run -a -s "-screen 0 1280x900x24" node scripts/first-run-check.mjs
 ```
 
-## Manual compatibility checklist
+| Script                | Checks and capture conditions                                                                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `attack-check.mjs`    | Three species, exact footprint, preparation/impact/settling, replacement intent, committed impact, Pause, nested scrolling and Restore. Dock keyboard Pause captures short preparation windows without pointer-click stability waits. |
+| `idle-check.mjs`      | 26s stationary-pointer clips, gestures, immediate interruption and subsequent preparation. Production clocks/geometry; Curious RNG seed 42, Feral/Dreamy seed 7.                                                                      |
+| `pursuit-check.mjs`   | Tracking/reversal, jitter, preparation, committed redirection, nested/document edges, wheel/PageDown priority, native controls, Pause, controlled blur and reduced motion.                                                            |
+| `recovery-check.mjs`  | Headed wheel bursts/reversal, PageDown, native scrollbar drag, nested wheel, resize, CDP page scale, controlled visibility and reduced motion. Continuous clips run without Pause; stage screenshots use real Pause.                  |
+| `first-run-check.mjs` | Headed Pause/species/Restore matrix across ten phases for each species; demo startup, keyboard, edited fields, persisted preferences, one hint, 320/390px touch emulation and reduced motion.                                         |
 
-- In a profile permitting local extensions, load `dist/`, summon via the native toolbar popup, reopen it, and check settings and Pause/Reset.
-- Summon/Escape repeatedly; verify no duplicate visitors or leftover source highlights.
-- Navigate to another origin. Confirm no automatic injection and that access requires a fresh toolbar gesture. Check a restricted `chrome://` page.
-- Scroll nested containers, resize, use native browser zoom, switch tabs, and exercise fixed/sticky/transformed layouts. Marks should remain anchored and user edits must survive Reset.
-- Use synthetic form/editor fixtures; verify values, submissions, navigation and requests stay unchanged.
-- Change reduced-motion preference during a session. New hunts stop; existing marks remain until Reset.
-- Inspect permission/network panels. There are no host permissions or runtime network services.
+Outputs use `artifacts/extension-evidence/<attack|idle|pursuit|recovery|first-run>/`. The main installed matrix writes `artifacts/extension-evidence/`, plus raw recordings in `artifacts/extension-video/`; native popup output is in `artifacts/extension-evidence/popup/`. Diagnostics support assertions; screenshots and normal-speed recordings provide pixel evidence. Slow clips repeat actual frames at 3× duration without interpolation. Fixture rings/labels are instrumentation, not extension UI. Preserve the caret in DOM-comparison captures (`caret: initial`).
 
-## First-use controls (item 8)
+For whole-window native-popup recordings, set `CR4WLER_RECORD_DESKTOP=1` and `CR4WLER_DESKTOP_SIZE=1280x900`, matching the Xvfb screen. Keep Xvfb and the recorder in the same IPC namespace. Optional `CR4WLER_CHECK_RELOAD=1` attempts a same-ID extension reload; it is a compatibility experiment, not a replacement for a normal-profile update check.
 
-The popup and site share temperament descriptions, intensity labels and activity copy. The first successful launch offers one dismissible guiding/Restore hint, remembered as shown on the extension/demo origin. The popup and bundled playground share extension preferences; a separately hosted demo has separate origin data. No visited-site storage is written by injected content. See [the lifecycle rules](../README.md#a-small-set-of-controls) and [Privacy](../PRIVACY.md).
+## Performance and limits
 
-`tests/browser.test.mjs` also checks saved preferences through reload/site navigation/new tabs, independent live-tab settings, keyboard hint dismissal/focus, dock-to-site Pause/Restore updates, immediate paused species pixels, edited fields, corrupt/denied storage and failed-response recovery. The rapid-scroll test now waits for native End-key scrolling to become quiet before measuring the subsequent document jump; fixed delays failed on the untouched item-7 reviewed base in this executor.
+Run `npm run perf:runtime` for separate host/runtime timing workloads; see [Performance](RUNTIME-PERFORMANCE.md) for baseline extraction, tracing and longer runs. Timing excludes screenshots/video. Capture overhead makes installed recordings unsuitable as comparable performance samples. Event receipt to completed Canvas draw excludes hardware input, GPU presentation and photon latency.
 
-```sh
-npm run build
-# Use Xvfb or an existing desktop DISPLAY on headless Linux.
-node scripts/first-run-check.mjs
-npm run test:popup
-```
+The reviewed measurements reduced surface CPU work by 35–43%; dense mixed-frame tails remain around 100ms on SwiftShader. No 60 FPS certification follows. The five-minute installed retention run observed cleanup stabilization after 129 marks; indefinite memory behavior and full record/projection-cap sessions remain unverified.
 
-The headed installed first-use matrix checks Pause, switching species while paused, and repeated Restore for all three anatomies in arrival, scan, notice, investigation, lock, preparation, strike, settling, aftermath and scroll recovery. It reads the real isolated-world phase and clicks the actual dock handler in that phase; it does not replace animation clocks or geometry. Its separate ordinary demo walkthrough covers automatic startup, keyboard controls, edited input/editor preservation, settings after reload, a non-repeating hint, touch controls and static reduced motion. Screenshots and normal-speed source recordings are saved under `artifacts/item8/walkthrough/`.
+Native browser UI zoom from 100% to 110% was verified. CDP page scale is separate. Native tab-switch pixels did not establish background suspension because the source document continued reporting `document.hidden=false`; controlled visibility regressions do not establish native background behavior. Same-ID changed-bundle updates remain unverified after `chrome.runtime.reload()` produced `ERR_BLOCKED_BY_CLIENT`. Touch captures are emulation, not physical-device evidence. Representative hardware GPUs and arbitrary live sites remain manual gates.
 
-The touch walkthrough checks 320/390px docks for all three species, 44px targets, full available width, long activity-copy wrapping, a separate hint and no overflow. Long-copy screenshots use a disclosed layout-only limit-message string; no clocks or geometry are substituted. Focused regressions distinguish a narrow fine-pointer desktop from coarse touch input, preserve keyboard dismissal/restoration, confirm touch does not aim a hunt, and delay an opening popup status reply while an intensity slider draft is edited. An input event invalidates earlier replies before the final change command sends the draft.
+## Manual compatibility
 
-The native-popup check captures all species in ready/active states, Pause, first-use dismissal, successful/idempotent auto-close, saved settings after document reload and a new origin/tab, actual restricted-page failure and retry on a normal page. Its server uses an ephemeral port. With FFmpeg available, set `CR4WLER_RECORD_DESKTOP=1` and `CR4WLER_DESKTOP_SIZE=1280x900` (matching your Xvfb screen) to record the whole native window at 30fps. Keep Xvfb and the recorder in the same IPC namespace on sandboxed executors. Screenshots preserve the caret (`caret: initial`) so Playwright does not add empty style attributes to protected fields during DOM comparisons.
+- Load `dist/` in a permitted profile. Summon via the native popup; reopen it and check settings, Pause/Resume and Restore/Escape.
+- Repeat activation/restoration; check for duplicate visitors or leftover effects. Verify a fresh origin requires its own toolbar gesture and restricted pages retain retry guidance.
+- Scroll nested containers, resize, zoom and switch tabs. Test fixed/sticky/transformed layouts; effects must stay anchored or release safely.
+- Edit synthetic inputs and page content during a session. Restore must preserve those edits without invoking site actions or requests.
+- Change reduced motion while active. New hunts stop and marks remain until Restore. Inspect permissions/network: no permanent host access or runtime network services.
+- Update the extension with the same ID in a normal profile, reload existing tabs, then explicitly Summon again.
 
-The optional `CR4WLER_CHECK_RELOAD=1` attempts a same-ID `chrome.runtime.reload()` check. In this executor, the experimental CDP-installed extension became inaccessible (`ERR_BLOCKED_BY_CLIENT`); post-update native behavior was not verified and no browser-policy bypass was used. Normal toolbar activation, reopens, reloads and separate tabs were verified before that check. A regular installation/update still needs a manual same-profile check. Native background visual proof and native browser UI zoom remain unverified; prior CDP page-scale zoom and actual native popup checks are separate evidence.
+## README media provenance
 
-This item does not remeasure performance or claim 60 FPS. The item-7 dense frame tail of 266.7ms and isolated rig outlier of 93.6ms remain debt for the separate final-series investigation. Captures are correctness/pixel evidence, not performance samples.
+The [demo](cr4wler-demo.webm) reuses the approved final 15.84s normal-speed material session, byte-for-byte: 1440×1000, 25fps, VP8, SHA-256 `eec9eeb712e46e98dedab0be563e0ab69ff67ebb7c5c79370beaedf1e8590dcd`. It shows the installed visitor on the synthetic material fixture. The [JPEG preview](cr4wler-demo.jpg) is its full-size frame at 7.00s. No video re-encoding, cuts, cropping, frame interpolation or playback-speed change occurred. These reviewed pixels are reused demonstration media, not a new cleanup acceptance capture; current installed/native checks remain separate.
+
+The earlier 32.92s whole-browser GitHub capture used source `dc2d77e814a72d151ca1cba935c1cf24675e9f8c`. Its [GIF](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/docs/cr4wler-demo.gif), [WebM](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/docs/github-demo.webm), [capture CI](https://github.com/funsaized/cr4wler/actions/runs/37044012741), and [capture script](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/scripts/github-demo.mjs) remain recoverable with their original provenance in Git history.
