@@ -1,7 +1,8 @@
 /** Matched host/runtime workload. Optional URL must be a public, non-sensitive page. */
 import { chromium } from 'playwright';
 import { build } from 'esbuild';
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir, readFile, readdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -9,11 +10,14 @@ import { serve } from './serve.mjs';
 const output = process.argv[2] ?? 'artifacts/runtime-performance.json';
 const cycles = Number(process.env.CYCLES ?? 2);
 const huntMs = Number(process.env.HUNT_MS ?? 8000);
+const harnessSha256 = createHash('sha256')
+  .update(await readFile(import.meta.filename))
+  .digest('hex');
 if (!Number.isInteger(cycles) || cycles < 1 || !Number.isFinite(huntMs) || huntMs < 1000)
   throw new Error('CYCLES must be a positive integer; HUNT_MS must be at least 1000.');
 const bundle = await build({
   stdin: {
-    contents: `import { Cr4wler } from ${JSON.stringify((process.env.RUNTIME_SOURCE ?? './src') + '/engine')}; globalThis.runtime = new Cr4wler();`,
+    contents: `import { Cr4wler } from ${JSON.stringify((process.env.RUNTIME_SOURCE ?? './src') + '/engine')}; globalThis.runtime = new Cr4wler(42);`,
     resolveDir: process.cwd(),
   },
   bundle: true,
@@ -31,16 +35,25 @@ const summary = (values) => {
   const percentile = (p) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0;
   return {
     count: sorted.length,
+    mean: values.reduce((a, b) => a + b, 0) / Math.max(1, values.length),
     p50: percentile(0.5),
     p95: percentile(0.95),
     p99: percentile(0.99),
     max: sorted.at(-1) ?? 0,
     over20: values.filter((x) => x > 20).length,
-    over33: values.filter((x) => x > 33.34).length,
+    over33: values.filter((x) => x > 33).length,
     over50: values.filter((x) => x > 50).length,
+    over100: values.filter((x) => x > 100).length,
   };
 };
 const results = [];
+const startedAt = new Date().toISOString();
+const loadBefore = os.loadavg();
+const diagnosticTrace = process.env.TRACE === '1';
+const quota = await readFile('/sys/fs/cgroup/cpu.max', 'utf8').catch(() => 'unavailable');
+const cpuBefore = await readFile('/sys/fs/cgroup/cpu.stat', 'utf8').catch(() => 'unavailable');
+const browserSession = await browser.newBrowserCDPSession();
+const graphics = (await browserSession.send('SystemInfo.getInfo')).gpu;
 try {
   for (const enabled of [false, true]) {
     const page = await browser.newPage({
@@ -69,6 +82,18 @@ try {
         calls: {},
         longTasks: [],
         counts: [],
+        inputLatency: [],
+      };
+      const wrap = (object, key, label = key) => {
+        const original = object[key].bind(object);
+        object[key] = (...args) => {
+          const start = performance.now();
+          try {
+            return original(...args);
+          } finally {
+            (samples.calls[label] ??= []).push(performance.now() - start);
+          }
+        };
       };
       for (const key of [
         'frame',
@@ -77,17 +102,43 @@ try {
         'onMutations',
         'scan',
         'updateActivity',
+        'readGeometry',
+        'readUnmaskedMaterials',
+        'targetFresh',
+        'notify',
+        'recoveryLanding',
       ]) {
-        const original = runtime[key].bind(runtime);
-        runtime[key] = (...args) => {
-          const start = performance.now();
-          try {
-            return original(...args);
-          } finally {
-            (samples.calls[key] ??= []).push(performance.now() - start);
+        wrap(runtime, key);
+      }
+      globalThis.pendingInput = null;
+      for (const type of ['pointermove', 'wheel', 'scroll', 'resize'])
+        addEventListener(
+          type,
+          () => {
+            // Latest received event to completed canvas draw, not hardware/photon latency.
+            pendingInput = { type, at: performance.now() };
+          },
+          { capture: true, passive: true },
+        );
+      const summon = runtime.summon.bind(runtime);
+      runtime.summon = (...args) => {
+        const result = summon(...args);
+        for (const key of ['update', 'discover', 'measure'])
+          wrap(runtime.pageSurfaces, key, `surfaces.${key}`);
+        for (const key of ['update', 'render']) wrap(runtime.spider, key, `spider.${key}`);
+        const render = runtime.spider.render.bind(runtime.spider);
+        runtime.spider.render = () => {
+          render();
+          if (pendingInput) {
+            samples.inputLatency.push({
+              ...pendingInput,
+              milliseconds: performance.now() - pendingInput.at,
+            });
+            pendingInput = null;
           }
         };
-      }
+        return result;
+      };
       const measure = Range.prototype.getBoundingClientRect;
       Range.prototype.getBoundingClientRect = function () {
         const start = performance.now();
@@ -115,6 +166,12 @@ try {
         samples.counts.push({
           marks: records.length,
           activeShards: runtime.current?.shards.length ?? 0,
+          settlingShards: runtime.settling?.shards.length ?? 0,
+          simulatingShards:
+            (runtime.current?.shards.length ?? 0) + (runtime.settling?.shards.length ?? 0),
+          frozenShards: records
+            .filter((r) => r !== runtime.current && r !== runtime.settling)
+            .reduce((n, r) => n + r.shards.length, 0),
           settledShards: records
             .filter((r) => r !== runtime.current)
             .reduce((n, r) => n + r.shards.length, 0),
@@ -134,6 +191,17 @@ try {
             (n) => n && !n.isConnected,
           ).length,
           quality: runtime.quality?.level ?? 0,
+          mode: runtime.mode,
+          effects: Object.fromEntries(
+            [...new Set(records.map((r) => r.effect))].map((effect) => [
+              effect,
+              records.filter((r) => r.effect === effect).length,
+            ]),
+          ),
+          domProjections: records.filter((r) => r.el).length,
+          visible: runtime.visibleCount,
+          materialPixels: runtime.bitmapPixels(),
+          surfaces: runtime.pageSurfaces.diagnostics,
         });
       }, 250);
     });
@@ -145,6 +213,8 @@ try {
         samples.calls = {};
         samples.longTasks = [];
         samples.counts = [];
+        samples.inputLatency = [];
+        pendingInput = null;
         lastFrame = null;
       });
       const before = await cdp.send('Performance.getMetrics');
@@ -159,7 +229,17 @@ try {
       );
       phases.push({
         name,
+        windowSeconds: {
+          start: before.metrics.find((m) => m.name === 'Timestamp')?.value,
+          end: after.metrics.find((m) => m.name === 'Timestamp')?.value,
+        },
         frames: summary(data.frames),
+        rawFrames: data.frames,
+        rawCalls: data.calls,
+        inputLatency: {
+          summary: summary(data.inputLatency.map((s) => s.milliseconds)),
+          raw: data.inputLatency,
+        },
         calls: Object.fromEntries(
           Object.entries(data.calls).map(([k, v]) => [
             k,
@@ -183,10 +263,34 @@ try {
         label,
         ...(await cdp.send('Memory.getDOMCounters')),
         ...(await cdp.send('Runtime.getHeapUsage')),
+        runtime: await page.evaluate(() => ({
+          roots: document.querySelectorAll('[data-cr4wler-root]').length,
+          raf: runtime.raf,
+          scanning: runtime.scanning,
+          records: runtime.fragments.length,
+          targets: runtime.targets.length,
+          surfaces: runtime.pageSurfaces.diagnostics.anchors,
+          detachedControls: [runtime.activity, runtime.pauseButton, runtime.tip].filter(
+            (n) => n && !n.isConnected,
+          ).length,
+          userEdit: document.querySelector('#fixture-input, #protected-input')?.value,
+        })),
       });
     };
     await snapshot('before');
+    if (diagnosticTrace) {
+      await cdp.send('Tracing.start', {
+        categories: 'devtools.timeline,v8,blink,cc,gpu,disabled-by-default-devtools.timeline',
+        transferMode: 'ReturnAsStream',
+      });
+      await cdp.send('Profiler.enable');
+      await cdp.send('Profiler.start');
+    }
     for (let cycle = 0; cycle < cycles; cycle++) {
+      await page.evaluate((cycle) => {
+        const input = document.querySelector('#fixture-input, #protected-input');
+        if (input) input.value = `Preserved user edit ${cycle}`;
+      }, cycle);
       if (enabled)
         await page.evaluate(() =>
           runtime.summon({ personality: 'feral', intensity: 0.8, followMouse: false }),
@@ -199,6 +303,17 @@ try {
           await page.waitForTimeout(900);
         }
       });
+      if (await page.locator('#nested').count()) {
+        await phase(`nested-manual-reversal-${cycle}`, async () => {
+          await page.locator('#nested').scrollIntoViewIfNeeded();
+          const box = await page.locator('#nested').boundingBox();
+          for (let i = 0; i < 12; i++) {
+            await page.mouse.move(box.x + 90 + (i % 2) * 270, box.y + 80);
+            await page.mouse.wheel(0, i % 2 ? -160 : 160);
+            await page.waitForTimeout(100);
+          }
+        });
+      }
       await phase(`scroll-resize-zoom-mutations-${cycle}`, async () => {
         for (let i = 0; i < 12; i++) {
           await page.evaluate((i) => {
@@ -226,11 +341,54 @@ try {
       });
       await snapshot(`reset-${cycle}`);
     }
+    if (diagnosticTrace) {
+      const { profile } = await cdp.send('Profiler.stop');
+      await writeFile(
+        `${output}.${enabled ? 'runtime' : 'host'}.cpuprofile`,
+        JSON.stringify(profile),
+      );
+      const complete = new Promise((resolve) => cdp.once('Tracing.tracingComplete', resolve));
+      await cdp.send('Tracing.end');
+      const { stream } = await complete;
+      let trace = '';
+      for (;;) {
+        const chunk = await cdp.send('IO.read', { handle: stream });
+        trace += chunk.base64Encoded ? Buffer.from(chunk.data, 'base64').toString() : chunk.data;
+        if (chunk.eof) break;
+      }
+      await cdp.send('IO.close', { handle: stream });
+      await writeFile(`${output}.${enabled ? 'runtime' : 'host'}.trace.json`, trace);
+    }
     results.push({ enabled, phases, memory });
     await page.close();
   }
   const evidence = {
     scenario: { cycles, huntMs },
+    startedAt,
+    completedAt: new Date().toISOString(),
+    loadBefore,
+    loadAfter: os.loadavg(),
+    cpuQuota: quota.trim(),
+    cpuStatsBefore: cpuBefore,
+    cpuStatsAfter: await readFile('/sys/fs/cgroup/cpu.stat', 'utf8').catch(() => 'unavailable'),
+    graphics,
+    harnessSha256,
+    seed: 42,
+    diagnosticTrace,
+    sourceDirectory: resolve(process.env.RUNTIME_SOURCE ?? './src'),
+    sourceHashes: Object.fromEntries(
+      await Promise.all(
+        (await readdir(process.env.RUNTIME_SOURCE ?? './src'))
+          .filter((name) => name.endsWith('.ts'))
+          .sort()
+          .map(async (name) => [
+            name,
+            createHash('sha256')
+              .update(await readFile(resolve(process.env.RUNTIME_SOURCE ?? './src', name)))
+              .digest('hex'),
+          ]),
+      ),
+    ),
     bundleSha256: createHash('sha256').update(bundle.outputFiles[0].text).digest('hex'),
     revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
     machine: {

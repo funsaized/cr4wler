@@ -1,8 +1,14 @@
-/** Text-only anchors. The source DOM is never wrapped, cloned or rewritten. */
+import type { Personality } from './types';
+import { materialGeometry, materialExtent } from './paint-geometry';
+
+export type Material = 'text' | 'image' | 'panel' | 'rule';
+/** Live anchors, never cloned page HTML. Object appearance is read only at impact. */
 export interface Target {
   range: Range;
   element: HTMLElement;
-  node: Text;
+  node: Text | HTMLElement;
+  material?: Material;
+  signature?: string;
   text: string;
   rect: DOMRect;
   font: string;
@@ -25,8 +31,74 @@ export function eligible(element: HTMLElement): boolean {
   }
   return true;
 }
+const materialExcluded =
+  'input,textarea,select,option,form,fieldset,label,iframe,canvas,video,audio,script,style,noscript,svg,math,dialog,[popover],[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="button"],[role="dialog"],[role="combobox"],[role="menu"],[aria-hidden="true"],[aria-live],[hidden],[inert],[data-cr4wler-ignore]';
+/** Plain type=button outside forms is visual material; submitters/editors stay protected. */
+export function materialEligible(element: HTMLElement): boolean {
+  if (element.closest(materialExcluded) || element.getRootNode() !== document) return false;
+  const button = element.closest('button');
+  if (
+    button &&
+    (button.getAttribute('type') !== 'button' ||
+      button.hasAttribute('form') ||
+      sensitive.test(
+        `${button.getAttribute('aria-label') ?? ''} ${button.getAttribute('name') ?? ''} ${button.title}`,
+      ))
+  )
+    return false;
+  for (let ancestor: HTMLElement | null = element; ancestor; ancestor = ancestor.parentElement) {
+    if (
+      sensitive.test(
+        `${ancestor.id} ${ancestor.className} ${ancestor.getAttribute('autocomplete') ?? ''}`,
+      )
+    )
+      return false;
+  }
+  return true;
+}
+function signature(element: HTMLElement): string {
+  return element instanceof HTMLImageElement
+    ? `${element.currentSrc}|${element.naturalWidth}|${element.naturalHeight}|${element.getAttribute('src')}|${element.getAttribute('srcset')}|${element.getAttribute('sizes')}`
+    : (element.textContent ?? '');
+}
+/** Bound the entire panel inspection, including rejected/sensitive descendants. */
+function plainPanel(element: HTMLElement): boolean {
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  let node: Node | null,
+    visited = 0,
+    characters = 0,
+    label = '';
+  while ((node = walker.nextNode())) {
+    if (++visited > 24) return false;
+    if (node instanceof Text) {
+      characters += node.length;
+      if (characters > 160) return false;
+      label += node.data;
+    } else if (
+      node instanceof HTMLElement &&
+      (!materialEligible(node) || node.matches('button,a,img,svg,canvas,video,[contenteditable]'))
+    )
+      return false;
+    else if (!(node instanceof HTMLElement)) return false;
+  }
+  return !(element instanceof HTMLButtonElement && sensitive.test(label.replace(/\s+/g, '-')));
+}
+export function targetRect(target: Target): DOMRect {
+  return target.material && target.material !== 'text'
+    ? target.element.getBoundingClientRect()
+    : target.range.getBoundingClientRect();
+}
 /** No layout reads: safe to use when a SPA edits or recycles an anchor. */
 export function valid(target: Target): boolean {
+  if (target.material && target.material !== 'text') {
+    return (
+      target.element.isConnected &&
+      target.node === target.element &&
+      materialEligible(target.element) &&
+      (target.material !== 'panel' || plainPanel(target.element)) &&
+      signature(target.element) === target.signature
+    );
+  }
   return (
     target.node.isConnected &&
     target.node.parentElement === target.element &&
@@ -38,17 +110,87 @@ export function valid(target: Target): boolean {
 }
 export function fresh(target: Target): boolean {
   if (!valid(target)) return false;
-  const r = target.range.getBoundingClientRect();
+  if (target.material && target.material !== 'text' && !materialGeometry(target.element))
+    return false;
+  const r = targetRect(target);
   target.rect = r;
   return (
+    (!target.material ||
+      target.material === 'text' ||
+      materialExtent(r, target.material === 'rule')) &&
     r.width > 12 &&
-    r.height > 5 &&
+    r.height > (target.material === 'rule' ? 0 : 5) &&
     r.top >= 6 &&
     r.bottom <= innerHeight - 6 &&
     r.left >= 0 &&
     r.right <= innerWidth
   );
 }
+
+/** One small object, with conservative fallback for complex page surfaces. */
+function targetFromElement(element: HTMLElement, hover = false): Target | null {
+  const material: Material | null =
+    element instanceof HTMLImageElement
+      ? 'image'
+      : element.matches('hr,[role="separator"]')
+        ? 'rule'
+        : element.matches('button[type="button"],article,.card,[role="article"]')
+          ? 'panel'
+          : null;
+  if (!material || !materialEligible(element)) return null;
+  if (material === 'panel' && !plainPanel(element)) return null;
+  const rect = element.getBoundingClientRect();
+  if (
+    rect.width < 12 ||
+    rect.height < 1 ||
+    rect.left < 0 ||
+    rect.right > innerWidth ||
+    rect.top < (hover ? 6 : 45) ||
+    rect.bottom > innerHeight - (hover ? 6 : 95) ||
+    !materialExtent(rect, material === 'rule')
+  )
+    return null;
+  const style = getComputedStyle(element);
+  if (style.display === 'none' || style.visibility !== 'visible' || style.opacity === '0')
+    return null;
+  if (!materialGeometry(element, (node) => (node === element ? style : getComputedStyle(node))))
+    return null;
+  const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+  if (hit && !element.contains(hit)) return null;
+  const range = document.createRange();
+  range.selectNode(element);
+  return {
+    range,
+    element,
+    node: element,
+    material,
+    signature: signature(element),
+    text: '',
+    rect,
+    font: style.font,
+    letterSpacing: style.letterSpacing,
+    color: style.color,
+  };
+}
+
+/** Only the chosen text is shortened/measured, keeping Feral's destruction local. */
+export function focusText(target: Target, personality: Personality, x: number): Target {
+  if (target.material && target.material !== 'text') return target;
+  const chars = Array.from(target.text);
+  const budget = personality === 'curious' ? 16 : personality === 'feral' ? 30 : 20;
+  if (chars.length <= budget) return target;
+  const center = Math.round(
+    clampFraction((x - target.rect.left) / target.rect.width) * chars.length,
+  );
+  const start = Math.max(0, Math.min(chars.length - budget, center - Math.floor(budget / 2)));
+  const range = document.createRange();
+  const offset = target.range.startOffset + chars.slice(0, start).join('').length;
+  const text = chars.slice(start, start + budget).join('');
+  range.setStart(target.node, offset);
+  range.setEnd(target.node, offset + text.length);
+  return { ...target, range, text, rect: range.getBoundingClientRect() };
+}
+const clampFraction = (n: number) => Math.max(0, Math.min(1, n));
 
 interface Cursor {
   next: Node | null;
@@ -151,7 +293,25 @@ export function targetAtPoint(
   available: (target: Target) => boolean,
 ): Target | null {
   const hit = document.elementFromPoint(x, y);
-  if (!(hit instanceof HTMLElement) || !eligible(hit)) return null;
+  if (!(hit instanceof HTMLElement) || !materialEligible(hit)) return null;
+  const object = hit.closest<HTMLElement>(
+    'img,hr,[role="separator"],button,article,.card,[role="article"]',
+  );
+  // Text inside cards remains text. Empty space/edges and buttons select the object.
+  const caretHit = document.caretRangeFromPoint?.(x, y);
+  const caretRect = caretHit?.getBoundingClientRect();
+  if (
+    object &&
+    (object.matches('img,hr,[role="separator"],button') ||
+      !caretRect ||
+      Math.abs(caretRect.x - x) > 12 ||
+      y < caretRect.top ||
+      y > caretRect.bottom)
+  ) {
+    const target = targetFromElement(object, true);
+    if (target && available(target)) return target;
+  }
+  if (!eligible(hit)) return null;
   const root = hit;
   if (root === document.body || root === document.documentElement) return null;
   const caret = document.caretRangeFromPoint?.(x, y);
@@ -221,7 +381,8 @@ export function scanTargets(signal: AbortSignal): Promise<Target[]> {
         const x = (innerWidth * (col + 0.5)) / 6;
         const y = 72 + (Math.max(1, innerHeight - 190) * (row + 0.5)) / 5;
         const hit = document.elementFromPoint(x, y) as HTMLElement | null;
-        if (!hit || hit === body || hit === document.documentElement || !eligible(hit)) continue;
+        if (!hit || hit === body || hit === document.documentElement || !materialEligible(hit))
+          continue;
         const caret = document.caretRangeFromPoint?.(x, y);
         if (caret?.startContainer.nodeType === Node.TEXT_NODE) {
           const node = caret.startContainer as Text;
@@ -286,11 +447,18 @@ export function scanTargets(signal: AbortSignal): Promise<Target[]> {
         const current: Node = node;
         seen++;
         if (!walkingBody) seeded++;
-        const allowed = current.nodeType !== Node.ELEMENT_NODE || eligible(current as HTMLElement);
+        const allowed =
+          current.nodeType !== Node.ELEMENT_NODE || materialEligible(current as HTMLElement);
         node = nextAfter(current, root!, allowed);
         if (walkingBody) cursor.next = node;
         if (allowed && current.nodeType === Node.TEXT_NODE) {
           offer(current as Text, seedOffsets.get(current as Text) ?? cursor.offset);
+        } else if (allowed && current instanceof HTMLElement) {
+          const target = targetFromElement(current);
+          if (target && !used.has(current)) {
+            used.set(current, new Set());
+            result.push(target);
+          }
         }
         if (performance.now() - start >= 2) {
           timer = window.setTimeout(slice, 16);

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>cr4wler — pointer pursuit study</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 4800px;
+        background: #f5f0e6;
+        color: #344842;
+        font:
+          24px/1.5 Georgia,
+          serif;
+      }
+      header {
+        position: fixed;
+        top: 24px;
+        left: 64px;
+        font: 14px/1.5 system-ui;
+      }
+      main {
+        padding: 290px 100px 100px;
+      }
+      #track {
+        width: 1160px;
+        margin: 0 0 60px;
+        color: #8d6751;
+      }
+      .neighbors {
+        display: flex;
+        margin-bottom: 55px;
+      }
+      .neighbors p {
+        width: 420px;
+        margin: 0;
+        padding: 0 12px;
+      }
+      #target-b {
+        color: #3e687d;
+      }
+      #nested {
+        width: 640px;
+        height: 280px;
+        overflow: auto;
+        border: 1px solid #8d6751;
+        padding: 20px;
+      }
+      #nested p {
+        margin: 0 0 60px;
+      }
+      #controls {
+        position: absolute;
+        top: 180px;
+        left: 100px;
+        display: flex;
+        gap: 20px;
+        font: 18px system-ui;
+      }
+      input,
+      button {
+        font: inherit;
+        padding: 12px;
+      }
+      .depth {
+        margin-top: 1000px;
+      }
+    </style>
+  </head>
+  <body>
+    <header data-cr4wler-ignore>Pointer study · real input · synthetic content</header>
+    <div id="controls">
+      <input id="protected-input" value="Native editing stays available" />
+      <button type="button" id="native-button">Native click</button>
+      <a href="#destination" id="native-link">Native link</a>
+    </div>
+    <main>
+      <p id="track">Amber letters trace a long quiet path across the paper for measured pursuit.</p>
+      <div class="neighbors">
+        <p id="target-a">A deliberate pause chooses this amber line with one exact footprint.</p>
+        <p id="target-b">Blue letters await the latest intention after a swift reversal.</p>
+      </div>
+      <div id="nested">
+        <p>Nested paper keeps its own edges and its own scrolling journey.</p>
+        <p>Another line offers the visitor a surface inside the same frame.</p>
+        <p>Measured pursuit continues only while the pointer stays recent.</p>
+        <p>At the last boundary the outer document must remain still.</p>
+        <p>Each quiet line retains its original layout and native text.</p>
+        <p>A gentle turn keeps eight bounded legs planted on the paper.</p>
+        <p>Fresh intent starts a new visit after a wheel or keyboard override.</p>
+        <p>The final line marks the end of this nested journey.</p>
+      </div>
+      <p class="depth" id="destination">Native navigation arrives here by the user's own click.</p>
+    </main>
+    <script src="playground.js"></script>
+  </body>
+</html>

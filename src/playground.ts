@@ -1,5 +1,13 @@
 import { Cr4wler } from './engine';
-import type { Settings, Status } from './types';
+import {
+  spiderTypes,
+  intensityLabel,
+  statusLabel,
+  touchOnlyMedia,
+  type Settings,
+  type Status,
+} from './types';
+import { loadPreferences, savePreferences, needsHint, rememberHint } from './preferences';
 
 type PlaygroundState = {
   engine: Cr4wler;
@@ -12,11 +20,10 @@ const scope = globalThis as typeof globalThis & { __cr4wlerPlayground?: Playgrou
 const state = (scope.__cr4wlerPlayground ??= { engine: new Cr4wler(), initialized: false });
 state.disposeBindings?.();
 const bindings = new AbortController();
-let observer: MutationObserver | undefined, timer: number | undefined;
+let unsubscribe: (() => void) | undefined;
 state.disposeBindings = () => {
   bindings.abort();
-  observer?.disconnect();
-  if (timer !== undefined) clearInterval(timer);
+  unsubscribe?.();
 };
 
 function initialize() {
@@ -90,36 +97,55 @@ function initialize() {
     intensity: Number(intensity.value) / 100,
     followMouse: follow.checked,
   });
+  let painted = '';
+  const touchOnly = matchMedia(touchOnlyMedia);
   function paint() {
     const s = engine.status();
+    const signature = JSON.stringify([
+      s.active,
+      s.paused,
+      s.reducedMotion,
+      s.personality,
+      s.intensity,
+      s.followMouse,
+      s.recordLimitReached,
+      touchOnly.matches,
+    ]);
+    if (signature === painted) return;
+    painted = signature;
     personality.value = s.personality;
     intensity.value = String(Math.round(s.intensity * 100));
     follow.checked = s.followMouse;
-    level.textContent = `${intensity.value}%`;
+    level.textContent = intensityLabel(s.intensity);
     summon.disabled = s.active;
     pause.disabled = restore.disabled = !s.active;
     pause.textContent = s.paused ? 'Resume' : 'Pause';
     summon.innerHTML = s.active
-      ? 'A visitor has arrived <span>✦</span>'
+      ? 'Your spider is here <span>✦</span>'
       : 'Summon your spider <span>↗</span>';
-    status.textContent =
-      s.paused && s.active
-        ? "Paused. Your trail stays here. Resume when you're ready."
-        : s.reducedMotion && s.active
-          ? 'Reduced motion: quiet company, no new strikes.'
-          : s.recordLimitReached
-            ? '512 fragments. A complete composition. Reset for a fresh start.'
-            : s.active
-              ? s.followMouse
-                ? `${s.fragments} traces. Hover chooses the next word. Edges scroll. Esc resets.`
-                : `${s.fragments} traces left behind. Enable cursor following to take the lead.`
-              : "No visitor. Summon your spider when you're ready.";
+    status.textContent = statusLabel(s, touchOnly.matches);
+    const badge = document.querySelector('#demo-state');
+    if (badge)
+      badge.textContent = s.active
+        ? s.paused
+          ? 'PAUSED'
+          : s.reducedMotion
+            ? 'QUIET'
+            : 'ACTIVE'
+        : 'READY';
+    const description = document.querySelector('#demo-description');
+    if (description) description.textContent = spiderTypes[s.personality].description;
+  }
+  function launch() {
+    engine.summon(settings(), needsHint());
+    rememberHint();
   }
   const signal = bindings.signal;
+  touchOnly.addEventListener('change', paint, { signal });
   summon.addEventListener(
     'click',
     () => {
-      engine.summon(settings());
+      launch();
       paint();
     },
     { signal },
@@ -142,18 +168,12 @@ function initialize() {
   );
   const configure = () => {
     engine.configure(settings());
+    savePreferences(settings());
     paint();
   };
   personality.addEventListener('change', configure, { signal });
   follow.addEventListener('change', configure, { signal });
   intensity.addEventListener('input', configure, { signal });
-  document.addEventListener(
-    'keydown',
-    (e) => {
-      if (e.key === 'Escape') setTimeout(paint, 0);
-    },
-    { signal },
-  );
   document
     .querySelector('#fixture-form')
     ?.addEventListener('submit', (e) => e.preventDefault(), { signal });
@@ -178,17 +198,13 @@ function initialize() {
     },
     { signal },
   );
-  observer = new MutationObserver(paint);
-  observer.observe(document.documentElement, { childList: true });
-  // Low-frequency status updates touch only the opted-out control surface.
-  timer = window.setInterval(() => {
-    if (!document.hidden) paint();
-  }, 1000);
+  unsubscribe = engine.subscribe(paint);
   if (!state.initialized) {
     state.initialized = true;
-    engine.configure(settings());
+    engine.configure(loadPreferences());
+    paint();
     // Explicit harness opt-out prevents a standalone engine competing with an installed extension.
-    if (new URLSearchParams(location.search).get('autostart') !== 'off') engine.summon();
+    if (new URLSearchParams(location.search).get('autostart') !== 'off') launch();
   }
   paint();
 }

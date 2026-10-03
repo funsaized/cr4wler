@@ -2,7 +2,9 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -11,11 +13,17 @@ import { serve } from './serve.mjs';
 const directory = 'artifacts/extension-evidence/popup';
 await mkdir(directory, { recursive: true });
 const profile = await mkdtemp(join(tmpdir(), 'cr4wler-native-popup-'));
-const server = await serve();
-let context, cdp;
+const server = await serve(0);
+const base = `http://127.0.0.1:${server.address().port}`;
+let context, cdp, recording;
 const evidence = {
   sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
   surface: 'Actual headed Chromium toolbar popup, installed MV3 extension, CDP toolbar gesture',
+  contentSha256: createHash('sha256')
+    .update(await readFile('dist/content.js'))
+    .digest('hex'),
+  uncommittedSource:
+    execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim().length > 0,
   passed: false,
   closes: [],
 };
@@ -138,15 +146,50 @@ try {
     channel: 'chromium',
     headless: false,
     viewport: { width: 1200, height: 800 },
-    reducedMotion: 'reduce',
+    reducedMotion: 'no-preference',
     ignoreDefaultArgs: ['--disable-extensions'],
     args: ['--enable-unsafe-extension-debugging'],
   });
+  if (process.env.CR4WLER_RECORD_DESKTOP === '1') {
+    recording = spawn(
+      'ffmpeg',
+      [
+        '-y',
+        '-loglevel',
+        'error',
+        '-f',
+        'x11grab',
+        '-framerate',
+        '30',
+        '-video_size',
+        process.env.CR4WLER_DESKTOP_SIZE ?? '1280x900',
+        '-i',
+        process.env.DISPLAY,
+        '-c:v',
+        'libvpx-vp9',
+        '-deadline',
+        'realtime',
+        '-cpu-used',
+        '5',
+        '-threads',
+        '2',
+        '-crf',
+        '38',
+        '-b:v',
+        '0',
+        `${directory}/native-first-run.webm`,
+      ],
+      { stdio: ['pipe', 'ignore', 'pipe'] },
+    );
+    recording.stderr.on('data', (data) => {
+      evidence.recordingError = (evidence.recordingError ?? '') + data.toString();
+    });
+  }
   cdp = await context.browser().newBrowserCDPSession();
   const { id } = await cdp.send('Extensions.loadUnpacked', { path: resolve('dist') });
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   const site = await context.newPage();
-  await site.goto('http://127.0.0.1:4173/reference.html?autostart=off');
+  await site.goto(`${base}/reference.html?autostart=off`);
   const original = await site.locator('main').innerHTML(),
     originalURL = site.url();
   const requests = [],
@@ -159,6 +202,21 @@ try {
   });
 
   let popup = await nativePopup(id, site);
+  evidence.readyPopups = [];
+  for (const species of ['curious', 'dreamy', 'feral']) {
+    await popup.evaluate(`document.querySelector('[data-personality="${species}"]').click()`);
+    await delay(200);
+    const bounds = await popup.evaluate(
+      `({height:document.body.getBoundingClientRect().height, width:document.documentElement.scrollWidth, viewport:innerWidth, footer:document.querySelector('footer').getBoundingClientRect().bottom, description:document.querySelector('#type-description').textContent})`,
+    );
+    const capture = await popup.send('Page.captureScreenshot');
+    await writeFile(`${directory}/ready-${species}.png`, Buffer.from(capture.data, 'base64'));
+    evidence.readyPopups.push({ species, ...bounds });
+    assert.ok(
+      bounds.height <= 600 && bounds.footer <= 600 && bounds.width <= bounds.viewport,
+      JSON.stringify(bounds),
+    );
+  }
   await popup.evaluate(`(() => {
     document.querySelector('[data-personality="feral"]').click();
     const follow = document.querySelector('#follow-mouse');
@@ -189,6 +247,16 @@ try {
   assert.equal(status.intensity, 0.83);
   assert.equal(status.followMouse, true);
   evidence.success = { popupClosed: true, closeCalls: 1, status, siteStillOpen: true };
+  await site.waitForTimeout(1200);
+  assert.equal(await site.locator('[data-cr4wler-root] .tip').count(), 1);
+  await site.screenshot({ caret: 'initial', path: `${directory}/first-use.png` });
+  await site.locator('[data-cr4wler-root] .tip button').focus();
+  await site.keyboard.press('Enter');
+  assert.equal(await site.locator('[data-cr4wler-root] .tip').count(), 0);
+  await site.mouse.move(720, 400);
+  await site.waitForTimeout(1300);
+  console.log('Native first-use and dismissal verified.');
+  evidence.firstUse = { shown: true, keyboardDismissed: true };
 
   popup = await nativePopup(id, site);
   await until(
@@ -199,6 +267,25 @@ try {
   assert.equal(await targetExists(popup.targetId), true, 'status alone leaves controls open');
   assert.equal(await popup.evaluate('document.querySelector("#follow-mouse").checked'), true);
   assert.equal(await popup.evaluate('document.querySelector("#intensity").value'), '83');
+  for (const species of ['dreamy', 'curious', 'feral']) {
+    await popup.evaluate(`document.querySelector('[data-personality="${species}"]').click()`);
+    await delay(180);
+    assert.equal(await site.locator('[data-cr4wler-root]').count(), 1);
+    const capture = await popup.send('Page.captureScreenshot');
+    await writeFile(`${directory}/active-${species}.png`, Buffer.from(capture.data, 'base64'));
+  }
+  await popup.evaluate('document.querySelector("#pause").click()');
+  await until(
+    () => popup.evaluate('document.querySelector("#pause").textContent === "Resume"'),
+    'Pause updates native popup',
+  );
+  const pausedImage = await popup.send('Page.captureScreenshot');
+  await writeFile(`${directory}/paused.png`, Buffer.from(pausedImage.data, 'base64'));
+  await popup.evaluate('document.querySelector("#pause").click()');
+  await until(
+    () => popup.evaluate('document.querySelector("#pause").textContent === "Pause"'),
+    'Resume updates native popup',
+  );
   await popup.evaluate('document.querySelector("#summon").dispatchEvent(new MouseEvent("click"))');
   await until(
     async () => !(await targetExists(popup.targetId)),
@@ -211,13 +298,74 @@ try {
   );
   assert.equal(await site.locator('[data-cr4wler-root]').count(), 1);
   evidence.alreadyActive = { menuStaysOpenOnStatus: true, duplicateVisitors: 0, closeCalls: 1 };
+  await site.bringToFront();
   await site.keyboard.press('Escape');
-  assert.equal(await site.locator('main').innerHTML(), original);
+  await site.waitForFunction(() => !document.querySelector('[data-cr4wler-root]'));
+  const restored = await site.locator('main').innerHTML();
+  if (restored !== original) {
+    let i = 0;
+    while (restored[i] === original[i] && i < Math.min(restored.length, original.length)) i++;
+    throw Error(
+      'Restore mismatch at ' +
+        i +
+        ': ' +
+        JSON.stringify({
+          expected: original.slice(i, i + 150),
+          actual: restored.slice(i, i + 150),
+        }),
+    );
+  }
   assert.equal(await site.evaluate(() => siteCloseAttempts), 0);
   assert.equal(site.url(), originalURL);
   assert.deepEqual(requests, []);
   assert.deepEqual(errors, []);
-  await site.screenshot({ path: `${directory}/restored-site.png` });
+  await site.screenshot({ caret: 'initial', path: `${directory}/restored-site.png` });
+  // Fresh documents stay off until their own toolbar action; saved choices stay available.
+  await site.reload();
+  assert.equal(await site.locator('[data-cr4wler-root]').count(), 0);
+  popup = await nativePopup(id, site);
+  await until(
+    () => popup.evaluate('document.querySelector("#intensity").value === "83"'),
+    'saved choices after reload',
+  );
+  assert.equal(await popup.evaluate('document.querySelector("#follow-mouse").checked'), true);
+  assert.equal(
+    await popup.evaluate(
+      'document.querySelector("[data-personality=feral]").getAttribute("aria-pressed")',
+    ),
+    'true',
+  );
+  await popup.evaluate('document.querySelector("#summon").click()');
+  await until(async () => !(await targetExists(popup.targetId)), 'reload launch closes');
+  popup.dispose();
+  assert.equal(await site.locator('[data-cr4wler-root] .tip').count(), 0);
+  await site.bringToFront();
+  await site.keyboard.press('Escape');
+  await site.waitForFunction(() => !document.querySelector('[data-cr4wler-root]'));
+  const other = await context.newPage();
+  await other.goto(`${base.replace('127.0.0.1', 'localhost')}/reference.html?autostart=off`);
+  assert.equal(await other.locator('[data-cr4wler-root]').count(), 0);
+  popup = await nativePopup(id, other);
+  await until(
+    () => popup.evaluate('document.querySelector("#intensity").value === "83"'),
+    'saved choices in new tab/origin',
+  );
+  await popup.evaluate('document.querySelector("#summon").click()');
+  await until(async () => !(await targetExists(popup.targetId)), 'new tab launch closes');
+  popup.dispose();
+  assert.equal(await other.locator('[data-cr4wler-root]').count(), 1);
+  assert.equal(await site.locator('[data-cr4wler-root]').count(), 0);
+  assert.equal(await other.locator('[data-cr4wler-root] .tip').count(), 0);
+  await other.keyboard.press('Escape');
+  await other.close();
+  console.log('Native reload/new-tab persistence verified.');
+  evidence.persistence = {
+    reload: true,
+    newTab: true,
+    crossOrigin: true,
+    hintDoesNotRepeat: true,
+    noAutomaticInjection: true,
+  };
 
   const restricted = await context.newPage();
   await restricted.goto('chrome://version');
@@ -231,7 +379,7 @@ try {
   assert.equal(await popup.evaluate('document.querySelector("#summon").disabled'), false);
   assert.deepEqual(
     evidence.closes.map((close) => close.calls),
-    [1, 1],
+    [1, 1, 1, 1],
   );
   const image = await popup.send('Page.captureScreenshot');
   await writeFile(`${directory}/restricted-popup.png`, Buffer.from(image.data, 'base64'));
@@ -241,7 +389,67 @@ try {
     retryEnabled: true,
     closeCalls: 0,
   };
+  assert.equal(await popup.evaluate('document.querySelector("#pause").disabled'), true);
+  assert.equal(
+    await popup.evaluate('document.querySelector("#summon").textContent.includes("is here")'),
+    false,
+  );
   popup.dispose();
+  await restricted.goto(`${base}/reference.html?autostart=off`);
+  popup = await nativePopup(id, restricted);
+  await popup.evaluate('document.querySelector("#summon").click()');
+  await until(async () => !(await targetExists(popup.targetId)), 'retry on ordinary page succeeds');
+  popup.dispose();
+  assert.equal(await restricted.locator('[data-cr4wler-root]').count(), 1);
+  await restricted.keyboard.press('Escape');
+  await restricted.close();
+  evidence.failure.retryOnOrdinaryPage = true;
+  console.log('Native failure/retry verified.');
+  if (process.env.CR4WLER_CHECK_RELOAD === '1') {
+    // A real extension reload approximates an update with the same extension ID.
+    const updater = await context.newPage();
+    await updater.goto(`chrome-extension://${id}/popup.html`);
+    console.log('Extension reload page opened.');
+    await updater.evaluate(() => {
+      setTimeout(() => chrome.runtime.reload(), 500);
+    });
+    console.log('Extension reload requested.');
+    await delay(1000);
+    console.log('Extension reload wait finished.');
+    // Keep the updater tab until context teardown; reload may replace its CDP target.
+    await site.reload();
+    console.log('Site reloaded after extension reload.');
+    const reloadedControls = await context.newPage();
+    await site.bringToFront();
+    await reloadedControls.goto(`chrome-extension://${id}/popup.html`);
+    await reloadedControls.waitForFunction(
+      () => document.querySelector('#intensity').value === '83',
+    );
+    assert.equal(await reloadedControls.locator('#follow-mouse').isChecked(), true);
+    assert.equal(await reloadedControls.evaluate(() => chrome.runtime.id), id);
+    assert.equal(
+      await reloadedControls.evaluate(() => localStorage.getItem('cr4wler.first-use.v1')),
+      'shown',
+    );
+    await reloadedControls
+      .locator('body')
+      .screenshot({ caret: 'initial', path: `${directory}/after-extension-reload.png` });
+    evidence.extensionReload = {
+      sameId: true,
+      preferencesSurvive: true,
+      hintDoesNotRepeat: true,
+      surface:
+        'Actual extension popup page opened in a tab after runtime.reload; native toolbar verified before reload',
+      limitation:
+        'Experimental CDP toolbar trigger did not return after runtime.reload; post-update native toolbar behavior remains unverified',
+    };
+  } else {
+    evidence.extensionReload = {
+      tested: false,
+      limitation:
+        'The optional runtime.reload check was blocked by the experimental CDP installation: the reloaded extension page returned ERR_BLOCKED_BY_CLIENT. No policy bypass was attempted.',
+    };
+  }
   evidence.browser = context.browser().version();
   evidence.exactRestore = true;
   evidence.siteCloseAttempts = 0;
@@ -256,6 +464,11 @@ try {
   console.error(`NATIVE POPUP CHECK BLOCKED/FAILED: ${error.message}`);
   process.exitCode = 1;
 } finally {
+  if (recording && recording.exitCode === null) {
+    const stopped = new Promise((resolve) => recording.once('exit', resolve));
+    recording.kill('SIGINT');
+    await stopped;
+  }
   await context?.close();
   server.close();
   await rm(profile, { recursive: true, force: true });

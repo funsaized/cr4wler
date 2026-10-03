@@ -1,95 +1,51 @@
-# Runtime performance investigation
+# Runtime performance
 
-## Outcome
+The scoped ancestor-paint cache reduces repeated native style-property reads during surface measurement. Scalar facts are shared only within one synchronous refresh; no persistent paint cache, contact-probe reduction, movement change or safety relaxation is involved. The regression exercises 32 supports sharing one ancestor, nested scrolling, immediate release under unsupported paint and recovery after removing it.
 
-Less main-thread work and a confirmed Reset retention fix; **not a certified steady-60-FPS release**. Normal quality, all three anatomies, targeting, leg motion, and persistent damage remain intact. The dense fixture still produces 50–67 ms frames during resize/scroll/zoom. The live MDN page met the measured frame budget in these headless runs, but already did so before the changes.
+## Reviewed measurements
 
-[Machine-readable before/after evidence](runtime-performance.json) includes frame distributions, long tasks, method timings, active/settled shard counts, direct DOM-reference counts, browser work, and post-GC memory checkpoints. Full per-phase count samples remain in `artifacts/runtime*.json` locally. The evidence identifies the baseline revision and each measured bundle's SHA-256; the after samples measure the working tree, not a new commit.
+Baseline `7cc709a4e0acc276af9bf820ffd18f1971b45b0f` compared with `23773248ace4c46a12b8a694b06ced31212d463a`: three interleaved runs, six cycles per version, separate host/runtime contexts, no capture during timing. Conditions: AMD EPYC 7763 executor, four-CPU quota, Chromium 153.0.8010.12, headless ANGLE/Vulkan SwiftShader, DPR 1, 1440×1000 alternating with 1100×1000. The synthetic reference page has roughly 22,000 DOM nodes. Runtime RNG/idle seed is 42; host RNG is untouched.
 
-## Inspected paths and changes
+Each cycle includes 8s destruction, five 900ms pointer visits, twelve scroll reversals/appends, four viewport changes, CDP page scale, Pause/scroll and Restore. Values below are medians of six per-cycle values, in milliseconds, except frame counts.
 
-- **Scheduling:** the hunting RAF and independent geometry RAF could both refresh/render within one display frame. They now share one pending RAF. Resize is coalesced there. Pause/reduced motion still permits event-driven geometry without running a hunting loop.
-- **Geometry:** `refreshGeometry()` interleaved range/style reads with rebuilding/removing projections. It now collects reads before projection writes and reuses shard layouts when dimensions and typography have not changed. Target bounds use a revision cache invalidated by scroll (including nested containers), resize, visual-viewport events, mutations, and fonts. Font replacement explicitly invalidates shard layouts even if total line width stays unchanged. Uncommitted targeting also rechecks at roughly 150 ms intervals for CSS animation, which does not emit mutations. A strike still performs an uncached safety check before masking source text.
-- **Discovery/input:** the existing progressive walker already bounds visits to 1,800 nodes per scan, returns at most 80 candidates, and yields after approximately 2 ms. No document-per-frame scan or spatial-index rewrite was needed. Mouse-follow no longer launches autonomous scans. Stationary hover hit testing now uses the previously unused dirty flag, with the CSS-animation fallback above; pointer movement still uses the existing 35 ms probe interval. Discovery timers resolve and cancel immediately on abort, including Pause, backgrounding, and Reset.
-- **Particles/strands:** there is no dust emitter or strand particle simulation. The strand is a canvas curve; destruction uses at most 16 text shards on one active record. Settled damage already lives outside simulation, with 512 retained records, 72 DOM projections and a shared overflow canvas. Those boundaries remain. Pooling was not justified by these measurements; unchanged shard layouts are reused instead.
-- **Coordinates:** body, contacts, target ranges, clips and projections use viewport CSS pixels; document anchors subtract page scroll. Existing recovery, bounded integration and clipped/nested-scroll behavior remain. Visual-viewport zoom events now invalidate geometry too. Tests check pinch zoom plus nested scrolling while paused.
-- **Cleanup:** Reset cleared the root but retained `activity`, `pauseButton`, and `tip`, keeping a detached shadow tree alive. These references are now cleared. Mutation/resize observers, event listeners, pending RAF/discovery work, ranges and source masks are released. The content-script controller/message listener intentionally remains available for another explicit launch. Pagehide still restores; source DOM is never rewritten, so concurrent user edits and page-owned highlights survive.
+| Metric                               | Baseline                                   | Cache                                      |
+| ------------------------------------ | ------------------------------------------ | ------------------------------------------ |
+| Surface-measure mean, destruction    | 2.694                                      | 1.760                                      |
+| Surface-measure mean, pointer follow | 4.143                                      | 2.660                                      |
+| Surface-measure mean, mixed events   | 2.491                                      | 1.412                                      |
+| Frame callback p95, destruction      | 4.20                                       | 3.15                                       |
+| Frame callback p95, pointer follow   | 6.50                                       | 4.70                                       |
+| Frame callback p95, mixed events     | 8.25                                       | 6.85                                       |
+| Mixed frame maxima, six cases        | 100.1 / 83.4 / 116.7 / 100.0 / 99.9 / 83.4 | 100.0 / 99.9 / 99.9 / 99.9 / 100.0 / 100.0 |
+| Mixed frames >33ms                   | 5 / 7 / 8 / 8 / 5 / 7                      | 7 / 5 / 5 / 7 / 6 / 5                      |
+| Mixed frames >50ms                   | 4 / 4 / 4 / 4 / 4 / 4                      | 4 / 4 / 4 / 4 / 4 / 4                      |
+| Mixed frames >100ms                  | 1 / 0 / 2 / 0 / 0 / 0                      | 0 / 0 / 0 / 0 / 0 / 0                      |
 
-## Adaptive quality
+Surface CPU work fell **35–43%** at full quality with comparable work/effect counts. Dense mixed tails remain near **100ms** on SwiftShader; this does not establish 60 FPS. Counts use strict thresholds from raw frames. Separate nested-wheel/reversal cases had no >33ms frames, which does not certify dense workloads or arbitrary sites.
 
-The policy is deliberately decorative and starts at full quality on every launch:
+Diagnostic traces and CPU profiles incur overhead and are separate from pacing samples. Inclusive JS/layout/paint/Canvas events overlap; totals or percentile subtraction cannot attribute every tail. Earlier 266.7ms dense and 93.6ms isolated Canvas outliers were not established as causal regressions and remain historical debt.
 
-| Level | New scatter/disassemble/erase marks | Other changes                                 |
-| ----- | ----------------------------------- | --------------------------------------------- |
-| 0     | Up to 16 shards                     | Existing rendering                            |
-| 1     | Up to 10 shards                     | Disable small joint/emitter blur              |
-| 2     | Up to 6 shards                      | Also halve the orb-weaver's peripheral fibers |
+## Memory and evidence limits
 
-All text is partitioned into the remaining shards, never dropped. Peel/shear, body movement, silhouette, legs, input sampling and targeting are unchanged. A mark captures its budget at creation: settled marks never change topology when quality changes.
+Instrumented long and repeated-cleanup runs returned owned roots, frames, scans, records, targets, surfaces and detached controls to zero, while whole-renderer heap grew by roughly 0.3MiB. Warmup and instrumentation are included; these totals neither prove a leak nor establish a plateau.
 
-Frames over 22 ms accumulate pressure; healthy frames drain it. One second of pressure lowers quality one step, with a four-second cooldown. Recovery needs six consecutive seconds below 18 ms. Gaps over 250 ms do not influence quality. Backgrounding cancels work and resets the foreground clock on return. Physics remains capped at 33 ms; an already committed strike can finish on a long foreground frame, but no missed hunts/effects are replayed. The measured ordinary workloads stayed at level 0; hysteresis and reduced shard completeness are tested separately, not claimed as a measured speedup.
+A separate five-minute unmodified installed-product run used independent host/product renderer processes, with measurements stored in Node and no renderer sample arrays or method wrappers. It accumulated 129 marks. After repeated launch/Pause/Restore, owned counts were zero and input edits survived; product post-GC heap was 2,778,596 bytes (2.6499MiB) at 30/60/120 seconds after cleanup. This supports bounded quiescent stabilization, not indefinite active-session or full-cap memory behavior. Sparse checkpoints can miss short impact phases.
 
-## Measurement conditions
+The timing harness injects the shared engine through DevTools. It does not prove MV3 installation; [installed/native checks](TESTING.md) use the actual product. Input latency measures latest coalesced event receipt to completed Canvas draw, excluding GPU presentation/hardware/photon latency. Native zoom 100%→110% was verified; native background suspension, same-ID changed-bundle updates, physical touch, representative GPUs, arbitrary live sites and full-cap/indefinite memory remain unverified.
 
-- AMD Ryzen 9 5900XT, 16 cores / 32 logical CPUs, 31.25 GiB RAM; Linux `7.2.5-3-omarchy`.
-- Playwright Chromium `153.0.8010.12`, headless, 1440×1000 alternating with 1100×1000, DPR 1. No video/screenshots during timing. This is a capable desktop, **not a representative low-end laptop**.
-- Dense local reference fixture: over 10,000 elements / approximately 22,000 DOM nodes.
-- Real public page: `https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver`, loaded with its real scripts/styles in fresh signed-out contexts. Host scripts are not disabled; live-page changes remain a source of variance.
-- Each before/after run has separate host-only and runtime-enabled contexts and two launch/reset cycles. Each cycle: 8 seconds of autonomous destruction, five 900 ms pointer visits, 12 scroll reversals/appends, four viewport resizes, pinch scale 1→1.25→1, Pause plus scrolling, then Reset. Fonts and a two-second warmup precede sampling. Runtime randomness is seeded without replacing the host's RNG.
-- Baseline runtime is extracted from the starting Git revision into a temporary directory and built by the same harness. The extension engine is injected through DevTools without changing host CSP. **This measures shared runtime overhead, not MV3 injection or popup startup cost.** Installed-extension correctness/visual recordings are a separate check.
-- RAF intervals measure browser frame pacing, not just JS callback duration. Method timings are inclusive and must not be summed. `scan` timing covers synchronous setup; cooperative slices are reflected in browser script/task totals. Range instrumentation is document-wide, including any host calls. CDP script/layout/style/task deltas and the host-only arm help separate page work; percentile subtraction is not valid attribution.
-- Counts are sampled every 250 ms and can miss a short strike. `retainedNodes` counts unique source/control/clip nodes directly held by selected runtime fields, not all transitive heap references. CDP DOM counters cover the whole renderer. Forced GC occurs at memory checkpoints outside workload phases; heap totals include host code, instrumentation and JIT warmup.
-
-## Before / after
-
-Pairs below are the two cycles, not averages. Times are milliseconds.
-
-| Metric                                                    | Before             | After              |
-| --------------------------------------------------------- | ------------------ | ------------------ |
-| Dense: hover CPU total per ~4.6 s phase                   | 117.2 / 102.3      | 44.7 / 47.3        |
-| Dense: geometry CPU total during scroll/resize/zoom       | 51.4 / 51.3        | 29.6 / 30.9        |
-| Dense: runtime frame callback p95 during that phase       | 4.2 / 4.8          | 2.1 / 2.4          |
-| Dense: range-bound reads during that phase                | 1,559 / 1,576      | 541 / 557          |
-| Dense: browser frame p95 / p99 / worst, cycle 1           | 16.8 / 66.7 / 66.7 | 16.8 / 66.6 / 66.7 |
-| Dense: browser frame p95 / p99 / worst, cycle 2           | 16.8 / 66.7 / 66.7 | 16.8 / 66.7 / 66.7 |
-| Dense: frames >20 ms during those phases                  | 4 / 5              | 5 / 4              |
-| Dense: frames >50 ms during those phases                  | 3 / 2              | 2 / 3              |
-| MDN: hover CPU total                                      | 110.8 / 76.0       | 37.0 / 16.9        |
-| MDN: runtime frame callback p95 during scroll/resize/zoom | 4.1 / 4.3          | 2.1 / 1.0          |
-| MDN: browser frame p99 / worst across measured phases     | 16.8 / 16.8        | 16.8 / 16.8        |
-| Direct detached control references after Reset            | 3                  | 0                  |
-
-Median frame interval was approximately 16.7 ms in all arms. Dense host-only scroll/resize phases also missed frames: two >20 ms frames per cycle in both before and after runs, with worst intervals around 33.4 ms. Adding the runtime still increases tail latency. Reset itself sometimes costs a 33–50 ms interval. One 51 ms long task was recorded during the dense baseline Reset; frame misses are not synonymous with >50 ms main-thread tasks. The MDN host/runtime arms recorded no >20 ms frames or long tasks. These results show reduced callback cost, **not improved worst-case display pacing**.
-
-The dense runs produced 10–11 marks before and 11 after; peak sampled active shards remained 16 and settled shards reached 137 in both versions. Thus the reported reductions did not come from adaptive quality or disabling destruction. MDN hunts vary (9 marks before, 9–10 after), so its method comparisons are indicative, not identical-content microbenchmarks.
-
-### Retention and memory
-
-After the two dense resets, baseline DOM counts exceeded the host-only count by **21 nodes each time**. After the fix, DOM and listener counts matched host-only at both checkpoints: 22,115/22,139 nodes and 10 listeners, with zero direct runtime source/control references. MDN resets likewise returned to the host counts of 8,387/8,411 nodes and 175 listeners.
-
-Dense post-reset JS heap was 1.639→1.727 MiB before and 1.627→1.667 MiB after. This is whole-context memory, not an isolated extension allocation number.
-
-A separate six-cycle after run (2-second autonomous phases, otherwise the same workload) had zero direct retained runtime references after every Reset and returned listeners to 10 each time. Post-reset heap was **1.577, 1.642, 1.657, 1.706, 1.721, 1.729 MiB**; host-only was approximately 1.008→1.035 MiB. Whole-renderer node counts matched the growing host document at four checkpoints and were seven nodes higher at two. The page's own control polling rebuilds text nodes, but these counters alone do not establish their ownership. Heap growth has slowed, **not demonstrated a plateau**; longer allocation/retainer profiling is still warranted. The regression test additionally performs eight immediate launch/scan/reset cycles and checks no runtime roots, controls, highlights, targets or queued animation remain.
+The [historical detailed report](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/docs/RUNTIME-PERFORMANCE.md) and [selected per-case data](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/docs/runtime-performance.json) retain their original provenance in Git history. Complete raw evidence remains in the reviewed Library handoff; do not commit new raw reports into the runtime/package tree.
 
 ## Reproduce
 
 ```sh
-npm run perf:runtime -- artifacts/runtime-after.json
-URL=https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver \
-  node scripts/runtime-performance.mjs artifacts/runtime-real-after.json
-CYCLES=6 HUNT_MS=2000 node scripts/runtime-performance.mjs artifacts/runtime-cycles.json
-# Longer damage accumulation; wall-clock samples, not forced synthetic strikes:
+npm run perf:runtime -- artifacts/runtime-current.json
+mkdir -p artifacts/baseline
+git archive 7cc709a4e0acc276af9bf820ffd18f1971b45b0f src | tar -x -C artifacts/baseline
+RUNTIME_SOURCE=./artifacts/baseline/src node scripts/runtime-performance.mjs artifacts/runtime-baseline.json
+TRACE=1 CYCLES=1 node scripts/runtime-performance.mjs artifacts/runtime-diagnostic.json
+URL='http://127.0.0.1:4173/pointer.html?autostart=off' node scripts/runtime-performance.mjs artifacts/runtime-pointer.json
 CYCLES=3 HUNT_MS=60000 node scripts/runtime-performance.mjs artifacts/runtime-long.json
+CYCLES=6 HUNT_MS=1000 node scripts/runtime-performance.mjs artifacts/runtime-cleanup.json
 ```
 
-For a baseline, extract the desired revision's `src/` into a temporary directory with `git archive`, then set `RUNTIME_SOURCE=/absolute/path/to/extracted/src` and run the same command. The checked-in evidence records the revision used here. Set `HEADED=1` to measure an actual visible browser; the attempted local headed run was interrupted by browser closure and is not included as evidence. `URL` is only for public, non-sensitive pages: the scenario appends content and uses a fresh disposable context.
-
-## Verification and remaining release gates
-
-- `npm run typecheck`: pass.
-- Seven new runtime regressions: pass (scheduler lifecycle, immediate discovery cancellation/bounds, cached bounds and edits, read-before-write batching, font invalidation, adaptive hysteresis/text completeness, large deltas, pinch zoom/nested scroll).
-- At measurement time, full `npm test`: **50/51 pass**. The popup exceeded Chrome's 600px height limit. A subsequent fix reduces decorative spacing without shrinking or hiding controls; its regression checks all temperaments, active cursor-following status, and restricted-page errors in a 600px viewport.
-- `npm run test:extension`: **pass** using the actual loaded MV3 extension and real Chrome APIs on light/night fixtures, including all three anatomies, recovery, protected inputs, no observed site actions/network, and exact restoration. Local recordings/results: `artifacts/extension-evidence/`. This run was permitted; older release notes describing a blocked local loader do not describe this execution.
-- Modified-file Prettier check and `git diff --check`: pass.
-
-Remaining gates: representative laptop/GPU and native browser-zoom runs, uninterrupted headed testing on several real sites, long sessions approaching 512 marks / 72 simultaneously visible projections, and allocation/retainer profiling to explain residual heap growth. Pinch scale is **not** browser UI zoom. Perpetually animated source layouts can still outrun the 150 ms target cache; settled projections remain event-driven. Full-viewport canvas resizing and rendering/compositing tails need a browser trace before another architectural change. No worker, spatial index, resource pool, reduced skeleton, or global-resolution downgrade was added to manufacture better numbers.
+Run baseline/current workloads interleaved with the same harness, browser, fixture and toolchain. Reports record the harness/source hashes, environment, frame distributions, work counts and heap checkpoints. `TRACE=1` writes CPU profiles/browser traces; `HEADED=1` requires a desktop display. `URL` must identify public, non-sensitive content and disable demo autostart. Timing runs must remain free of screenshots/video. Forced-GC checkpoints and direct-node counts are not a heap-retainer analysis.

@@ -8,6 +8,9 @@ import { join, resolve } from 'node:path';
 import { serve } from './serve.mjs';
 import { preparePointerSession, runPointerSession } from './pointer-session.mjs';
 import { captureHeroSession } from './hero-session.mjs';
+import { captureMaterialSessions } from './material-session.mjs';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 const profile = await mkdtemp(join(tmpdir(), 'cr4wler-extension-'));
 const server = await serve();
 const dir = 'artifacts/extension-evidence';
@@ -15,6 +18,11 @@ await mkdir(dir, { recursive: true });
 let context, fixturePage, fixtureVideo, currentTheme;
 const evidence = {
   sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+  contentSha256: createHash('sha256')
+    .update(await readFile('dist/content.js'))
+    .digest('hex'),
+  uncommittedSource:
+    execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim().length > 0,
   surface:
     'Actual installed unpacked extension; real Chrome APIs; CDP toolbar action; pointer-driven dense fixtures',
   passed: false,
@@ -32,6 +40,7 @@ try {
   const cdp = await context.browser().newBrowserCDPSession();
   const { id } = await cdp.send('Extensions.loadUnpacked', { path: resolve('dist') });
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  for (const page of context.pages()) await page.close();
   for (const theme of ['light', 'night']) {
     currentTheme = theme;
     const page = await context.newPage();
@@ -107,6 +116,7 @@ try {
     dir,
     sourceCommit: evidence.sourceCommit,
   });
+  evidence.materials = await captureMaterialSessions({ context, cdp, id, worker, dir });
   evidence.browser = context.browser().version();
   evidence.viewport = { width: 1440, height: 1000 };
   evidence.passed = true;
@@ -115,6 +125,7 @@ try {
   );
 } catch (error) {
   evidence.error = error.message;
+  evidence.stack = error.stack;
   console.error(`ACTUAL EXTENSION CHECK BLOCKED/FAILED: ${error.message}`);
   process.exitCode = 1;
 } finally {

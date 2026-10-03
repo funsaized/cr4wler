@@ -18,8 +18,8 @@ Chrome MV3 extension and standalone playground for a procedural spider that borr
 - `src/content.ts`: idempotent isolated-world controller; `src/popup.ts`: per-tab activation/settings; `src/background.ts`: intentionally idle service worker.
 - `src/playground.ts`: standalone controls; `src/types.ts`: shared settings, status, and messages.
 - `public/`: manifest, HTML/CSS, icons, and synthetic fixtures. `scripts/build.mjs` copies these and bundles entry points into `dist/`.
-- `tests/*.test.mjs`: Node test runner, Playwright browser behavior, and procedural geometry tests. `scripts/`: build, serve, installed-extension checks, performance, capture, and packaging.
-- `docs/`: testing guidance, current performance report/data, and selected demo evidence. Generated runs belong in ignored `artifacts/`; do not hand-edit `dist/`.
+- `tests/*.test.mjs`: Node test runner, Playwright browser behavior, and procedural geometry tests. `scripts/`: build, serve, installed-extension checks, performance, focused acceptance checks, and packaging.
+- `docs/`: testing guidance, concise performance findings, and README demo media. Generated runs belong in ignored `artifacts/`; do not hand-edit `dist/`.
 
 ## Commands
 

@@ -47,8 +47,9 @@
         </div>
         <p>
           Scroll through the archive. Leave a trail of loosened phrases, sliced words and color.
-          Return to an earlier volume and your marks should still be there. <strong>Reset</strong>,
-          <strong>Escape</strong> or a page refresh restores the composition.
+          Return to an earlier volume and your marks should still be there.
+          <strong>Restore</strong>, <strong>Escape</strong> or a page refresh restores the
+          composition.
         </p>
         <h2>References and further wandering</h2>
         <p class="editor-note">
@@ -84,7 +85,7 @@
         <footer>THE OPEN FIELD GUIDE · FICTIONAL CONTENT · REAL DOM · CR4WLER / MIT</footer>
       </main>
       <aside class="lab-controls" data-cr4wler-ignore>
-        <div class="control-kicker"><i></i> SPECIMEN C–08 <span>LIVE</span></div>
+        <div class="control-kicker"><i></i> SPECIMEN C–08 <span id="demo-state">READY</span></div>
         <h2>Perfectly<br />out of order.</h2>
         <p>Let it hunt. Follow the trail.<br />Bring every word home.</p>
         <label for="demo-personality">TEMPERAMENT</label
@@ -93,28 +94,32 @@
           <option value="dreamy">☾ Dreamy — orb-weaver</option>
           <option value="feral">↯ Feral — jumping spider</option>
         </select>
+        <p id="demo-description" class="type-description" role="status">
+          Long legs. Precise little bites.
+        </p>
         <div class="slider-label">
-          <label for="demo-intensity">MISCHIEF LEVEL</label><output id="demo-level">55%</output>
+          <label for="demo-intensity">INTENSITY</label><output id="demo-level">55%</output>
         </div>
         <input id="demo-intensity" type="range" min="0" max="100" value="55" /><label
           class="follow-toggle"
           for="demo-follow"
-          ><span>Follow my cursor<small>Hover chooses. Page edges keep it moving.</small></span
+          ><span
+            >Follow my cursor<small class="pointer-guidance"
+              >Hover chooses. Page edges keep it moving.</small
+            ><small class="touch-guidance"
+              >Cursor guide needs a mouse or trackpad. Touch: your spider explores on its
+              own.</small
+            ></span
           ><input type="checkbox" id="demo-follow" role="switch" /></label
         ><button id="demo-summon" class="primary">Summon your spider <span>↗</span></button>
+        <p class="restore-help">Restore / Esc removes the visitor and its effects.</p>
         <div class="demo-secondary">
           <button id="demo-pause" disabled>Pause</button
-          ><button id="demo-restore" disabled>Reset page</button>
+          ><button id="demo-restore" disabled>Restore</button>
         </div>
         <p id="demo-status" role="status" class="status">
           A growing trail. A completely fresh start with Esc.
         </p>
-        <div class="tutorial">
-          <b>01</b> Hover → lock → strike<br /><b>02</b> Page edges crawl. Your trail stays put.<br /><b
-            >03</b
-          >
-          <kbd>Esc</kbd> resets everything.
-        </div>
         <div class="local-note">◎ LOCAL ONLY / NO CLICKS</div>
       </aside>
     </div>
