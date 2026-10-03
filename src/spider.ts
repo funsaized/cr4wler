@@ -40,6 +40,87 @@ export interface SpiderOptions {
   /** Page movement in viewport pixels; consume each scroll delta exactly once. */
   surfaceDelta?: Point;
   surfaces?: readonly PageSurface[];
+  /** The engine grants idle time only between hunts and real input. */
+  idle?: boolean;
+}
+
+type IdleAction = 'probe' | 'groom' | 'orient' | 'crouch' | 'reposition' | 'sway' | 'tend';
+const IDLE_ACTIONS: Record<SpiderOptions['personality'], readonly [IdleAction, number, number][]> =
+  {
+    curious: [
+      ['probe', 5, 2.8],
+      ['groom', 2, 2.4],
+    ],
+    feral: [
+      ['orient', 5, 0.85],
+      ['crouch', 3, 0.7],
+      ['reposition', 2, 1.05],
+    ],
+    dreamy: [
+      ['sway', 4, 3.6],
+      ['reposition', 3, 2.8],
+      ['tend', 3, 3.4],
+    ],
+  };
+
+/** One logical clock, one weighted action, bounded cooldowns; no timers. */
+export class IdleScheduler {
+  private randomState: number;
+  private now = 0;
+  private wait = 0;
+  private cooldowns = new Map<IdleAction, number>();
+  private previous: IdleAction | null = null;
+  action: { kind: IdleAction; elapsed: number; duration: number } | null = null;
+
+  constructor(private readonly seed = Math.floor(Math.random() * 0xffffffff)) {
+    this.randomState = seed >>> 0;
+    this.reset();
+  }
+  private random() {
+    this.randomState = (Math.imul(this.randomState, 1664525) + 1013904223) >>> 0;
+    return this.randomState / 4294967296;
+  }
+  reset() {
+    this.randomState = this.seed >>> 0;
+    this.now = 0;
+    this.cooldowns.clear();
+    this.previous = null;
+    this.action = null;
+    this.wait = 3.5 + this.random() * 1.5;
+  }
+  interrupt() {
+    this.action = null;
+    this.wait = Math.max(this.wait, 3.5);
+  }
+  update(dt: number, personality: SpiderOptions['personality'], ready: boolean) {
+    if (dt <= 0) return this.action;
+    this.now += dt;
+    if (!ready) {
+      this.interrupt();
+      return null;
+    }
+    if (this.action) {
+      this.action.elapsed = Math.min(this.action.duration, this.action.elapsed + dt);
+      if (this.action.elapsed < this.action.duration) return this.action;
+      this.action = null;
+      this.wait = 3.5 + this.random() * 2.9;
+      return null;
+    }
+    this.wait = Math.max(0, this.wait - dt);
+    if (this.wait > 0) return null;
+    const choices = IDLE_ACTIONS[personality].filter(
+      ([kind]) => (this.cooldowns.get(kind) ?? 0) <= this.now && kind !== this.previous,
+    );
+    if (!choices.length) {
+      this.wait = 1;
+      return null;
+    }
+    let pick = this.random() * choices.reduce((sum, [, weight]) => sum + weight, 0);
+    const [kind, , duration] = choices.find(([, weight]) => (pick -= weight) < 0) ?? choices[0]!;
+    this.previous = kind;
+    this.cooldowns.set(kind, this.now + (kind === 'groom' || kind === 'tend' ? 18 : 8));
+    return (this.action = { kind, duration, elapsed: 0 });
+  }
 }
 
 interface Leg {
@@ -166,7 +247,19 @@ export class Spider {
   private height = 1;
   private dpr = 1;
   private age = 0;
-  private clock = 0;
+  private readonly idleScheduler: IdleScheduler;
+  private idleGesture: {
+    kind: IdleAction;
+    leg: number;
+    from: Point;
+    to: Point;
+    home?: Contact;
+    edge?: Contact;
+    angle: number;
+    turn: number;
+  } | null = null;
+  private idleSway = 0;
+  private idlePalps = 0;
   private initialized = false;
   private body: Point = { x: 0, y: -100 };
   private velocity: Point = { x: 0, y: 0 };
@@ -215,7 +308,11 @@ export class Spider {
   private pageMovement = 'fallback';
   private options: SpiderOptions = { intensity: 0.6, personality: 'curious', reducedMotion: false };
 
-  constructor(private readonly canvas: HTMLCanvasElement) {
+  constructor(
+    private readonly canvas: HTMLCanvasElement,
+    idleSeed?: number,
+  ) {
+    this.idleScheduler = new IdleScheduler(idleSeed);
     const context = canvas.getContext('2d', { alpha: true });
     if (!context) throw new Error('Cr4wler needs a 2D canvas context.');
     this.ctx = context;
@@ -244,6 +341,7 @@ export class Spider {
   }
 
   resize(width: number, height: number, dpr = 1): void {
+    if (this.initialized) this.interruptIdle();
     const previousScale = this.scale;
     this.width = Math.max(1, width);
     this.height = Math.max(1, height);
@@ -273,12 +371,17 @@ export class Spider {
     return this.legs.map((leg) => ({ ...leg.foot }));
   }
   get contactIds(): string[] {
-    return this.legs.flatMap((l) =>
+    const ids = this.legs.flatMap((l) =>
       [l.contact?.id, l.landing?.id].filter((id): id is string => !!id),
     );
+    for (const c of [this.idleGesture?.home, this.idleGesture?.edge]) if (c) ids.push(c.id);
+    return ids;
   }
   get surfaceContacts(): Contact[] {
-    return this.legs.flatMap((l) => [l.contact, l.landing].filter((c): c is Contact => !!c));
+    return [
+      ...this.legs.flatMap((l) => [l.contact, l.landing].filter((c): c is Contact => !!c)),
+      ...[this.idleGesture?.home, this.idleGesture?.edge].filter((c): c is Contact => !!c),
+    ];
   }
   get recovering(): boolean {
     return !!this.recovery;
@@ -311,6 +414,7 @@ export class Spider {
       releasedContacts: this.releasedContacts,
       surfaceReleases: this.surfaceReleases,
       pageMovement: this.pageMovement,
+      idle: this.idleScheduler.action ? { ...this.idleScheduler.action } : null,
       maxReach: Math.max(...this.feet.map((p) => distance(p, this.body))),
       reachLimit: this.reachLimit,
       body: this.position,
@@ -405,6 +509,7 @@ export class Spider {
     reason: 'scroll' | 'hunt' = 'scroll',
     support?: { leg: number; contact: Contact },
   ): void {
+    this.interruptIdle();
     const to = {
       x: clamp(anchor.x, 65, Math.max(65, this.width - 65)),
       y: clamp(anchor.y, 95, Math.max(95, this.height - 115)),
@@ -548,6 +653,158 @@ export class Spider {
           this.surfaceReleases++;
         }
       }
+    }
+  }
+
+  /** Release an owned idle foot into the existing gait, without delaying input. */
+  interruptIdle() {
+    const gesture = this.idleGesture;
+    if (gesture && gesture.leg >= 0) {
+      const leg = this.legs[gesture.leg]!;
+      if (leg.stepping) {
+        const home = gesture.home && this.contactPoint(gesture.home);
+        const landing = home
+          ? { point: home, contact: gesture.home }
+          : this.placement(this.bounded(this.idealFoot(leg), this.reachLimit * 0.86), leg);
+        Object.assign(leg.from, leg.foot);
+        Object.assign(leg.to, landing.point);
+        leg.landing = landing.contact;
+        leg.contact = undefined;
+        leg.duration = 0.09;
+        leg.progress = 0;
+      }
+    }
+    this.idleGesture = null;
+    this.idleSway = this.idlePalps = 0;
+    this.idleScheduler.interrupt();
+  }
+
+  private advanceIdle(dt: number, ready: boolean) {
+    const action = this.idleScheduler.update(dt, this.options.personality, ready);
+    if (!action) {
+      if (this.idleGesture) this.interruptIdle();
+      return;
+    }
+    if (!this.idleGesture) {
+      // Use only the engine's bounded, visible, safe contact snapshot. No DOM reads.
+      let nearest: Point | null = null;
+      let gap = this.reachLimit * 1.2;
+      for (const surface of this.surfaceIndex.values()) {
+        const dx = surface.b.x - surface.a.x,
+          dy = surface.b.y - surface.a.y;
+        const fraction = clamp(
+          ((this.body.x - surface.a.x) * dx + (this.body.y - surface.a.y) * dy) /
+            Math.max(1, dx * dx + dy * dy) +
+            (24 * this.scale) / Math.max(1, Math.hypot(dx, dy)),
+          surface.min,
+          surface.max,
+        );
+        if (surface.blocked?.some((f) => Math.abs(f - fraction) < 0.02)) continue;
+        const point = { x: surface.a.x + dx * fraction, y: surface.a.y + dy * fraction };
+        const d = distance(point, this.body);
+        if (d > 12 * this.scale && d < gap) {
+          nearest = point;
+          gap = d;
+        }
+      }
+      const turn = nearest
+        ? clamp(
+            angleDelta(Math.atan2(nearest.x - this.body.x, this.body.y - nearest.y), this.angle),
+            -0.28,
+            0.28,
+          )
+        : 0;
+      const usesFoot = ['probe', 'groom', 'reposition', 'tend'].includes(action.kind);
+      const index = usesFoot ? (turn < 0 ? 0 : 4) : -1;
+      const leg = this.legs[Math.max(0, index)]!;
+      const from = { ...leg.foot };
+      const edge = this.placement(this.bounded(this.idealFoot(leg), this.reachLimit * 0.86), leg);
+      let to = edge.point;
+      let edgeContact = edge.contact;
+      if (action.kind === 'groom') {
+        to = this.toWorld({ x: leg.side * 15, y: -29 });
+        edgeContact = undefined;
+      } else if (action.kind === 'reposition') {
+        const landing = this.placement(
+          this.bounded(
+            { x: from.x + leg.side * 7 * this.scale, y: from.y - 5 * this.scale },
+            this.reachLimit * 0.86,
+          ),
+          leg,
+        );
+        to = landing.point;
+        edgeContact = landing.contact;
+      }
+      this.idleGesture = {
+        kind: action.kind,
+        leg: index,
+        from,
+        to: { ...to },
+        home: leg.contact && { ...leg.contact },
+        edge: edgeContact && { ...edgeContact },
+        angle: this.angle,
+        turn,
+      };
+      if ((action.kind === 'probe' || action.kind === 'tend') && !edgeContact) {
+        this.interruptIdle();
+        return;
+      }
+      if (usesFoot) {
+        leg.contact = leg.landing = undefined;
+        leg.stepping = true;
+        leg.lift = 0;
+      }
+    }
+    const gesture = this.idleGesture;
+    if (
+      (gesture.home && !this.contactPoint(gesture.home)) ||
+      (gesture.edge && !this.contactPoint(gesture.edge))
+    ) {
+      this.interruptIdle();
+      return;
+    }
+    const p = action.elapsed / action.duration;
+    const envelope = Math.sin(p * Math.PI) ** 2;
+    this.idleSway = action.kind === 'sway' ? Math.sin(p * Math.PI * 2) * envelope * 0.045 : 0;
+    this.idlePalps =
+      this.options.personality === 'feral'
+        ? Math.sin(p * Math.PI * 8) * Math.sin(clamp((p - 0.15) / 0.45, 0, 1) * Math.PI) ** 2 * 1.8
+        : action.kind === 'groom'
+          ? Math.sin(p * Math.PI * 4) * envelope * 0.8
+          : 0;
+    if (gesture.leg < 0) return;
+    const leg = this.legs[gesture.leg]!;
+    const home = (gesture.home && this.contactPoint(gesture.home)) || gesture.from;
+    const edge = (gesture.edge && this.contactPoint(gesture.edge)) || gesture.to;
+    const reach = smooth(clamp(p / 0.32, 0, 1)) * (1 - smooth(clamp((p - 0.52) / 0.34, 0, 1)));
+    const endpoint = action.kind === 'groom' ? gesture.to : edge;
+    const reposition = action.kind === 'reposition';
+    const t = reposition ? smooth(clamp(p / 0.85, 0, 1)) : reach;
+    // A probe/tending toe briefly meets the safe edge, then lifts to withdraw.
+    // Keep its other seven supports; the tested toe never carries the body load.
+    const lift = reposition
+      ? Math.sin(t * Math.PI) ** 2
+      : action.kind === 'probe' || action.kind === 'tend'
+        ? Math.sin(clamp(p / 0.32, 0, 1) * Math.PI) ** 2 +
+          Math.sin(clamp((p - 0.52) / 0.34, 0, 1) * Math.PI) ** 2
+        : reach;
+    Object.assign(
+      leg.foot,
+      this.bounded(
+        {
+          x: mix(home.x, endpoint.x, t),
+          y: mix(home.y, endpoint.y, t) - lift * 5 * this.scale,
+        },
+        this.reachLimit * 0.97,
+      ),
+    );
+    leg.lift = lift * 0.7;
+    if (p >= 0.86) {
+      Object.assign(leg.foot, reposition ? endpoint : home);
+      leg.contact = reposition ? gesture.edge : gesture.home;
+      leg.stepping = false;
+      leg.lift = 0;
+      leg.rested = 0;
     }
   }
 
@@ -773,7 +1030,7 @@ export class Spider {
     );
   }
 
-  update(dt: number, time: number, target: Point, opts: SpiderOptions): void {
+  update(dt: number, _time: number, target: Point, opts: SpiderOptions): void {
     // A suspended tab must never turn integration into an enormous leap.
     dt = clamp(Number.isFinite(dt) ? dt : 0, 0, 0.04);
     const wasInitialized = this.initialized;
@@ -784,7 +1041,6 @@ export class Spider {
       this.surfaceSnapshot = opts.surfaces;
       this.surfaceIndex = new Map((opts.surfaces ?? []).map((s) => [s.id, s]));
     }
-    this.clock = opts.reducedMotion ? 0 : time;
     const profile = this.profile;
     const intensity = clamp(opts.intensity, 0, 1);
     const feral = opts.personality === 'feral';
@@ -817,6 +1073,8 @@ export class Spider {
     let surfaceVX = 0,
       surfaceVY = 0;
     if (changedType) {
+      this.interruptIdle();
+      this.idleScheduler.reset();
       this.gripLeg = -1;
       this.gripCaptured = false;
       this.recovery = null;
@@ -824,6 +1082,16 @@ export class Spider {
       this.resetStance();
     }
     const delta = opts.surfaceDelta ?? { x: 0, y: 0 };
+    if (
+      delta.x ||
+      delta.y ||
+      !opts.idle ||
+      opts.grip ||
+      opts.selector ||
+      opts.pointer ||
+      opts.attention
+    )
+      this.interruptIdle();
     if (wasInitialized && this.needsRecovery(delta, opts.surfaces)) {
       this.recover(
         { x: this.body.x, y: clamp(this.body.y + Math.sign(delta.y) * 90, 120, this.height - 150) },
@@ -853,6 +1121,12 @@ export class Spider {
       this.gripFrom.y += dy;
     }
     if (!this.recovery) this.followSurfaces();
+    if (
+      this.idleGesture &&
+      ((this.idleGesture.home && !this.contactPoint(this.idleGesture.home)) ||
+        (this.idleGesture.edge && !this.contactPoint(this.idleGesture.edge)))
+    )
+      this.interruptIdle();
     if (opts.grip && !this.withinReach(opts.grip.point)) {
       // A page may move a committed fragment offscreen. Release; never scale bones to it.
       this.options = { ...opts, grip: undefined };
@@ -873,6 +1147,7 @@ export class Spider {
     }
     this.age += dt;
     if (opts.reducedMotion) {
+      this.interruptIdle();
       // Quiet geometry can follow the surface, but has no integration or contact animation.
       const quietDX = this.destination.x - this.body.x;
       const quietDY = this.destination.y - this.body.y;
@@ -1043,16 +1318,53 @@ export class Spider {
     const walkingVY = this.velocity.y - surfaceVY;
     const speed = Math.hypot(walkingVX, walkingVY);
 
+    this.advanceIdle(
+      dt,
+      !!opts.idle &&
+        !entering &&
+        !opts.descending &&
+        !opts.grip &&
+        !opts.selector &&
+        !opts.pointer &&
+        !opts.attention &&
+        remaining < 1 &&
+        speed < 1 &&
+        (!!this.idleGesture || this.legs.every((leg) => !leg.stepping && !leg.released)),
+    );
+    const idle = this.idleScheduler.action;
+    const idleProgress = idle ? idle.elapsed / idle.duration : 0;
+    const idleEnvelope = Math.sin(idleProgress * Math.PI) ** 2;
+    const idleHeading = this.idleGesture
+      ? this.idleGesture.angle +
+        this.idleGesture.turn *
+          (feral
+            ? smooth(clamp(idleProgress / 0.12, 0, 1)) *
+              (1 - smooth(clamp((idleProgress - 0.62) / 0.38, 0, 1)))
+            : idleEnvelope)
+      : null;
+
     const lookDX = lookAt.x - this.body.x;
     const lookDY = lookAt.y - this.body.y;
     const lookDistance = Math.max(1, Math.hypot(lookDX, lookDY));
-    const heading = lookDistance > 12 ? Math.atan2(lookDX, -lookDY) : this.angle;
-    const travelHeading = speed > 25 ? Math.atan2(walkingVX, -walkingVY) : heading;
+    const heading = idleHeading ?? (lookDistance > 12 ? Math.atan2(lookDX, -lookDY) : this.angle);
+    const travelHeading =
+      speed > 25
+        ? Math.atan2(walkingVX, -walkingVY)
+        : idle && feral && this.idleGesture
+          ? this.idleGesture.angle +
+            this.idleGesture.turn *
+              smooth(clamp((idleProgress - 0.08) / 0.18, 0, 1)) *
+              (1 - smooth(clamp((idleProgress - 0.62) / 0.38, 0, 1)))
+          : heading;
     const turn = angleDelta(travelHeading, this.angle);
     const turnStep = clamp(
-      turn * (1 - Math.exp(-dt * profile.turnResponse * (investigating ? 0.45 : 1))),
-      -profile.turnRate * dt,
-      profile.turnRate * dt,
+      turn *
+        (1 -
+          Math.exp(
+            -dt * (idle ? (feral ? 25 : 2) : profile.turnResponse) * (investigating ? 0.45 : 1),
+          )),
+      -(idle && !feral ? 0.25 : profile.turnRate) * dt,
+      (idle && !feral ? 0.25 : profile.turnRate) * dt,
     );
     this.angle = angleDelta(this.angle + turnStep, 0);
     const localLookX =
@@ -1060,24 +1372,30 @@ export class Spider {
     const localLookY =
       (-lookDX * Math.sin(this.angle) + lookDY * Math.cos(this.angle)) / lookDistance;
     const eyeMix = 1 - Math.exp(-dt * profile.eyeResponse);
-    this.look.x = mix(this.look.x, localLookX * 4, eyeMix);
-    this.look.y = mix(this.look.y, localLookY * 4, eyeMix);
+    this.look.x = mix(
+      this.look.x,
+      idle ? Math.sin(angleDelta(heading, this.angle)) * 4 : localLookX * 4,
+      eyeMix,
+    );
+    this.look.y = mix(this.look.y, idle ? -idleEnvelope * 2 : localLookY * 4, eyeMix);
     this.headAngle = mix(
       this.headAngle,
       clamp(angleDelta(heading, this.angle), -0.48, 0.48),
       eyeMix,
     );
-    const compression = preparing
-      ? (feral ? 1.15 : dreamy ? 0.45 : 0.6) * smooth(attackProgress)
-      : settling
-        ? -Math.sin(attackProgress * Math.PI) * (feral ? 0.5 : 0.25)
-        : feral
-          ? this.holding
-            ? 1
-            : 0.16 + this.alert * 0.45
-          : dreamy
-            ? -0.2
-            : this.alert * 0.25;
+    const compression = idle
+      ? (idle.kind === 'crouch' ? 0.65 : idle.kind === 'probe' ? 0.18 : 0) * idleEnvelope
+      : preparing
+        ? (feral ? 1.15 : dreamy ? 0.45 : 0.6) * smooth(attackProgress)
+        : settling
+          ? -Math.sin(attackProgress * Math.PI) * (feral ? 0.5 : 0.25)
+          : feral
+            ? this.holding
+              ? 1
+              : 0.16 + this.alert * 0.45
+            : dreamy
+              ? -0.2
+              : this.alert * 0.25;
     this.crouch = mix(this.crouch, compression, 1 - Math.exp(-dt * (feral ? 24 : 8)));
 
     // Keep a grip on its original limb until release, even across a sharp body pivot.
@@ -1105,6 +1423,7 @@ export class Spider {
     for (let i = 0; i < this.legs.length; i++) {
       const leg = this.legs[i]!;
       leg.rested += dt;
+      if (i === this.idleGesture?.leg) continue;
       if (i === this.gripLeg && opts.grip) {
         leg.contact = leg.landing = undefined;
         if (leg.stepping) movingFeet--;
@@ -1168,7 +1487,8 @@ export class Spider {
     }
 
     if (!entering && !opts.descending) {
-      const budget = this.gripLeg >= 0 ? 3 : 4;
+      const idleRest = !!opts.idle && speed < 1 && remaining < 1;
+      const budget = this.gripLeg >= 0 ? 3 : idleRest ? 1 : 4;
       const pace = clamp(speed / profile.speed, 0, 1);
       const stride = profile.stepDrift * this.scale * mix(0.55, 1, pace);
       const stepTime = clamp((stride * 1.4) / Math.max(1, speed), 0.055, profile.stepTime);
@@ -1179,7 +1499,13 @@ export class Spider {
         let best = -Infinity;
         for (let i = 0; i < this.legs.length; i++) {
           const leg = this.legs[i]!;
-          if (i === this.gripLeg || leg.stepping || leg.rested <= profile.stepRest) continue;
+          if (
+            i === this.gripLeg ||
+            leg.stepping ||
+            this.idleGesture ||
+            leg.rested <= profile.stepRest
+          )
+            continue;
           // Compare against the same reachable pose used for landing, or short rigs
           // can endlessly re-step toward a rest position just beyond that limit.
           const rest = this.bounded(leg.ideal, this.reachLimit * 0.86);
@@ -1351,6 +1677,26 @@ export class Spider {
       ctx.globalAlpha = 1;
     }
     this.renderSelector();
+    const idle = this.idleScheduler.action;
+    if (idle?.kind === 'tend' && this.idleGesture?.edge) {
+      const anchor = this.contactPoint(this.idleGesture.edge);
+      if (anchor) {
+        const spinneret = this.toWorld({ x: 0, y: 34 });
+        ctx.globalAlpha = Math.sin((idle.elapsed / idle.duration) * Math.PI) ** 2 * 0.6;
+        ctx.strokeStyle = this.options.surface === 'light' ? '#637c88' : '#c5dfef';
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(spinneret.x, spinneret.y);
+        ctx.quadraticCurveTo(
+          (spinneret.x + anchor.x) / 2,
+          (spinneret.y + anchor.y) / 2 + 4 * s,
+          anchor.x,
+          anchor.y,
+        );
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
     const offset = this.bodyOffset();
     const torsoCos = Math.cos(this.angle);
     const torsoSin = Math.sin(this.angle);
@@ -1477,7 +1823,11 @@ export class Spider {
       this.dot(-5, 7, 0.9);
       this.dot(5, 7, 0.9);
     } else if (kind === 'dreamy') {
-      // Orb-weaver: broad rounded abdomen, soft radial fibers and a little face.
+      // Orb-weaver: broad rounded abdomen and soft radial fibers.
+      ctx.save();
+      ctx.translate(0, 15);
+      ctx.rotate(this.idleSway);
+      ctx.translate(0, -15);
       ctx.beginPath();
       ctx.ellipse(0, 15, 21, 24, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -1503,6 +1853,7 @@ export class Spider {
       ctx.fillStyle = '#ccadff';
       this.dot(0, 10, 2);
       this.dot(0, 21, 1.5);
+      ctx.restore();
       ctx.fillStyle = '#071323';
       ctx.strokeStyle = '#9affdf';
       ctx.beginPath();
@@ -1600,13 +1951,9 @@ export class Spider {
     // Jointed palps move with attention and scuttle compression, without moving contacts.
     for (const side of [-1, 1]) {
       const lively = this.options.personality === 'feral';
-      const rhythm = this.options.reducedMotion
-        ? 0
-        : Math.sin(
-            this.clock * (lively ? 8.5 : this.options.personality === 'dreamy' ? 1.5 : 3.5) +
-              side * 1.7,
-          );
-      const pinch = rhythm * (lively ? 2.2 : 1.3) + this.alert * 1.5;
+      const pinch =
+        (this.options.reducedMotion ? 0 : this.idlePalps * side) +
+        this.alert * (lively ? 1.5 : 0.8);
       const start = { x: side * (headWidth - 2), y: -5 };
       const elbow = { x: side * (headWidth + 5 - this.crouch * 2), y: -13 + pinch };
       const tip = { x: side * (headWidth - 1 + pinch), y: -19 + this.crouch * 4 };
@@ -1655,13 +2002,9 @@ export class Spider {
 
   private bodyOffset(): number {
     if (this.options.reducedMotion) return 0;
-    const dreamy = this.options.personality === 'dreamy';
     const feral = this.options.personality === 'feral';
-    const breath = Math.sin(this.clock * (dreamy ? 1.6 : 2.5)) * (dreamy ? 1.2 : 0.35);
     // Springy scuttle elevation is small; support feet remain planted throughout.
-    return (
-      (breath + this.crouch * (feral ? 3.6 : 1.8) - this.suspension) * this.scale - this.hopHeight
-    );
+    return (this.crouch * (feral ? 3.6 : 1.8) - this.suspension) * this.scale - this.hopHeight;
   }
 
   private strut(

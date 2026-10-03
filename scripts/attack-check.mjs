@@ -179,9 +179,12 @@ try {
       assert.equal(redirect.current, 'target-a');
       assert.equal(redirect.selector, 'strike');
       await shot('committed-redirect');
+      // Focus before the short Feral preparation window. Real keyboard activation
+      // of the dock avoids waiting for pointer-click stability past its 90ms clock.
+      await page.locator('[data-cr4wler-root] .pause').focus();
       await phase('prepare');
       assert.equal(await inspect('__cr4wler.candidate.element.id'), 'target-b');
-      await page.locator('[data-cr4wler-root] .pause').click();
+      await page.keyboard.press('Enter');
       const frozen = await inspect(
         '({mode:__cr4wler.mode,time:__cr4wler.phaseTime,candidate:__cr4wler.candidate.text})',
       );

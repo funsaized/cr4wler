@@ -67,6 +67,7 @@ const styles = `
 .dot{width:6px;height:6px;border-radius:50%;background:#bdffa3;box-shadow:0 0 9px #bdffa355}.wordmark{font-weight:700;letter-spacing:.5px}.activity{color:#b3afc9;min-width:145px}button{font:inherit;cursor:pointer;color:#eeeefa;border:1px solid #45425e;background:#232132;border-radius:100px;padding:7px 12px}button:hover{border-color:#b6a7ff;background:#383148}button:focus-visible{outline:2px solid #b6ff96;outline-offset:3px}.restore{color:#baff9a}.tip{position:absolute;bottom:87px;left:50%;transform:translateX(-50%);max-width:90vw;color:#bbb7d0;background:#11121df2;border:1px solid #393448;padding:10px 18px;border-radius:9px;font:12px/1.5 system-ui,sans-serif;text-align:center}.hide{display:none}@media(max-width:600px){.activity{font-size:10px;min-width:0;max-width:145px;white-space:normal}.dock{gap:7px;padding-left:12px;max-width:96vw}.tip{width:86vw}.wordmark{font-size:11px}}
 `;
 export class Cr4wler {
+  constructor(private readonly idleSeed?: number) {}
   private host: HTMLDivElement | null = null;
   private root: ShadowRoot | null = null;
   private pieces: HTMLDivElement | null = null;
@@ -110,6 +111,7 @@ export class Cr4wler {
   private nextHoverProbe = 0;
   private blurred = false;
   private manualUntil = 0;
+  private idleInputUntil = 0;
   private manualAnchor: Point | null = null;
   private edgeDirection = 0;
   private edgeProximity = 0;
@@ -203,6 +205,7 @@ export class Cr4wler {
     this.blurred = false;
     this.clearFollowIntent();
     this.manualUntil = 0;
+    this.idleInputUntil = 0;
     this.manualAnchor = null;
     this.host = document.createElement('div');
     this.host.dataset.cr4wlerIgnore = '';
@@ -240,7 +243,7 @@ export class Cr4wler {
       : 'Tiny acts of mischief. The aftermath stays as you scroll. Reset or Esc removes the effects.';
     this.root.append(this.tip);
     document.documentElement.append(this.host);
-    this.spider = new Spider(canvas);
+    this.spider = new Spider(canvas, this.idleSeed);
     this.surfaceOffset = { x: scrollX, y: scrollY };
     this.lastSpiderOptions = null;
     this.surface = this.detectSurface(document.body);
@@ -373,6 +376,7 @@ export class Cr4wler {
       () => {
         this.hidden = document.hidden;
         if (this.hidden) {
+          if (!this.paused) this.spider?.interruptIdle();
           this.clearFollowIntent();
           cancelAnimationFrame(this.raf);
           this.raf = 0;
@@ -1159,6 +1163,8 @@ export class Cr4wler {
     this.updateActivity();
   }
   private manualNavigation(explicit = true) {
+    this.idleInputUntil = this.time + 3.5;
+    if (!this.paused) this.spider?.interruptIdle();
     this.clearFollowIntent();
     this.cancelCandidate();
     this.manualUntil = Math.max(this.manualUntil, performance.now() + (explicit ? 850 : 0));
@@ -1173,6 +1179,10 @@ export class Cr4wler {
     return { direction: 0, proximity: 0 };
   }
   private onPointer(x: number, y: number) {
+    // Any real pointer yields idle attention, including protected content and
+    // sessions with mouse following disabled. It never creates a hunt itself.
+    this.idleInputUntil = this.time + 3.5;
+    if (!this.paused) this.spider?.interruptIdle();
     this.pointer = { x, y };
     this.pointerSurfaceOffset = { x: scrollX, y: scrollY };
     if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) {
@@ -1561,7 +1571,9 @@ export class Cr4wler {
       }
       if (this.mode === 'scan' && !this.candidate && !this.limitReached) {
         if (this.settings.followMouse) {
-          if (!this.hover) this.destination = { ...this.spider.position };
+          // Let the physical silk arrival finish before freezing a follow-mode
+          // resting destination; short decision clocks otherwise stop it near the top.
+          if (!this.hover && this.spider.settled) this.destination = { ...this.spider.position };
         } else if (this.phaseTime > profile.choice && this.time >= this.nextChoice) this.choose();
       }
       if (this.candidate) {
@@ -1714,6 +1726,18 @@ export class Cr4wler {
             }
           : undefined,
       pursuing: !!this.candidate && this.candidateSource === 'hover',
+      idle:
+        !quiet &&
+        this.mode === 'scan' &&
+        !this.candidate &&
+        !this.current &&
+        !this.hover &&
+        // A stationary pointer is presence, not unresolved hunting intent.
+        // Real movement restarts idleInputUntil; active edge travel still wins.
+        !this.edgeDirection &&
+        this.time >= this.idleInputUntil &&
+        !this.blurred &&
+        performance.now() >= this.manualUntil,
       surfaces: this.readSurfaces(surfaceTime, destination),
     };
     this.lastSpiderOptions = spiderOptions;

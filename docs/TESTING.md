@@ -56,6 +56,41 @@ Timing runs omit video/screenshots. Installed-extension recordings are correctne
 
 For focused installed-extension pixels, run `npm run build && node scripts/attack-check.mjs`. It records three normal and 3× slow sequences, actual preparation/impact/aftermath screenshots, exact footprints and interruption evidence on `anticipation.html` under `artifacts/item4/attack/`. Recording labels are fixture instrumentation; slow playback repeats captured frames without interpolation. Use the full installed-extension matrix above for other materials and page contacts.
 
+`tests/idle.test.mjs` checks deterministic weighted gestures, multi-second quiet gaps,
+per-action cooldowns, seven supports during idle, fixed reach, immediate interruption
+of every gesture into an exact preparation grip and normal gait, dock Pause, real hover
+hunts, Reset/repeated activation, manual/nested scrolling, stale surfaces, species changes, resize, visibility
+events and static reduced motion. Visibility events in that aggregate regression are
+controlled lifecycle fixtures, not evidence of native browser tab switching.
+
+Run `npm run build && node scripts/idle-check.mjs` for actual installed-MV3 idle
+pixels on the synthetic `idle.html?autostart=off` fixture at 1440×1000/DPR 1.
+It captures 26 seconds per species with a real pointer held stationary inside
+the protected input at (144,260), plus real pointer
+interruption and subsequent preparation. The production engine and renderer use
+Curious seed 42 and Feral/Dreamy seed 7, reset once before arrival finishes;
+only random choices are controlled. No animation clocks or geometry are changed.
+Screenshots for each gesture and normal/3× slow WebM sequences are saved under
+`artifacts/item5/idle/`. Slow playback repeats captured pixels without interpolation.
+The temporary tending strand belongs to that canvas frame and disappears on return,
+interruption, invalidation or Reset. Diagnostic geometry supports assertions;
+the screenshots and recordings supply visual evidence. Cursor-follow mode lets the
+physical arrival finish before adopting a quiet resting destination.
+
+Idle eligibility uses recent real movement/navigation, unresolved hover/hunt intent
+and active edge travel. A stationary pointer inside blank or protected content, or
+over a completed/occupied hunt target, can rest without additional destruction or
+scrolling. Any real movement immediately releases the idle gesture. The dedicated
+stationary-pointer regressions retain pointer presence while checking Pause,
+reduced motion and subsequent movement.
+
+The attack capture focuses the dock before short preparation windows and activates
+Pause with Enter. This exercises the real dock control while avoiding Playwright's
+pointer-click stability wait consuming Feral's 90ms anticipation. Native toolbar
+mouse behavior remains covered by `npm run test:popup`. Run harnesses that serve on
+port 4173 sequentially; the aggregate browser suite and installed-extension matrix
+both use it.
+
 Keep generated output under ignored `artifacts/`:
 
 | Producer                  | Output                                                               |

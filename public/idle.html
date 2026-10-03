@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>cr4wler — quiet company</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f5f0e6;
+        color: #344842;
+        font:
+          20px/1.5 Georgia,
+          serif;
+      }
+      header {
+        margin: 40px 64px;
+        font: 14px/1.5 system-ui;
+      }
+      main {
+        min-height: 1700px;
+      }
+      #edge,
+      #lower {
+        position: absolute;
+        left: 750px;
+        top: 260px;
+        width: 360px;
+        height: 64px;
+        border: 1px solid #8d6751;
+        padding: 12px;
+      }
+      #lower {
+        top: 445px;
+      }
+      #edge p,
+      #lower p {
+        margin: 0;
+        font-size: 18px;
+        white-space: nowrap;
+      }
+      #target {
+        position: absolute;
+        left: 740px;
+        top: 630px;
+        width: 440px;
+        color: #3e687d;
+      }
+      #protected {
+        position: absolute;
+        left: 64px;
+        top: 250px;
+      }
+      #nested {
+        position: absolute;
+        left: 70px;
+        top: 560px;
+        width: 300px;
+        height: 150px;
+        overflow: auto;
+        border: 1px solid #637c88;
+      }
+      #nested p {
+        padding: 16px;
+        margin: 0;
+      }
+      .spacer {
+        height: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <header data-cr4wler-ignore>
+      Quiet company · synthetic safe edges · a stationary pointer can rest here
+    </header>
+    <main>
+      <article id="edge"><p>Small threads wait along the paper.</p></article>
+      <article id="lower"><p>Quiet edges hold a balanced visitor.</p></article>
+      <p id="target">Blue fragments hold their rhythm beside the patiently turning page.</p>
+      <input id="protected" aria-label="Protected author value" value="Keep this value" />
+      <div id="nested">
+        <p>Nested paper retains its own position.</p>
+        <div class="spacer" data-cr4wler-ignore></div>
+      </div>
+    </main>
+    <script src="playground.js"></script>
+  </body>
+</html>
