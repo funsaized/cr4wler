@@ -103,12 +103,16 @@ export class Cr4wler {
   private candidateSource: 'hover' | 'autonomous' | '' = '';
   private candidateAt = 0;
   private scanRevision = 0;
-  private hover: { target: Target; at: number } | null = null;
+  private hover: { target: Target; at: number; anchor: Point } | null = null;
   private hoverCommittedAt = -100;
   private pointerActive = false;
   private pointerDirty = false;
   private pointerMoved = false;
-  private nextHoverProbe = 0;
+  private pointerIntent: Point = { x: -1000, y: -1000 };
+  private pointerInputAnchor: Point | null = null;
+  private pointerAt = 0;
+  private pointerSpeed = 0;
+  private pointerSafe = false;
   private blurred = false;
   private manualUntil = 0;
   private idleInputUntil = 0;
@@ -121,6 +125,9 @@ export class Cr4wler {
   private edgeVelocity = 0;
   private edgeExhausted = false;
   private edgeAnchor: Point | null = null;
+  private edgeScroller: Element | null = null;
+  private edgeBounds = { top: 0, bottom: innerHeight };
+  private ownScroll: { target: Element; top: number; left: number } | null = null;
   private phaseChangedAt = 0;
   private reportedPhase = '';
   private mode: Mode = 'arrive';
@@ -172,14 +179,26 @@ export class Cr4wler {
     const followed = this.settings.followMouse;
     const previousType = this.settings.personality;
     this.settings = settingsFrom({ ...this.settings, ...value });
-    if (followed !== this.settings.followMouse) this.clearFollowIntent();
+    if (followed !== this.settings.followMouse || previousType !== this.settings.personality)
+      this.clearFollowIntent();
     if (
       previousType !== this.settings.personality &&
       this.spider &&
       this.lastSpiderOptions &&
       (this.paused || this.reduced.matches)
     ) {
-      this.lastSpiderOptions = { ...this.lastSpiderOptions, ...this.settings };
+      this.lastSpiderOptions = {
+        ...this.lastSpiderOptions,
+        ...this.settings,
+        // A cancelled hover must not remain painted by this static type change.
+        // An already committed paused impact keeps its owned footprint.
+        selector: this.current ? this.lastSpiderOptions.selector : undefined,
+        grip: this.current ? this.lastSpiderOptions.grip : undefined,
+        attention: undefined,
+        pointer: undefined,
+        pursuing: false,
+        idle: false,
+      };
       this.spider.update(0, this.time, this.spider.position, this.lastSpiderOptions);
       this.spider.render();
     }
@@ -206,6 +225,7 @@ export class Cr4wler {
     this.clearFollowIntent();
     this.manualUntil = 0;
     this.idleInputUntil = 0;
+    this.pointerInputAnchor = null;
     this.manualAnchor = null;
     this.host = document.createElement('div');
     this.host.dataset.cr4wlerIgnore = '';
@@ -299,6 +319,15 @@ export class Cr4wler {
     window.addEventListener('wheel', () => this.manualNavigation(), { passive: true, signal });
     window.addEventListener('touchstart', () => this.manualNavigation(), { passive: true, signal });
     window.addEventListener('touchmove', () => this.manualNavigation(), { passive: true, signal });
+    window.addEventListener(
+      'pointerdown',
+      (e) => {
+        // Page controls and scrollbar drags belong to the page. The dock keeps
+        // its existing Pause freeze semantics; no event is cancelled.
+        if (!e.composedPath().includes(this.host!)) this.manualNavigation(false);
+      },
+      { passive: true, capture: true, signal },
+    );
     document.documentElement.addEventListener('pointerleave', () => this.clearFollowIntent(), {
       passive: true,
       signal,
@@ -337,8 +366,16 @@ export class Cr4wler {
     window.addEventListener(
       'scroll',
       (e) => {
-        if (e.target instanceof Element && e.target !== document.scrollingElement && !this.paused)
-          this.manualNavigation(false);
+        if (e.target instanceof Element && e.target !== document.scrollingElement && !this.paused) {
+          const own = this.ownScroll;
+          if (
+            !own ||
+            own.target !== e.target ||
+            own.top !== e.target.scrollTop ||
+            own.left !== e.target.scrollLeft
+          )
+            this.manualNavigation(false);
+        }
         if (e.target) this.movedScrollers.add(e.target);
         this.scheduleGeometry();
         this.invalidateScan();
@@ -1149,12 +1186,15 @@ export class Cr4wler {
   private stopEdge() {
     this.edgeDirection = this.edgeProximity = this.edgeVelocity = 0;
     this.edgeSince = this.edgeStarted = this.edgeDistance = 0;
+    this.edgeScroller = null;
     if (this.host) this.host.dataset.edgeVelocity = '0.0';
   }
   private clearFollowIntent(preserveCandidate = false) {
     this.pointerActive = this.pointerDirty = this.pointerMoved = false;
     this.hover = null;
-    this.nextHoverProbe = 0;
+    this.pointerAt = this.pointerSpeed = 0;
+    this.pointerSafe = false;
+    this.ownScroll = null;
     this.edgeExhausted = false;
     this.edgeAnchor = null;
     this.stopEdge();
@@ -1172,41 +1212,89 @@ export class Cr4wler {
     this.updateActivity();
   }
   private edgeZone() {
-    const zone = Math.min(84, Math.max(48, innerHeight * 0.1));
-    if (this.pointer.y < zone) return { direction: -1, proximity: 1 - this.pointer.y / zone };
-    if (this.pointer.y > innerHeight - zone)
-      return { direction: 1, proximity: 1 - (innerHeight - this.pointer.y) / zone };
+    const { top, bottom } = this.edgeBounds;
+    const zone = Math.min(84, Math.max(24, (bottom - top) * 0.1));
+    if (this.pointer.y < top + zone)
+      return { direction: -1, proximity: 1 - (this.pointer.y - top) / zone };
+    if (this.pointer.y > bottom - zone)
+      return { direction: 1, proximity: 1 - (bottom - this.pointer.y) / zone };
     return { direction: 0, proximity: 0 };
   }
   private onPointer(x: number, y: number) {
-    // Any real pointer yields idle attention, including protected content and
-    // sessions with mouse following disabled. It never creates a hunt itself.
-    this.idleInputUntil = this.time + 3.5;
-    if (!this.paused) this.spider?.interruptIdle();
     this.pointer = { x, y };
     this.pointerSurfaceOffset = { x: scrollX, y: scrollY };
+    // Classify cumulative movement once, independently of following/manual
+    // intent. Tremor keeps raw head attention without restarting quiet idle.
+    const meaningful =
+      !this.pointerInputAnchor ||
+      Math.hypot(x - this.pointerInputAnchor.x, y - this.pointerInputAnchor.y) >= 3;
+    if (meaningful) {
+      this.pointerInputAnchor = { x, y };
+      this.idleInputUntil = this.time + 3.5;
+      if (!this.paused) this.spider?.interruptIdle();
+    }
     if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) {
       this.clearFollowIntent();
       return;
     }
-    if (!this.edgeZone().direction) {
-      this.stopEdge();
-      this.edgeExhausted = false;
-      this.edgeAnchor = null;
-    }
     if (!this.followAvailable()) return;
+    const now = performance.now();
     if (
-      performance.now() < this.manualUntil ||
+      now < this.manualUntil ||
       (this.manualAnchor && Math.hypot(x - this.manualAnchor.x, y - this.manualAnchor.y) < 12)
     )
       return;
     this.manualAnchor = null;
+    // A cumulative 3px deadband prevents boundary tremor from restarting a hunt,
+    // a speed burst or rearming cleared intent. Head attention sees raw position.
+    if (!meaningful) {
+      if (this.pointerActive) this.pointerDirty = true;
+      return;
+    }
+    const distance = Math.hypot(x - this.pointerIntent.x, y - this.pointerIntent.y);
+    this.pointerSpeed = this.pointerActive
+      ? this.pointerSpeed * 0.45 +
+        Math.min(2000, distance / Math.max(0.016, (now - this.pointerAt) / 1000)) * 0.55
+      : 0;
+    this.pointerAt = now;
+    this.pointerIntent = { x, y };
     this.pointerActive = this.pointerDirty = this.pointerMoved = true;
   }
-  private updateEdgeIntent(freshPointer: boolean, safe: boolean) {
+  private updateEdgeIntent(freshPointer: boolean, hit: HTMLElement | null) {
+    let scrolling: Element | null = document.scrollingElement;
+    if (hit) {
+      // The nearest scrollable ancestor owns the whole visit, including its
+      // boundary. Never spill a nested edge into document navigation.
+      let depth = 0;
+      let el: HTMLElement | null = hit;
+      for (; el && el !== document.body && depth++ < 32; el = el.parentElement) {
+        if (el.scrollHeight <= el.clientHeight + 1) continue;
+        if (/auto|scroll/.test(getComputedStyle(el).overflowY)) {
+          scrolling = el;
+          break;
+        }
+      }
+      // An exhausted local walk cannot certify document ownership. Stop rather
+      // than scrolling past an uninspected ancestor's navigation boundary.
+      if (el && el !== document.body && scrolling === document.scrollingElement) scrolling = null;
+    }
+    const rect =
+      scrolling === document.scrollingElement ? null : scrolling?.getBoundingClientRect();
+    this.edgeBounds = {
+      top: Math.max(0, rect?.top ?? 0),
+      bottom: Math.min(innerHeight, rect?.bottom ?? innerHeight),
+    };
     const zone = this.edgeZone();
-    if (!safe || !zone.direction || !this.followAvailable()) {
+    if (
+      !hit ||
+      !scrolling ||
+      !zone.direction ||
+      !this.followAvailable() ||
+      this.current ||
+      this.settling
+    ) {
       this.stopEdge();
+      if (!zone.direction) this.edgeExhausted = false;
       return;
     }
     if (this.edgeExhausted) {
@@ -1218,32 +1306,45 @@ export class Cr4wler {
         return;
       this.edgeExhausted = false;
     }
-    if (zone.direction !== this.edgeDirection) {
+    if (zone.direction !== this.edgeDirection || scrolling !== this.edgeScroller) {
       if (!freshPointer) return;
       this.stopEdge();
       this.edgeDirection = zone.direction;
+      this.edgeScroller = scrolling;
       this.edgeSince = performance.now();
     }
     this.edgeProximity = clamp(zone.proximity, 0, 1);
   }
   private scrollEdge(dt: number) {
+    if (this.edgeDirection && performance.now() - this.pointerAt > 3000) {
+      this.clearFollowIntent();
+      return;
+    }
     if (
       !this.pointerActive ||
       !this.followAvailable() ||
       !this.edgeDirection ||
-      this.edgeExhausted
+      this.edgeExhausted ||
+      !this.edgeScroller?.isConnected ||
+      performance.now() - this.pointerAt > 3000 ||
+      this.current ||
+      this.settling
     ) {
       this.stopEdge();
+      return;
+    }
+    if (this.mode === 'recover') {
+      this.edgeVelocity = 0;
       return;
     }
     const now = performance.now();
     if (now - this.edgeSince < 240) return;
     if (!this.edgeStarted) this.edgeStarted = now;
-    const scrolling = document.scrollingElement;
+    const scrolling = this.edgeScroller;
     const room =
       this.edgeDirection < 0
-        ? scrollY
-        : Math.max(0, (scrolling?.scrollHeight ?? 0) - innerHeight - scrollY);
+        ? scrolling.scrollTop
+        : Math.max(0, scrolling.scrollHeight - scrolling.clientHeight - scrolling.scrollTop);
     // One deliberate edge visit is bounded in both time and distance. Re-arm by
     // leaving/re-entering, or moving at least 16px after the edge crawl rests.
     if (room < 1 || now - this.edgeStarted >= 6000 || this.edgeDistance >= 1800) {
@@ -1258,11 +1359,12 @@ export class Cr4wler {
     const distance =
       this.edgeDirection *
       Math.min(Math.abs(this.edgeVelocity * dt), room, 1800 - this.edgeDistance);
-    const before = scrollY;
+    const before = scrolling.scrollTop;
     // Explicit instant scrolling cannot queue browser smooth-scroll animations.
-    window.scrollBy({ top: distance, left: 0, behavior: 'instant' });
-    this.edgeDistance += Math.abs(scrollY - before);
-    if (scrollY !== before) {
+    scrolling.scrollBy({ top: distance, left: 0, behavior: 'instant' });
+    this.ownScroll = { target: scrolling, top: scrolling.scrollTop, left: scrolling.scrollLeft };
+    this.edgeDistance += Math.abs(scrolling.scrollTop - before);
+    if (scrolling.scrollTop !== before) {
       this.scheduleGeometry();
       this.pointerDirty = true;
     }
@@ -1286,9 +1388,8 @@ export class Cr4wler {
   private updateHover() {
     if (!this.pointerActive || !this.followAvailable()) return;
     const profile = huntProfiles[this.settings.personality];
-    if (this.pointerDirty && this.time >= this.nextHoverProbe) {
+    if (this.pointerDirty) {
       this.pointerDirty = false;
-      this.nextHoverProbe = this.time + 0.035;
       const freshPointer = this.pointerMoved;
       this.pointerMoved = false;
       const hit = document.elementFromPoint(this.pointer.x, this.pointer.y);
@@ -1299,10 +1400,14 @@ export class Cr4wler {
         return;
       }
       const safe = hit instanceof HTMLElement && (eligible(hit) || materialEligible(hit));
-      this.updateEdgeIntent(freshPointer, safe);
+      this.pointerSafe = safe;
+      this.updateEdgeIntent(freshPointer, safe ? hit : null);
       // Resolve the exact hit before checking occupancy: destroyed text must not
       // redirect attention to another nearby, still-available range.
-      const hitTarget = safe ? targetAtPoint(this.pointer.x, this.pointer.y, () => true) : null;
+      const hitTarget =
+        safe && !this.edgeDirection
+          ? targetAtPoint(this.pointerIntent.x, this.pointerIntent.y, () => true)
+          : null;
       const resolved = hitTarget && !this.occupied(hitTarget) ? hitTarget : null;
       const previous = this.hover;
       if (!resolved) {
@@ -1316,17 +1421,32 @@ export class Cr4wler {
         const close =
           rect &&
           Math.hypot(
-            Math.max(rect.left - this.pointer.x, 0, this.pointer.x - rect.right),
-            Math.max(rect.top - this.pointer.y, 0, this.pointer.y - rect.bottom),
+            Math.max(rect.left - this.pointerIntent.x, 0, this.pointerIntent.x - rect.right),
+            Math.max(rect.top - this.pointerIntent.y, 0, this.pointerIntent.y - rect.bottom),
           ) === 0;
         const target = same && close && valid(previous!.target) ? previous!.target : resolved;
         target.rect = targetRect(target);
         if (!same || !close) {
           this.scanRevision++;
-          this.hover = { target, at: performance.now() };
+          this.hover = { target, at: performance.now(), anchor: { ...this.pointerIntent } };
           // New attention cancels any uncommitted hunt before it can strike.
           if (this.candidate && this.candidateIntent !== target) this.cancelCandidate();
-        } else this.hover = previous;
+        } else {
+          this.hover = previous;
+          // Passing over a long line must offer the same short spatial stability
+          // as passing over several elements. Jitter never resets this clock.
+          if (
+            !this.candidate &&
+            previous &&
+            Math.hypot(
+              this.pointerIntent.x - previous.anchor.x,
+              this.pointerIntent.y - previous.anchor.y,
+            ) > 8
+          ) {
+            previous.at = performance.now();
+            previous.anchor = { ...this.pointerIntent };
+          }
+        }
       }
       this.selection?.clear();
       const selection = this.current ? null : (this.candidate ?? this.hover?.target);
@@ -1705,6 +1825,24 @@ export class Cr4wler {
         const target = this.hover.target;
         selector = { rect: target.rect, progress: 0, phase: 'scan', color: this.palette()[0] };
       }
+      if (
+        this.pointerActive &&
+        this.pointerSafe &&
+        (this.hover || this.edgeDirection) &&
+        this.followAvailable() &&
+        !this.candidate &&
+        !this.current &&
+        !this.settling &&
+        !['arrive', 'recover'].includes(this.mode) &&
+        performance.now() - this.pointerAt < 900
+      ) {
+        if (this.hover) this.targetDestination(this.hover.target);
+        else
+          this.destination = {
+            x: clamp(this.pointerIntent.x - 65, 200, Math.max(200, innerWidth - 200)),
+            y: clamp(this.pointerIntent.y - 65, 200, Math.max(200, innerHeight - 200)),
+          };
+      }
     }
     const destination = quiet
       ? { x: innerWidth * 0.72, y: Math.min(140, innerHeight * 0.3) }
@@ -1717,15 +1855,20 @@ export class Cr4wler {
       grip,
       selector,
       surface: this.surface,
-      pointer: this.pointerActive && this.hover ? this.pointer : undefined,
-      attention:
-        !this.current && !this.candidate && this.hover
-          ? {
-              x: this.hover.target.rect.x + this.hover.target.rect.width / 2,
-              y: this.hover.target.rect.y + this.hover.target.rect.height / 2,
-            }
+      pointer:
+        this.pointerActive && (this.hover || performance.now() - this.pointerAt < 900)
+          ? this.pointer
           : undefined,
-      pursuing: !!this.candidate && this.candidateSource === 'hover',
+      attention:
+        this.pointerActive && (this.hover || performance.now() - this.pointerAt < 900)
+          ? this.pointer
+          : undefined,
+      pursuing:
+        this.pointerActive &&
+        !this.current &&
+        (!!this.hover || performance.now() - this.pointerAt < 900),
+      pursuitSpeed:
+        this.pointerSpeed * Math.exp(-Math.max(0, performance.now() - this.pointerAt) / 240),
       idle:
         !quiet &&
         this.mode === 'scan' &&

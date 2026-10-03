@@ -37,6 +37,8 @@ export interface SpiderOptions {
   /** Immediate hover attention can change while a captured strike finishes. */
   attention?: Point;
   pursuing?: boolean;
+  /** Filtered real input speed in CSS px/s; never raises temperament limits. */
+  pursuitSpeed?: number;
   /** Page movement in viewport pixels; consume each scroll delta exactly once. */
   surfaceDelta?: Point;
   surfaces?: readonly PageSurface[];
@@ -1250,7 +1252,11 @@ export class Spider {
     const preparing = opts.selector?.phase === 'prepare';
     const settling = opts.selector?.phase === 'settle';
     const attackProgress = opts.selector?.progress ?? 0;
-    const urgency = investigating ? 0.72 : opts.pursuing ? 1.12 : 1;
+    const urgency = opts.pursuing
+      ? 0.5 + clamp((opts.pursuitSpeed ?? 900) / 900, 0, 1) * 0.62
+      : investigating
+        ? 0.72
+        : 1;
     const maxSpeed = profile.speed * (0.84 + intensity * 0.24) * urgency;
     const approach = dreamy ? 5 : feral ? 17 : 10;
     let wantedSpeed = Math.min(
@@ -1274,11 +1280,16 @@ export class Spider {
     const previousVelocity = { ...this.velocity };
     this.velocity.x += deltaX * velocityMix;
     this.velocity.y += deltaY * velocityMix;
+    if (remaining < 1) this.velocity.x = this.velocity.y = 0;
     // Contacts constrain travel, rather than being dragged inward when the body outruns them.
     let travel = 1;
     const moveX = this.velocity.x * dt,
       moveY = this.velocity.y * dt;
     const moveSquared = moveX * moveX + moveY * moveY;
+    // Brake at the destination plane. Momentum may turn smoothly on reversal,
+    // but cannot carry the body beyond its resting target and start an orbit.
+    const forward = moveX * dx + moveY * dy;
+    if (forward > 0) travel = Math.min(travel, (remaining * remaining) / forward);
     if (!entering && !opts.descending && moveSquared > 0) {
       for (const leg of this.legs) {
         // A committed landing must still be reachable after a reversal mid-swing.

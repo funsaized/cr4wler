@@ -80,9 +80,50 @@ physical arrival finish before adopting a quiet resting destination.
 Idle eligibility uses recent real movement/navigation, unresolved hover/hunt intent
 and active edge travel. A stationary pointer inside blank or protected content, or
 over a completed/occupied hunt target, can rest without additional destruction or
-scrolling. Any real movement immediately releases the idle gesture. The dedicated
+scrolling. Cumulative pointer movement of at least 3px immediately releases the
+idle gesture and renews its quiet delay, even over protected content or with
+following disabled. Same-position events and movement inside that deadband leave
+the gesture and delay intact. The dedicated
 stationary-pointer regressions retain pointer presence while checking Pause,
 reduced motion and subsequent movement.
+
+`tests/pointer.test.mjs` adds moving-line stability, adjacent text boundary tremor,
+latest uncommitted intent, independent settling, stale edge leases, nested edge
+ownership, native control clicks and species/controlled lifecycle regressions.
+Two real-clock idle regressions keep a pointer in protected content, preserve an
+actual gesture and its quiet delay through repeated same-position/sub-3px events,
+then verify immediate interruption at the cumulative threshold with following
+both enabled and disabled.
+Dirty hover intent is resolved once per animation frame before commitment. A
+cumulative 3px deadband protects a target from tremor; crossing 8px inside an
+unselected source restarts its explicit species dwell (35/75/140ms). The head
+can acknowledge raw input on the next available rendered frame. Blank/protected
+stops retain recent-input idle behavior. Pursuit scales bounded physical speed
+with filtered input; it preserves all contact and inverse-kinematics constraints.
+
+Edge visits choose the nearest eligible vertical scroll container within 32
+ancestors, otherwise the document once the walk reaches the body. An exhausted
+walk stops rather than assuming document ownership. The same container owns the visit at its
+boundary; it never spills into document navigation. Speed ramps after 240ms,
+with the existing 1,800px/6s visit limits and a 3s lease since meaningful pointer
+movement. Wheel, touch, keyboard, scrollbar/pointer presses and external scrolling
+disarm intent. Own nested scroll steps are recognized separately. Committed
+impact and settling never auto-scroll. Pause freezes the existing hunt while
+clearing pointer intent; blur, visibility, reduced motion, type changes and Reset
+discard the relevant pending intention.
+
+Run `npm run build && node scripts/pursuit-check.mjs` for installed-extension
+normal/3× slow sequences and screenshots under `artifacts/item6/pursuit/`. The
+synthetic fixture captures slow tracking, sweeps/reversals, exact preparation,
+jitter, committed redirection, document/nested edges and boundaries, wheel and
+PageDown overrides, native controls, Pause, controlled blur and reduced motion.
+Its ring/labels and bounded trace are recording instrumentation; no animation
+clock, source geometry or hunt is substituted. Feedback timing measures receipt
+of a real pointer event to completion of the next canvas render under the stated
+capture conditions, not hardware input or photon latency. Controlled blur and
+visibility checks do not establish native background visual behavior. Performance
+runs remain separate from captures. Prior executor dense-frame tails of
+100–150ms remain a series optimization concern; this item makes no 60 FPS claim.
 
 The attack capture focuses the dock before short preparation windows and activates
 Pause with Enter. This exercises the real dock control while avoiding Playwright's

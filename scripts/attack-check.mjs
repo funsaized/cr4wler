@@ -119,17 +119,25 @@ try {
         });
         await page.mouse.move(p.x, p.y);
       };
-      const phase = async (name) =>
-        page.waitForFunction(
-          (name) => document.querySelector('[data-cr4wler-root]')?.dataset.phase === name,
-          name,
-          { polling: 'raf', timeout: 12000 },
-        );
+      const phase = async (name) => {
+        // Read the installed engine directly: a separate main-world RAF poll can
+        // miss Feral's 90ms preparation under capture/encoder load.
+        const deadline = Date.now() + 12000;
+        while ((await inspect('__cr4wler.mode')) !== name) {
+          assert.ok(Date.now() < deadline, `Timed out waiting for ${name}`);
+          await page.waitForTimeout(8);
+        }
+      };
       const shot = async (stage) => {
-        await page.screenshot({
-          path: `${directory}/${personality}-${stage}.png`,
-          caret: 'initial',
+        const pixels = await debug.send('Page.captureScreenshot', {
+          format: 'png',
+          captureBeyondViewport: false,
+          fromSurface: true,
         });
+        await writeFile(
+          `${directory}/${personality}-${stage}.png`,
+          Buffer.from(pixels.data, 'base64'),
+        );
       };
       await page.waitForTimeout(1500);
       const clipStart = Date.now();
@@ -174,10 +182,19 @@ try {
       assert.equal(await inspect('__cr4wler.fragments.length'), 1);
       await aim('target-b');
       const redirect = await inspect(
-        '({current:__cr4wler.current?.target.element.id,selector:__cr4wler.lastSpiderOptions.selector?.phase})',
+        '({current:__cr4wler.current?.target.element.id,selector:__cr4wler.lastSpiderOptions.selector?.phase,completed:__cr4wler.fragments[0]?.progress,next:__cr4wler.hover?.target.element.id,count:__cr4wler.fragments.length})',
       );
-      assert.equal(redirect.current, 'target-a');
-      assert.equal(redirect.selector, 'strike');
+      if (redirect.current) {
+        assert.equal(redirect.current, 'target-a');
+        assert.equal(redirect.selector, 'strike');
+      } else {
+        // A real pointer round-trip may outlast the finite 180ms impact. It
+        // must finish its owned mark before the latest source can commit.
+        assert.equal(redirect.completed, 1);
+        assert.equal(redirect.count, 1);
+        assert.equal(redirect.next, 'target-b');
+      }
+      result.redirectCapturePhase = redirect.selector;
       await shot('committed-redirect');
       // Focus before the short Feral preparation window. Real keyboard activation
       // of the dock avoids waiting for pointer-click stability past its 90ms clock.
