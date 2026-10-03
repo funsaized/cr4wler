@@ -40,9 +40,9 @@ The demo site welcomes one spider automatically when each page is ready. Pause k
 
 - Eight planted feet, analytic inverse kinematics, articulated knees, crisp neon leg cores and luminous joints. A compact braced body, forward eyes and little palps turn toward your next target. All procedural; no animated images or external assets.
 - Silk arrival and spring-driven movement. The head points toward a live target; a sweeping selector settles into a lock box, pauses in anticipation, then strikes. A gripping front leg follows the contact point during peeling and shearing.
-- Five rotating effects: peeling phrases, skewed shear, scattered glyph groups, staggered disassembly, and ragged erasure trails. Original text is visually masked; colored inert shards form the aftermath.
+- Source-colored letters and short fragments tear at the claw's contact. Curious removes a small selected piece; Feral shreds a local area; Dreamy peels and unravels more slowly. Same-origin raster images loosen into recognizable tiles, compact cards and plain buttons flex with short border threads, and thin rules snap with a little recoil.
 - Every committed mark keeps its identity, color, and displacement as you scroll away and return. Reflow updates its anchor to the original live range. Nothing times out. Reset, Escape, or refresh clears the whole composition.
-- Optional cursor following resolves the actual eligible text under your pointer. The eyes and selector acknowledge it promptly; a stable hover replaces a wandering target, approach or lock. Only an already-started strike finishes before the latest hover takes over.
+- Optional cursor following resolves the actual eligible material under your pointer. Text inside a card stays text; its empty space or edge chooses the card. The eyes and selector acknowledge it promptly; a stable hover replaces a wandering target, approach or lock. Only an already-started strike finishes before the latest hover takes over.
 - Small moving selector accents and low-contrast local pulses; no full-page flashes or high-contrast strobing. Reduced motion shows a still visitor, disables scanning/strikes and retains existing aftermath without continuous animation.
 
 ## Take the lead
@@ -65,7 +65,7 @@ Rapid scrolling releases planted contacts before they exceed their fixed leg rea
 
 Nothing is clicked, submitted, fetched, uploaded, or stored. All fragment text lives only in this page's memory while the effect is active. There are no runtime dependencies, trackers, telemetry, fonts from CDNs, or remote services. See [PRIVACY.md](PRIVACY.md).
 
-The controller adds a fixed Shadow DOM overlay. It copies **text only**, never HTML, scripts, buttons, images, or embedded content. Inputs, forms, buttons, editors, dialogs, embedded frames, hidden content, live regions, and conservatively recognized payment/authentication/private widgets are excluded. Authors can also opt out any subtree with `data-cr4wler-ignore`.
+The controller adds a fixed Shadow DOM overlay. It copies short text and samples a bounded number of already-loaded same-origin image pixels; it never clones page HTML, scripts, controls or embedded content. Plain `type="button"` controls outside forms can receive an inert visual treatment. Inputs, submitters, forms, editors, dialogs, embedded frames, hidden content, live regions, and conservatively recognized payment/authentication/private widgets stay protected. Authors can opt out any subtree with `data-cr4wler-ignore`. Nothing activates a page control or rewrites its data.
 
 Nothing is clicked, submitted, fetched, uploaded, or stored. All fragment text lives only in this page's memory while the effect is active. There are no runtime dependencies, trackers, telemetry, fonts from CDNs, or remote services. See [PRIVACY.md](PRIVACY.md).
 
@@ -100,6 +100,10 @@ Useful files:
 Discovery combines viewport hit testing with a progressive document cursor. Each pass is bounded to 1,800 visited nodes and 80 useful ranges, in roughly 2 ms slices, so deep reference sections can be reached without rescanning an entire document each frame. Layout is read on acquisition and coalesced scroll/resize/content events, not on every animation frame.
 
 A session keeps up to **512 persistent records** and at most **72 DOM projections**, each with no more than 16 shards. Offscreen records retain their source ranges and transforms without mounted DOM. If reflow makes more than 72 records visible together, the excess settled marks use one shared canvas. At 512 marks the spider stops making new ones and explicitly asks for Reset; it never silently evicts old visible aftermath. A source removed, changed, hidden, or made ineligible by its page is safely released rather than overwriting that page's edits.
+
+Material inspection stays local. Text bites contain at most 16 / 30 / 20 characters for Curious / Feral / Dreamy. Objects are limited to 360×220 CSS pixels (horizontal rules to 480×8); panel descendants and labels are bounded. Image/panel snapshots are at most 256×192 pixels, sharing a session budget of 1,048,576 pixels. At most nine image tiles are retained, with only one / four / two moving for Curious / Feral / Dreamy at full quality. Settled pieces leave animation; there is only one active strike.
+
+Cross-origin, SVG/data/blob images, unsupported paint styles and exhausted bitmap budgets keep their source pixels and receive only a small outline treatment. Supported panels have simple text, uniform solid borders and pixel radii; gradients, shadows, transformed surfaces and complex controls fall back conservatively. No image is fetched for an effect. Non-text masks use an owned temporary attribute and CSS rule, leaving application styles and values intact. Reset removes only owned masks and projections.
 
 Device pixel ratio is capped at 2. Hunting stops when paused or the tab is hidden. Paused marks still follow document scrolling and reflow. No particles are allocated, and no record survives a page refresh.
 

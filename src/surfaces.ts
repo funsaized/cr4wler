@@ -1,5 +1,6 @@
 import type { Point, PageSurface } from './spider';
 import { eligible } from './targets';
+import { radiusFor, paintClipped } from './paint-geometry';
 
 interface Anchor {
   id: number;
@@ -16,19 +17,6 @@ const LIMIT = 40;
 const ignored =
   'form,input,textarea,select,iframe,canvas,video,audio,svg,dialog,[popover],[contenteditable]:not([contenteditable="false"]),[aria-hidden="true"],[hidden],[inert],[data-cr4wler-ignore]';
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
-// Percentage/elliptical corners and paint masks need curved/pixel geometry.
-// Only simple pixel radii have straight boundaries we can offer conservatively.
-const radiusFor = (style: CSSStyleDeclaration): number | null => {
-  const values = [
-    style.borderTopLeftRadius,
-    style.borderTopRightRadius,
-    style.borderBottomLeftRadius,
-    style.borderBottomRightRadius,
-  ];
-  return values.every((v) => /^\d+(?:\.\d+)?px$/.test(v))
-    ? Math.max(...values.map((v) => parseFloat(v)))
-    : null;
-};
 
 /** Read-only, local geometry. No document walk, observers, timers or page actions.
  * Engine invalidations refresh at most 40 anchors; discovery is throttled separately.
@@ -36,7 +24,7 @@ const radiusFor = (style: CSSStyleDeclaration): number | null => {
 export class PageSurfaces {
   private anchors = new Map<Node, Anchor>();
   private identities = new WeakMap<Node, number>();
-  private masked = new WeakSet<Text>();
+  private masked = new WeakSet<Node>();
   private visibility = new Map<string, boolean>();
   private visibilityCursor = 0;
   private probes = 0;
@@ -74,15 +62,36 @@ export class PageSurfaces {
     this.discoveryCursor = 0;
     this.discoveryPending = false;
   }
-  /** A borrowed line is no longer visible support. Other edges remain usable. */
-  mask(node: Text) {
+  /** A borrowed line or object subtree is no longer visible support.
+   * Remove cached descendants immediately, including between polling boundaries. */
+  mask(node: Node) {
     this.masked.add(node);
-    this.anchors.delete(node);
+    const removed = new Set<string>();
+    for (const [source, anchor] of this.anchors) {
+      if (node.contains(source)) {
+        for (const segment of anchor.segments) removed.add(segment.id);
+        this.anchors.delete(source);
+      }
+    }
+    this.segments = this.segments.filter((segment) => !removed.has(segment.id));
+    for (const id of removed) this.visibility.delete(id);
     this.revision = -1;
   }
-  unmask(node: Text) {
+  unmask(node: Node) {
     this.masked.delete(node);
     this.revision = -1;
+    this.nextDiscovery = 0;
+    this.discoveryCursor = 0;
+    this.discoveryPending = true;
+  }
+
+  private isMasked(node: Node): boolean {
+    if (this.masked.has(node)) return true;
+    let ancestor = node.parentElement;
+    for (let depth = 0; ancestor; depth++, ancestor = ancestor.parentElement) {
+      if (depth === 24 || this.masked.has(ancestor)) return true;
+    }
+    return false;
   }
 
   update(
@@ -124,7 +133,7 @@ export class PageSurfaces {
   }
 
   private add(node: Node, element: HTMLElement, kind: PageSurface['kind'], offset = 0) {
-    if (this.anchors.has(node) || this.anchors.size >= LIMIT) return;
+    if (this.isMasked(node) || this.anchors.has(node) || this.anchors.size >= LIMIT) return;
     let id = this.identities.get(node);
     if (!id) {
       id = this.nextId++;
@@ -132,8 +141,7 @@ export class PageSurfaces {
     }
     const anchor: Anchor = { id, element, kind, shape: '', generation: 0, segments: [] };
     if (node instanceof Text) {
-      if (this.masked.has(node) || !eligible(element) || node.length < 4 || node.length > 12000)
-        return;
+      if (!eligible(element) || node.length < 4 || node.length > 12000) return;
       const start = Math.max(0, Math.min(node.length - 1, offset) - 128);
       const range = document.createRange();
       range.setStart(node, start);
@@ -228,6 +236,7 @@ export class PageSurfaces {
       const element = anchor.element;
       if (
         !node.isConnected ||
+        this.isMasked(node) ||
         element.closest(ignored) ||
         (anchor.node &&
           (anchor.node.parentElement !== element ||
@@ -254,12 +263,7 @@ export class PageSurfaces {
           style.visibility !== 'visible' ||
           style.display === 'none' ||
           parseFloat(style.opacity) < 0.05 ||
-          style.clipPath !== 'none' ||
-          (style.getPropertyValue('mask-image') || 'none') !== 'none' ||
-          (style.getPropertyValue('-webkit-mask-image') || 'none') !== 'none' ||
-          (style.getPropertyValue('mask-border-source') || 'none') !== 'none' ||
-          (style.getPropertyValue('-webkit-mask-box-image-source') || 'none') !== 'none' ||
-          style.clip !== 'auto'
+          paintClipped(style)
         ) {
           visible = false;
           break;

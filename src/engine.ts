@@ -6,11 +6,16 @@ import {
   eligible,
   fresh,
   valid,
+  focusText,
+  targetRect,
+  materialEligible,
   type Target,
 } from './targets';
 import { huntProfiles } from './hunt-profiles';
 import { RuntimeQuality } from './runtime-quality';
 import { PageSurfaces } from './surfaces';
+import { BITMAP_PIXEL_LIMIT, readMaterial } from './materials';
+import { materialGeometry, materialExtent } from './paint-geometry';
 import { defaults, settingsFrom, type Settings, type Status } from './types';
 import {
   layoutShards,
@@ -19,6 +24,7 @@ import {
   place,
   paint,
   draw,
+  gripPosition,
   type Projection,
   type Clip,
 } from './effects';
@@ -31,6 +37,7 @@ const lightColors = ['#00768c', '#ad256a', '#6541b8', '#ae4a15', '#117153'];
 const clamp = (x: number, a: number, b: number) => Math.max(a, Math.min(b, x));
 type Mode = 'arrive' | 'scan' | 'lock' | 'strike' | 'aftermath' | 'recover';
 interface Fragment extends Projection {
+  sourceMasked?: boolean;
   documentX: number;
   documentY: number;
   sourceWidth: number;
@@ -117,6 +124,8 @@ export class Cr4wler {
   private highlight: Highlight | null = null;
   private selection: Highlight | null = null;
   private highlightName = `cr4wler-${crypto.randomUUID()}`;
+  private maskAttribute = `data-cr4wler-mask-${crypto.randomUUID()}`;
+  private materialMaskStyle: CSSStyleDeclaration | null = null;
   private highlightStyle: HTMLStyleElement | null = null;
   private observer: MutationObserver | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -213,7 +222,7 @@ export class Cr4wler {
     this.tip.className = 'tip';
     this.tip.textContent = this.reduced.matches
       ? 'Reduced motion is on. A quiet visitor. Reset or Esc restores the page.'
-      : 'Tiny acts of typography. The aftermath stays as you scroll. Reset or Esc restores everything.';
+      : 'Tiny acts of mischief. The aftermath stays as you scroll. Reset or Esc removes the effects.';
     this.root.append(this.tip);
     document.documentElement.append(this.host);
     this.spider = new Spider(canvas);
@@ -231,8 +240,10 @@ export class Cr4wler {
       CSS.highlights.set(`${this.highlightName}-selection`, this.selection);
       this.highlightStyle = document.createElement('style');
       this.highlightStyle.dataset.cr4wlerIgnore = '';
-      this.highlightStyle.textContent = `::highlight(${this.highlightName}){color:transparent;text-shadow:none}::highlight(${this.highlightName}-selection){color:${this.palette()[0]};background-color:${this.palette()[0]}1f;text-shadow:none}`;
+      this.highlightStyle.textContent = `::highlight(${this.highlightName}){color:transparent;text-shadow:none}::highlight(${this.highlightName}-selection){color:${this.palette()[0]};background-color:${this.palette()[0]}1f;text-shadow:none}[${this.maskAttribute}="owned"]{filter:opacity(0)!important}`;
       document.documentElement.append(this.highlightStyle);
+      const rule = this.highlightStyle.sheet?.cssRules[2];
+      this.materialMaskStyle = rule instanceof CSSStyleRule ? rule.style : null;
     }
     const signal = this.abort.signal;
     this.pauseButton?.addEventListener('click', () => this.pause(), { signal });
@@ -330,6 +341,17 @@ export class Cr4wler {
     });
     window.addEventListener('pagehide', () => this.restore(), { signal });
     document.addEventListener(
+      'load',
+      (event) => {
+        if (
+          event.target instanceof HTMLImageElement &&
+          this.fragments.some((record) => record.target.element === event.target)
+        )
+          this.scheduleGeometry(true);
+      },
+      { capture: true, signal },
+    );
+    document.addEventListener(
       'visibilitychange',
       () => {
         this.hidden = document.hidden;
@@ -385,6 +407,11 @@ export class Cr4wler {
         'style',
         'open',
         'dir',
+        'src',
+        'srcset',
+        'sizes',
+        'type',
+        'form',
       ],
     });
     if (typeof ResizeObserver !== 'undefined') {
@@ -426,6 +453,7 @@ export class Cr4wler {
     this.raf = 0;
     this.cancelDiscovery();
     this.abort.abort();
+    for (const record of this.fragments) this.unmaskMaterial(record);
     this.observer?.disconnect();
     this.observer = null;
     this.resizeObserver?.disconnect();
@@ -439,6 +467,7 @@ export class Cr4wler {
     this.highlight = this.selection = null;
     this.highlightStyle?.remove();
     this.highlightStyle = null;
+    this.materialMaskStyle = null;
     this.host?.remove();
     this.host = null;
     this.root = null;
@@ -501,13 +530,17 @@ export class Cr4wler {
   private targetFresh(target: Target) {
     if (!valid(target)) return false;
     if (this.boundsCache.get(target) !== this.boundsRevision) {
-      this.boundsCache.set(target, this.boundsRevision);
-      return fresh(target);
+      const supported =
+        target.material && target.material !== 'text'
+          ? this.readUnmaskedMaterials(() => fresh(target))
+          : fresh(target);
+      if (supported) this.boundsCache.set(target, this.boundsRevision);
+      return supported;
     }
     const r = target.rect;
     return (
       r.width > 12 &&
-      r.height > 5 &&
+      r.height > (target.material === 'rule' ? 0 : 5) &&
       r.top >= 6 &&
       r.bottom <= innerHeight - 6 &&
       r.left >= 0 &&
@@ -530,6 +563,7 @@ export class Cr4wler {
     }
   }
   private release(record: Fragment) {
+    this.unmaskMaterial(record);
     this.highlight?.delete(record.target.range);
     record.el?.remove();
     record.el = null;
@@ -542,6 +576,44 @@ export class Cr4wler {
       this.current = null;
       this.mode = 'scan';
       this.phaseTime = 0;
+    }
+  }
+  private bitmapPixels(except?: Fragment): number {
+    return this.fragments.reduce((sum, record) => {
+      const bitmap = record === except ? undefined : record.materialPaint?.bitmap;
+      return sum + (bitmap ? bitmap.width * bitmap.height : 0);
+    }, 0);
+  }
+  private unmaskMaterial(record: Fragment) {
+    if (record.sourceMasked && record.target.element.getAttribute(this.maskAttribute) === 'owned')
+      record.target.element.removeAttribute(this.maskAttribute);
+    if (record.sourceMasked) this.pageSurfaces.unmask(record.target.node);
+    record.sourceMasked = false;
+  }
+  /** Inspect author paint without our overriding filter. Only that owned rule
+   * changes; text highlights stay active and source attributes/styles stay intact. */
+  private readUnmaskedMaterials<T>(read: () => T): T {
+    const style = this.materialMaskStyle;
+    const filter = style?.getPropertyValue('filter');
+    if (!style || !filter || !this.fragments.some((record) => record.sourceMasked)) return read();
+    const priority = style.getPropertyPriority('filter');
+    style.removeProperty('filter');
+    try {
+      return read();
+    } finally {
+      style.setProperty('filter', filter, priority);
+    }
+  }
+  private maskMaterial(record: Fragment) {
+    if (!record.target.material || record.target.material === 'text') return;
+    if (!record.materialPaint?.bitmap && record.target.material !== 'rule') {
+      this.unmaskMaterial(record);
+      return;
+    }
+    if (!record.sourceMasked) {
+      record.target.element.setAttribute(this.maskAttribute, 'owned');
+      record.sourceMasked = true;
+      this.pageSurfaces.mask(record.target.node);
     }
   }
   private onMutations(records: MutationRecord[]) {
@@ -567,6 +639,9 @@ export class Cr4wler {
     for (const record of this.fragments) {
       const touched =
         !record.target.node.isConnected ||
+        (!!record.target.material &&
+          record.target.material !== 'text' &&
+          relevant.some((r) => record.target.element.contains(r.target))) ||
         relevant.some((r) =>
           r.type === 'characterData'
             ? r.target === record.target.node
@@ -594,7 +669,10 @@ export class Cr4wler {
     // One event-driven frame also keeps paused damage attached to the document.
     this.requestFrame();
   }
-  private anchorTraits(element: HTMLElement): { clips: HTMLElement[]; liveScroll: boolean } {
+  private anchorTraits(
+    element: HTMLElement,
+    object = false,
+  ): { clips: HTMLElement[]; liveScroll: boolean } {
     const clips: HTMLElement[] = [];
     let liveScroll = false;
     for (
@@ -606,6 +684,7 @@ export class Cr4wler {
       liveScroll ||= style.position === 'fixed' || style.position === 'sticky';
       if (
         current !== document.body &&
+        (!object || current !== element) &&
         /auto|scroll|hidden|clip/.test(`${style.overflowX} ${style.overflowY}`)
       )
         clips.push(current);
@@ -628,6 +707,9 @@ export class Cr4wler {
     return clip;
   }
   private refreshGeometry() {
+    this.readUnmaskedMaterials(() => this.readGeometry());
+  }
+  private readGeometry() {
     if (!this.pieces || !this.overflow) return;
     const reflow = this.layoutDirty;
     this.layoutDirty = this.geometryDirty = false;
@@ -638,7 +720,10 @@ export class Cr4wler {
     const unmount: Fragment[] = [];
     const scrollers = [...this.movedScrollers];
     for (const record of this.fragments) {
-      if (!record.target.node.isConnected) {
+      if (
+        !record.target.node.isConnected ||
+        (record.target.material && record.target.material !== 'text' && !valid(record.target))
+      ) {
         removed.push(record);
         continue;
       }
@@ -657,14 +742,36 @@ export class Cr4wler {
         (node) => node instanceof Element && node.contains(record.target.element),
       );
       if (reflow || record.layoutDirty || record.liveScroll || nearby || scrolled) {
-        rect = record.target.range.getBoundingClientRect();
+        if (
+          record.target.material &&
+          record.target.material !== 'text' &&
+          !materialGeometry(record.target.element)
+        ) {
+          removed.push(record);
+          continue;
+        }
+        rect = targetRect(record.target);
+        if (
+          record.target.material &&
+          record.target.material !== 'text' &&
+          !materialExtent(rect, record.target.material === 'rule')
+        ) {
+          removed.push(record);
+          continue;
+        }
         record.documentX = rect.x + scrollX;
         record.documentY = rect.y + scrollY;
       }
       record.target.rect = rect;
       this.boundsCache.set(record.target, this.boundsRevision);
       if (reflow || record.layoutDirty)
-        Object.assign(record, this.anchorTraits(record.target.element));
+        Object.assign(
+          record,
+          this.anchorTraits(
+            record.target.element,
+            !!record.target.material && record.target.material !== 'text',
+          ),
+        );
       record.clip = this.clipFor(record, clipCache);
       // A scroller hiding the source must hide its projection too, even if the scar extends out.
       const shown =
@@ -678,6 +785,10 @@ export class Cr4wler {
         const resized =
           Math.abs(rect.width - record.sourceWidth) > 0.5 ||
           Math.abs(rect.height - record.sourceHeight) > 0.5;
+        if (resized && record.impact) {
+          record.impact.x *= rect.width / Math.max(1, record.sourceWidth);
+          record.impact.y *= rect.height / Math.max(1, record.sourceHeight);
+        }
         if (reflow || record.layoutDirty || resized || !record.shards.length) {
           const style = getComputedStyle(record.target.element);
           const typographyChanged =
@@ -690,6 +801,16 @@ export class Cr4wler {
             continue;
           }
           if (record.layoutDirty || resized || typographyChanged || !record.shards.length) {
+            if (
+              record.target.material &&
+              record.target.material !== 'text' &&
+              !record.materialPaint?.fallback
+            )
+              record.materialPaint = readMaterial(
+                record.target,
+                BITMAP_PIXEL_LIMIT - this.bitmapPixels(record),
+                record.impact,
+              );
             record.shards = layoutShards(record, record.intensity);
             rebuilds.add(record);
           }
@@ -714,6 +835,7 @@ export class Cr4wler {
       record.el = null;
     }
     for (const record of rebuilds) rebuild(record);
+    for (const record of visible) this.maskMaterial(record);
     this.movedScrollers.clear();
     this.visibleCount = visible.length;
     // The active strike always has a DOM projection; excess *visible* settled effects
@@ -752,14 +874,8 @@ export class Cr4wler {
     return delta;
   }
   private strikeGrip(record: Fragment): SpiderOptions['grip'] {
-    if (record.effect !== 'peel' && record.effect !== 'shear') return undefined;
-    const shard = record.shards[0];
     return {
-      point: {
-        x: record.target.rect.x + (shard?.dx ?? 0) * record.progress,
-        y:
-          record.target.rect.y + record.target.rect.height / 2 + (shard?.dy ?? 0) * record.progress,
-      },
+      point: gripPosition(record),
       progress: record.progress,
       color: record.color,
     };
@@ -814,12 +930,21 @@ export class Cr4wler {
     this.nextScan = this.time + (list.length ? 3.2 : 1.1);
   }
   private occupied(target: Target) {
-    return this.fragments.some(
-      (record) =>
+    return this.fragments.some((record) => {
+      if (
+        (record.target.material && record.target.material !== 'text') ||
+        (target.material && target.material !== 'text')
+      ) {
+        return (
+          record.target.element.contains(target.node) || target.element.contains(record.target.node)
+        );
+      }
+      return (
         record.target.node === target.node &&
         record.target.range.startOffset < target.range.endOffset &&
-        record.target.range.endOffset > target.range.startOffset,
-    );
+        record.target.range.endOffset > target.range.startOffset
+      );
+    });
   }
   private choose() {
     this.nextChoice = this.time + huntProfiles[this.settings.personality].choice;
@@ -863,7 +988,7 @@ export class Cr4wler {
     };
   }
   private strike() {
-    const target = this.candidate;
+    let target = this.candidate;
     if (!target || !fresh(target) || this.occupied(target) || !this.highlight) {
       this.cancelCandidate();
       this.mode = 'scan';
@@ -876,7 +1001,19 @@ export class Cr4wler {
       return;
     }
     const id = this.nextId++;
-    const palette = this.palette();
+    const body = this.spider?.position ?? this.destination;
+    const contactX = clamp(body.x, target.rect.left, target.rect.right);
+    target = focusText(target, this.settings.personality, contactX);
+    const contact = {
+      x: clamp(body.x, target.rect.left, target.rect.right),
+      y: clamp(body.y, target.rect.top, target.rect.bottom),
+    };
+    if (target.material === 'panel') {
+      if (body.y <= target.rect.top || body.y >= target.rect.bottom)
+        contact.x = clamp(body.x, target.rect.left + 20, target.rect.right - 20);
+      else contact.y = clamp(body.y, target.rect.top + 20, target.rect.bottom - 20);
+    }
+    const distance = Math.max(1, Math.hypot(body.x - contact.x, body.y - contact.y));
     const record: Fragment = {
       id,
       target,
@@ -886,8 +1023,15 @@ export class Cr4wler {
         ],
       strikeDuration: huntProfiles[this.settings.personality].strike,
       strikeElapsed: 0,
-      color: palette[(id - 1) % palette.length],
-      accent: palette[(id + 1) % palette.length],
+      color: target.color,
+      accent: target.color,
+      personality: this.settings.personality,
+      impact: {
+        x: contact.x - target.rect.x,
+        y: contact.y - target.rect.y,
+        dx: (body.x - contact.x) / distance,
+        dy: (body.y - contact.y) / distance,
+      },
       shards: [],
       progress: 0,
       el: null,
@@ -899,13 +1043,13 @@ export class Cr4wler {
       intensity: this.settings.intensity,
       shardLimit: [16, 10, 6][this.quality.level],
       layoutDirty: true,
-      ...this.anchorTraits(target.element),
+      ...this.anchorTraits(target.element, !!target.material && target.material !== 'text'),
     };
     this.fragments.push(record);
     this.current = record;
     this.cancelCandidate();
-    this.highlight.add(target.range);
-    this.pageSurfaces.mask(target.node);
+    if (!target.material || target.material === 'text') this.highlight.add(target.range);
+    if (!target.material || target.material === 'text') this.pageSurfaces.mask(target.node);
     this.resizeObserver?.observe(target.element);
     this.mode = 'strike';
     this.phaseTime = 0;
@@ -1045,7 +1189,7 @@ export class Cr4wler {
     this.surface = this.detectSurface(target.element);
     this.targetDestination(target);
     this.selection?.clear();
-    this.selection?.add(target.range);
+    if (!target.material || target.material === 'text') this.selection?.add(target.range);
     this.updateActivity();
   }
   private updateHover() {
@@ -1057,7 +1201,7 @@ export class Cr4wler {
       const freshPointer = this.pointerMoved;
       this.pointerMoved = false;
       const hit = document.elementFromPoint(this.pointer.x, this.pointer.y);
-      const safe = hit instanceof HTMLElement && eligible(hit);
+      const safe = hit instanceof HTMLElement && (eligible(hit) || materialEligible(hit));
       this.updateEdgeIntent(freshPointer, safe);
       // Resolve the exact hit before checking occupancy: destroyed text must not
       // redirect attention to another nearby, still-available range.
@@ -1071,7 +1215,7 @@ export class Cr4wler {
         const same =
           previous?.target.element === resolved.element && previous.target.node === resolved.node;
         // Preserve one line while traversing its element; a distant line is fresh intent.
-        const rect = previous?.target.range.getBoundingClientRect();
+        const rect = previous && targetRect(previous.target);
         const close =
           rect &&
           Math.hypot(
@@ -1079,7 +1223,7 @@ export class Cr4wler {
             Math.max(rect.top - this.pointer.y, 0, this.pointer.y - rect.bottom),
           ) === 0;
         const target = same && close && valid(previous!.target) ? previous!.target : resolved;
-        target.rect = target.range.getBoundingClientRect();
+        target.rect = targetRect(target);
         if (!same || !close) {
           this.scanRevision++;
           this.hover = { target, at: performance.now() };
@@ -1089,7 +1233,12 @@ export class Cr4wler {
       }
       this.selection?.clear();
       const selection = this.hover?.target ?? this.candidate;
-      if (selection && !this.occupied(selection)) this.selection?.add(selection.range);
+      if (
+        selection &&
+        (!selection.material || selection.material === 'text') &&
+        !this.occupied(selection)
+      )
+        this.selection?.add(selection.range);
       this.updateActivity();
     }
     const intent = this.hover;
@@ -1211,6 +1360,8 @@ export class Cr4wler {
     if (!this.paused && !this.reduced.matches && this.time >= this.nextBoundsCheck) {
       this.nextBoundsCheck = this.time + 0.15;
       this.boundsRevision++;
+      // Owned material snapshots also need the CSS-animation safety fallback.
+      if (this.fragments.some((record) => record.sourceMasked)) this.geometryDirty = true;
       if (this.pointerActive) this.pointerDirty = true;
     }
     this.readSurfaces(surfaceTime);

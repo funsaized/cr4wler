@@ -13,6 +13,34 @@ const { Spider } = await import(
 
 const separation = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
+test('a planted foot left near transverse reach after a grip cannot trap the next approach', () => {
+  const spider = walker('curious');
+  const opts = { personality: 'curious', intensity: 0.55, reducedMotion: false };
+  spider.angle = Math.PI / 2;
+  spider.resetStance();
+  // A valid unbound contact just inside fixed reach, such as a released claw.
+  const leg = spider.legs[2];
+  for (const p of [leg.foot, leg.from, leg.to]) Object.assign(p, { x: 750, y: 326 });
+  leg.rested = 3;
+  spider.velocity = { x: 700, y: 0 };
+  const target = { x: 1130, y: 500 };
+  for (let frame = 0; frame < 180; frame++) {
+    const before = spider.legs.map((l) => ({ foot: { ...l.foot }, swing: l.stepping }));
+    spider.update(1 / 60, frame / 60, target, opts);
+    spider.render();
+    for (const [i, l] of spider.legs.entries())
+      if (!before[i].swing)
+        assert.deepEqual(l.foot, before[i].foot, 'contact lifts without sliding');
+    const d = spider.diagnostics;
+    assert.ok(d.finite && d.maxReach <= d.reachLimit + 0.01 && d.maxBoneLength <= d.boneLimit);
+    assert.ok(spider.legs.filter((l) => !l.stepping).length >= 4);
+  }
+  assert.ok(
+    separation(spider.position, target) < 15,
+    'new pointer approach reaches its destination',
+  );
+});
+
 function walker(personality) {
   const ctx = new Proxy({}, { get: () => () => ({ addColorStop() {} }) });
   const spider = new Spider({ getContext: () => ctx, style: {}, dataset: {} });

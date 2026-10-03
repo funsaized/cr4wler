@@ -111,7 +111,7 @@ function initialize() {
             ? '512 fragments. A complete composition. Reset for a fresh start.'
             : s.active
               ? s.followMouse
-                ? `${s.fragments} traces. Hover chooses the next word. Edges scroll. Esc resets.`
+                ? `${s.fragments} traces. Hover chooses the next piece. Edges scroll. Esc resets.`
                 : `${s.fragments} traces left behind. Enable cursor following to take the lead.`
               : "No visitor. Summon your spider when you're ready.";
   }

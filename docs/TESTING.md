@@ -38,6 +38,10 @@ Use **`?autostart=off`** for controlled playground/reference fixtures so the sta
 
 ## Performance
 
+`tests/materials.test.mjs` drives the shared engine through all three temperaments on `materials.html` in light/night themes. It checks recognizable source-colored text, bounded source-image tiles, cards/buttons, rule recoil and cross-origin outline fallback. It also covers scroll return, nested scrolling, interruption, Pause/reduced motion, source/style/child changes, exact Reset with user edits, protected controls and the bitmap/DOM budgets. `npm run test:extension` repeats the material matrix with the actual installed content bundle and saves screenshots plus normal/3× playback sequences under `artifacts/extension-evidence/materials/`. The slow sequences repeat captured frames without interpolation.
+
+Material snapshots are at most 256×192 pixels with a 1,048,576-pixel session budget; mounted tile canvases add bounded copies. Unsupported origins/paint and budget exhaustion use stable outline treatments rather than reading unsafe pixels or evicting earlier damage. A compact panel uses at most 24 inspected descendant nodes and 160 text characters. The controlled 80-image stress test reaches the 72 DOM projection limit and shared overflow canvas; it does not certify arbitrary pathological documents.
+
 ```sh
 npm run perf:runtime
 ```

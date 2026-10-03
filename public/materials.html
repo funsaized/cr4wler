@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>cr4wler — material study</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f5f0e6;
+        --ink: #344842;
+        --line: #8d6751;
+        --panel: #e3e9d9;
+      }
+      :root[data-theme='night'] {
+        color-scheme: dark;
+        --paper: #182326;
+        --ink: #d9dfcf;
+        --line: #be9c72;
+        --panel: #30413b;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font:
+          16px/1.5 Georgia,
+          serif;
+      }
+      header,
+      main {
+        max-width: 1040px;
+        margin: auto;
+        padding: 32px 20px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+        font: 13px/1.5 system-ui;
+      }
+      h1 {
+        margin: 0;
+        font:
+          28px Georgia,
+          serif;
+      }
+      h2 {
+        font: 13px system-ui;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin: 0 0 22px;
+      }
+      main {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 46px 42px;
+        padding-top: 80px;
+      }
+      section {
+        min-width: 0;
+      }
+      #sample-text {
+        font:
+          italic 30px/1.5 Georgia,
+          serif;
+        color: var(--line);
+        display: inline-block;
+        margin: 0;
+      }
+      img {
+        display: block;
+        width: 270px;
+        height: 180px;
+        object-fit: cover;
+      }
+      .card {
+        width: 270px;
+        height: 150px;
+        background: var(--panel);
+        border: 2px solid var(--line);
+        border-radius: 8px;
+        padding: 20px;
+      }
+      .card h3 {
+        font:
+          24px/1.3 Georgia,
+          serif;
+        font-weight: 400;
+        margin: 0 0 16px;
+      }
+      .card p {
+        font:
+          15px/1.4 Georgia,
+          serif;
+        margin: 0;
+      }
+      #sample-button {
+        font:
+          18px/1.4 Georgia,
+          serif;
+        color: var(--ink);
+        background: var(--panel);
+        border: 2px solid var(--line);
+        padding: 16px 28px;
+        border-radius: 7px;
+      }
+      #sample-rule {
+        margin-top: 34px;
+        width: 270px;
+        height: 2px;
+        border: 0;
+        border-top: 2px solid var(--line);
+      }
+      .note {
+        font: 13px/1.5 system-ui;
+        margin-top: 16px;
+        opacity: 0.8;
+      }
+      .lab-controls {
+        position: fixed;
+        z-index: 2;
+        top: 0;
+        left: 0;
+        padding: 8px;
+        background: var(--paper);
+        display: flex;
+        gap: 8px;
+        font: 12px system-ui;
+      }
+      .protected {
+        grid-column: 1/-1;
+        display: flex;
+        gap: 12px;
+        align-items: start;
+        font: 13px system-ui;
+        margin-top: 10px;
+      }
+      input,
+      button,
+      select {
+        font: inherit;
+      }
+      .spacer {
+        height: 1600px;
+        grid-column: 1/-1;
+      }
+      .scroller {
+        grid-column: 1/-1;
+        width: 500px;
+        height: 150px;
+        overflow: auto;
+        border: 1px solid var(--line);
+      }
+      .scroller div {
+        height: 600px;
+        padding: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <header data-cr4wler-ignore>
+      <h1>Small disturbances</h1>
+      <span>A synthetic study in paper, ink, pictures and edges.</span>
+    </header>
+    <div class="lab-controls" data-cr4wler-ignore>
+      <select id="demo-personality">
+        <option value="curious">Curious</option>
+        <option value="feral">Feral</option>
+        <option value="dreamy">Dreamy</option>
+      </select>
+      <input id="demo-intensity" type="range" min="0" max="100" value="55" /><output id="demo-level"
+        >55%</output
+      >
+      <label><input id="demo-follow" type="checkbox" checked />Follow</label>
+      <button id="demo-summon" type="button">Summon</button
+      ><button id="demo-pause" type="button">Pause</button
+      ><button id="demo-restore" type="button">Reset</button><span id="demo-status"></span>
+    </div>
+    <main>
+      <section>
+        <h2 data-cr4wler-ignore>01 / Ink</h2>
+        <p id="sample-text">Wandering letters</p>
+        <p class="note" data-cr4wler-ignore>Georgia italic, in the page's own ink.</p>
+      </section>
+      <section>
+        <h2 data-cr4wler-ignore>02 / Photograph</h2>
+        <img
+          id="sample-image"
+          src="material-sample.png"
+          alt="A ochre cabin by a turquoise lake beneath hills"
+        />
+        <p class="note" data-cr4wler-ignore>Same-origin raster. Selected tiles loosen.</p>
+      </section>
+      <section>
+        <h2 data-cr4wler-ignore>03 / Paper</h2>
+        <article id="sample-card" class="card">
+          <h3>A field note</h3>
+          <p>Keep a little wonder.</p>
+        </article>
+        <p class="note" data-cr4wler-ignore>Choose the lower edge to flex the card.</p>
+      </section>
+      <section>
+        <h2 data-cr4wler-ignore>04 / Button</h2>
+        <button id="sample-button" type="button">Keep exploring</button>
+        <p class="note" data-cr4wler-ignore>The spider never activates it.</p>
+      </section>
+      <section>
+        <h2 data-cr4wler-ignore>05 / Separator</h2>
+        <hr id="sample-rule" />
+        <p class="note" data-cr4wler-ignore>A small break and recoil.</p>
+      </section>
+      <section>
+        <h2 data-cr4wler-ignore>06 / Origin boundary</h2>
+        <img id="sample-foreign" alt="The same cabin, served from a different origin" />
+        <p class="note" data-cr4wler-ignore>Pixels stay on the page. A few rim threads move.</p>
+      </section>
+      <section class="protected" data-cr4wler-ignore>
+        <form id="fixture-form">
+          <input id="fixture-input" value="A note that stays" /><input
+            id="fixture-password"
+            type="password"
+            value="synthetic-secret"
+          /><button type="submit">Save</button>
+        </form>
+        <div id="fixture-editor" contenteditable="true">Editable words stay here.</div>
+        <button id="ignored-button" type="button">Opted out</button>
+      </section>
+      <div class="spacer" data-cr4wler-ignore></div>
+      <div class="scroller">
+        <div>
+          <hr id="nested-rule" style="width: 300px; border: 0; border-top: 2px solid var(--line)" />
+        </div>
+      </div>
+    </main>
+    <script>
+      document.querySelector('#sample-foreign').src =
+        location.origin.replace('127.0.0.1', 'localhost') + '/material-sample.png';
+      globalThis.materialActions = { click: 0, input: 0, change: 0, submit: 0 };
+      for (const event of Object.keys(materialActions))
+        document.querySelector('main').addEventListener(
+          event,
+          (e) => {
+            materialActions[event]++;
+            if (event === 'submit') e.preventDefault();
+          },
+          true,
+        );
+    </script>
+    <script src="playground.js" defer></script>
+  </body>
+</html>

@@ -8,6 +8,7 @@ import { join, resolve } from 'node:path';
 import { serve } from './serve.mjs';
 import { preparePointerSession, runPointerSession } from './pointer-session.mjs';
 import { captureHeroSession } from './hero-session.mjs';
+import { captureMaterialSessions } from './material-session.mjs';
 const profile = await mkdtemp(join(tmpdir(), 'cr4wler-extension-'));
 const server = await serve();
 const dir = 'artifacts/extension-evidence';
@@ -32,6 +33,7 @@ try {
   const cdp = await context.browser().newBrowserCDPSession();
   const { id } = await cdp.send('Extensions.loadUnpacked', { path: resolve('dist') });
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  for (const page of context.pages()) await page.close();
   for (const theme of ['light', 'night']) {
     currentTheme = theme;
     const page = await context.newPage();
@@ -107,6 +109,7 @@ try {
     dir,
     sourceCommit: evidence.sourceCommit,
   });
+  evidence.materials = await captureMaterialSessions({ context, cdp, id, worker, dir });
   evidence.browser = context.browser().version();
   evidence.viewport = { width: 1440, height: 1000 };
   evidence.passed = true;

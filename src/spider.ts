@@ -1166,24 +1166,23 @@ export class Spider {
           if (i === this.gripLeg || leg.stepping || leg.rested <= profile.stepRest) continue;
           // Compare against the same reachable pose used for landing, or short rigs
           // can endlessly re-step toward a rest position just beyond that limit.
-          const drift = distance(leg.foot, this.bounded(leg.ideal, this.reachLimit * 0.86));
+          const rest = this.bounded(leg.ideal, this.reachLimit * 0.86);
+          const drift = distance(leg.foot, rest);
           const trail =
-            ((leg.ideal.x - leg.foot.x) * walkingVX + (leg.ideal.y - leg.foot.y) * walkingVY) /
+            ((rest.x - leg.foot.x) * walkingVX + (rest.y - leg.foot.y) * walkingVY) /
             Math.max(1, speed);
           const reach = distance(leg.foot, this.body) / this.reachLimit;
           const lateral =
-            Math.abs(
-              (leg.ideal.x - leg.foot.x) * walkingVY - (leg.ideal.y - leg.foot.y) * walkingVX,
-            ) / Math.max(1, speed);
-          const leavingSurface =
-            !!leg.contact &&
+            Math.abs((rest.x - leg.foot.x) * walkingVY - (rest.y - leg.foot.y) * walkingVX) /
+            Math.max(1, speed);
+          const exhaustingReach =
             reach > 0.88 &&
             (this.body.x - leg.foot.x) * walkingVX + (this.body.y - leg.foot.y) * walkingVY > 0;
           const needsStep =
             trail > stride ||
             lateral > stride * 1.5 ||
             (reach > 0.88 && trail > 0) ||
-            leavingSurface;
+            exhaustingReach;
           const contactComfort = leg.contact ? this.contactSearch + 6 * this.scale : 5 * this.scale;
           const placement =
             !leg.contact && !leg.released && speed < 12
