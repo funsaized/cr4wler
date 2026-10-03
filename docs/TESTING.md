@@ -185,3 +185,26 @@ xvfb-run -a -s "-screen 0 1440x1080x24" node scripts/github-demo.mjs
 - Use synthetic form/editor fixtures; verify values, submissions, navigation and requests stay unchanged.
 - Change reduced-motion preference during a session. New hunts stop; existing marks remain until Reset.
 - Inspect permission/network panels. There are no host permissions or runtime network services.
+
+## First-use controls (item 8)
+
+The popup and site share temperament descriptions, intensity labels and activity copy. The first successful launch offers one dismissible guiding/Restore hint, remembered as shown on the extension/demo origin. The popup and bundled playground share extension preferences; a separately hosted demo has separate origin data. No visited-site storage is written by injected content. See [the lifecycle rules](../README.md#a-small-set-of-controls) and [Privacy](../PRIVACY.md).
+
+`tests/browser.test.mjs` also checks saved preferences through reload/site navigation/new tabs, independent live-tab settings, keyboard hint dismissal/focus, dock-to-site Pause/Restore updates, immediate paused species pixels, edited fields, corrupt/denied storage and failed-response recovery. The rapid-scroll test now waits for native End-key scrolling to become quiet before measuring the subsequent document jump; fixed delays failed on the untouched item-7 reviewed base in this executor.
+
+```sh
+npm run build
+# Use Xvfb or an existing desktop DISPLAY on headless Linux.
+node scripts/first-run-check.mjs
+npm run test:popup
+```
+
+The headed installed first-use matrix checks Pause, switching species while paused, and repeated Restore for all three anatomies in arrival, scan, notice, investigation, lock, preparation, strike, settling, aftermath and scroll recovery. It reads the real isolated-world phase and clicks the actual dock handler in that phase; it does not replace animation clocks or geometry. Its separate ordinary demo walkthrough covers automatic startup, keyboard controls, edited input/editor preservation, settings after reload, a non-repeating hint, touch controls and static reduced motion. Screenshots and normal-speed source recordings are saved under `artifacts/item8/walkthrough/`.
+
+The touch walkthrough checks 320/390px docks for all three species, 44px targets, full available width, long activity-copy wrapping, a separate hint and no overflow. Long-copy screenshots use a disclosed layout-only limit-message string; no clocks or geometry are substituted. Focused regressions distinguish a narrow fine-pointer desktop from coarse touch input, preserve keyboard dismissal/restoration, confirm touch does not aim a hunt, and delay an opening popup status reply while an intensity slider draft is edited. An input event invalidates earlier replies before the final change command sends the draft.
+
+The native-popup check captures all species in ready/active states, Pause, first-use dismissal, successful/idempotent auto-close, saved settings after document reload and a new origin/tab, actual restricted-page failure and retry on a normal page. Its server uses an ephemeral port. With FFmpeg available, set `CR4WLER_RECORD_DESKTOP=1` and `CR4WLER_DESKTOP_SIZE=1280x900` (matching your Xvfb screen) to record the whole native window at 30fps. Keep Xvfb and the recorder in the same IPC namespace on sandboxed executors. Screenshots preserve the caret (`caret: initial`) so Playwright does not add empty style attributes to protected fields during DOM comparisons.
+
+The optional `CR4WLER_CHECK_RELOAD=1` attempts a same-ID `chrome.runtime.reload()` check. In this executor, the experimental CDP-installed extension became inaccessible (`ERR_BLOCKED_BY_CLIENT`); post-update native behavior was not verified and no browser-policy bypass was used. Normal toolbar activation, reopens, reloads and separate tabs were verified before that check. A regular installation/update still needs a manual same-profile check. Native background visual proof and native browser UI zoom remain unverified; prior CDP page-scale zoom and actual native popup checks are separate evidence.
+
+This item does not remeasure performance or claim 60 FPS. The item-7 dense frame tail of 266.7ms and isolated rig outlier of 93.6ms remain debt for the separate final-series investigation. Captures are correctness/pixel evidence, not performance samples.

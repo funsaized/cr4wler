@@ -54,8 +54,8 @@ test('site first navigation automatically welcomes one visitor with active contr
       assert.equal(await page.locator('#demo-summon').isDisabled(), true);
       assert.equal(await page.locator('#demo-pause').isEnabled(), true);
       assert.equal(await page.locator('#demo-restore').isEnabled(), true);
-      assert.match(await page.locator('#demo-summon').innerText(), /visitor has arrived/);
-      assert.match(await page.locator('#demo-status').innerText(), /traces left behind/);
+      assert.match(await page.locator('#demo-summon').innerText(), /Your spider is here/);
+      assert.match(await page.locator('#demo-status').innerText(), /Active · Exploring/);
       assert.equal(await page.evaluate(() => __cr4wlerPlayground.engine.status().active), true);
     } finally {
       await page.close();
@@ -661,7 +661,7 @@ async function popupFixture({ mode = 'success', toolbar = true } = {}) {
       globalThis.closeCount = 0;
       globalThis.injections = 0;
       globalThis.sent = [];
-      globalThis.active = mode === 'already-active';
+      globalThis.active = ['already-active', 'delayed-status'].includes(mode);
       window.close = () => closeCount++;
       globalThis.chrome = {
         extension: { getViews: () => (toolbar ? [window] : []) },
@@ -677,6 +677,18 @@ async function popupFixture({ mode = 'success', toolbar = true } = {}) {
           query: async () => [{ id: 7 }],
           sendMessage: async (id, message) => {
             sent.push({ id, ...structuredClone(message) });
+            if (message.action === 'status' && failureMode === 'delayed-status') {
+              await new Promise((resolve) => (globalThis.finishStatus = resolve));
+              return {
+                active: true,
+                paused: false,
+                reducedMotion: false,
+                fragments: 0,
+                personality: 'curious',
+                intensity: 0.24,
+                followMouse: false,
+              };
+            }
             if (message.action === 'summon') {
               if (failureMode === 'message-failure') throw Error('No receiver');
               if (failureMode === 'missing') return undefined;
@@ -702,6 +714,149 @@ async function popupFixture({ mode = 'success', toolbar = true } = {}) {
   await page.waitForFunction(() => sent.some((message) => message.action === 'status'));
   return page;
 }
+
+test('delayed opening status cannot replace intensity while its slider is being dragged', async () => {
+  const page = await popupFixture({ mode: 'delayed-status' });
+  try {
+    await page.locator('#intensity').evaluate((slider) => {
+      slider.value = '83';
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.evaluate(() => finishStatus());
+    await page.waitForTimeout(40);
+    assert.equal(await page.locator('#intensity').inputValue(), '83');
+    assert.match(await page.locator('#level').innerText(), /83%/);
+    assert.equal(
+      await page.evaluate(
+        () => JSON.parse(localStorage.getItem('cr4wler.preferences.v1')).intensity,
+      ),
+      0.83,
+    );
+    await page.locator('#intensity').dispatchEvent('change');
+    await page.waitForFunction(() => sent.some((message) => message.action === 'configure'));
+    assert.equal(await page.locator('#pause').isEnabled(), true);
+    assert.equal(await page.locator('#intensity').inputValue(), '83');
+    assert.equal(
+      await page.evaluate(
+        () => sent.find((message) => message.action === 'configure').settings.intensity,
+      ),
+      0.83,
+    );
+  } finally {
+    await page.close();
+  }
+});
+
+test('mobile dock uses the available width with tappable buttons and a separate hint', async () => {
+  for (const width of [320, 390]) {
+    const page = await automaticSite('/', {
+      viewport: { width, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+      reducedMotion: 'reduce',
+    });
+    try {
+      await page.locator('#demo-pause').tap();
+      for (const species of ['curious', 'dreamy', 'feral']) {
+        await page.locator('#demo-personality').selectOption(species);
+        for (const activity of [
+          `${species} · 0 marks · paused`,
+          `${species} · 512 marks · Restore to explore again`,
+          `${species} · quiet visitor · highlights unavailable`,
+        ]) {
+          await page.locator(`${root} .activity`).evaluate((element, text) => {
+            element.textContent = text;
+          }, activity);
+          const bounds = await page.locator(root).evaluate((host) => {
+            const rect = (selector) => {
+              const r = host.shadowRoot.querySelector(selector).getBoundingClientRect();
+              return {
+                x: r.x,
+                y: r.y,
+                width: r.width,
+                height: r.height,
+                right: r.right,
+                bottom: r.bottom,
+              };
+            };
+            return {
+              dock: rect('.dock'),
+              hint: rect('.tip'),
+              activity: rect('.activity'),
+              pause: rect('.pause'),
+              restore: rect('.restore'),
+              viewport: innerWidth,
+              overflow: document.documentElement.scrollWidth > innerWidth,
+            };
+          });
+          assert.ok(bounds.dock.width >= width - 25, JSON.stringify(bounds));
+          assert.ok(bounds.dock.x >= 0 && bounds.dock.right <= bounds.viewport);
+          assert.ok(bounds.activity.width >= 100, JSON.stringify(bounds));
+          assert.ok(
+            bounds.hint.bottom + 8 <= bounds.dock.y,
+            'hint stays above even a wrapping dock',
+          );
+          for (const button of [bounds.pause, bounds.restore]) {
+            assert.ok(button.width >= 44 && button.height >= 44, '44px touch targets');
+            assert.ok(button.x >= bounds.dock.x && button.right <= bounds.dock.right);
+          }
+          assert.equal(bounds.overflow, false);
+        }
+      }
+    } finally {
+      await page.close();
+    }
+  }
+});
+
+test('guidance follows input capability rather than viewport size, and touch never aims a hunt', async () => {
+  for (const [width, touch] of [
+    [390, false],
+    [390, true],
+    [1440, true],
+  ]) {
+    const page = await automaticSite('/', {
+      viewport: { width, height: 900 },
+      hasTouch: touch,
+      isMobile: touch,
+    });
+    try {
+      const hint = await page.locator(`${root} .tip`).innerText();
+      const follow = await page.locator('.follow-toggle').innerText();
+      if (touch) {
+        assert.match(hint, /explores on its own/);
+        assert.match(hint, /Pause/);
+        assert.doesNotMatch(hint, /Enable.*Follow/);
+        assert.match(follow, /mouse or trackpad/);
+        assert.match(follow, /Touch.*explores/);
+        await page.locator('#demo-follow').check();
+        assert.match(await page.locator('#demo-status').innerText(), /Exploring.*pointer/);
+        await page.evaluate(() => {
+          window.dispatchEvent(
+            new PointerEvent('pointermove', { pointerType: 'touch', clientX: 80, clientY: 80 }),
+          );
+        });
+        assert.equal(await page.locator(root).getAttribute('data-pointer-active'), 'false');
+      } else {
+        assert.match(hint, /Enable.*Follow my cursor/);
+        assert.match(follow, /Hover chooses/);
+      }
+      await page.locator(`${root} .tip button`).focus();
+      await page.keyboard.press('Enter');
+      assert.equal(await page.locator(`${root} .tip`).count(), 0);
+      assert.equal(
+        await page
+          .locator(`${root} .pause`)
+          .evaluate((button) => button === button.getRootNode().activeElement),
+        true,
+      );
+      await page.keyboard.press('Escape');
+      assert.equal(await page.locator(root).count(), 0);
+    } finally {
+      await page.close();
+    }
+  }
+});
 
 test('Summon closes the toolbar popup once, only after injection and active acknowledgement', async () => {
   const page = await popupFixture({ mode: 'deferred' });
@@ -1346,9 +1501,18 @@ test(
         await page.keyboard.press('Home');
         await page.waitForTimeout(150);
         await page.keyboard.press('End');
-        await page.waitForTimeout(150);
+        // Native keyboard scrolling can outlive a fixed delay under compositor load.
+        // Observe its completion before measuring the recovery's own scroll behavior.
+        await page.evaluate(() => {
+          globalThis.keyboardScroll = { y: scrollY, at: performance.now() };
+        });
+        await page.waitForFunction(() => {
+          if (keyboardScroll.y !== scrollY) keyboardScroll = { y: scrollY, at: performance.now() };
+          return performance.now() - keyboardScroll.at > 250;
+        });
         await page.setViewportSize({ width: 1100, height: 720 });
-        await page.evaluate(() => scrollTo(0, 3500));
+        await page.evaluate(() => scrollTo({ top: 3500, behavior: 'instant' }));
+        await page.waitForFunction(() => scrollY === 3500);
         await assertRecovered(page);
         const restingY = await page.evaluate(() => scrollY);
         await page.waitForTimeout(300);
@@ -1508,3 +1672,123 @@ test(
     }
   },
 );
+
+test('site preferences persist across reload/navigation/tabs, with one dismissible hint and live dock controls', async () => {
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
+  const page = await context.newPage();
+  try {
+    await page.goto(base);
+    assert.equal(await page.locator(`${root} .tip`).count(), 1);
+    await page.locator(`${root} .tip button`).focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator(`${root} .tip`).count(), 0);
+    assert.equal(
+      await page.locator(`${root} .pause`).evaluate((el) => el === el.getRootNode().activeElement),
+      true,
+    );
+    await page.locator('#demo-personality').selectOption('dreamy');
+    await page.locator('#demo-intensity').fill('79');
+    await page.locator('#demo-follow').check();
+    await page.locator(`${root} .pause`).click();
+    assert.equal(await page.locator('#demo-pause').innerText(), 'Resume');
+    const canvas = await page.locator(`${root} canvas.visitor`).evaluate((c) => c.toDataURL());
+    await page.locator('#demo-personality').selectOption('feral');
+    assert.equal(await page.locator(root).count(), 1);
+    assert.equal(await page.locator('#demo-pause').innerText(), 'Resume');
+    assert.notEqual(
+      await page.locator(`${root} canvas.visitor`).evaluate((c) => c.toDataURL()),
+      canvas,
+    );
+    await page.locator('#fixture-input').fill('My new words stay');
+    await page.locator(`${root} .restore`).click();
+    assert.equal(await page.locator('#demo-summon').isEnabled(), true);
+    assert.equal(await page.locator('#fixture-input').inputValue(), 'My new words stay');
+    await page.reload();
+    assert.equal(await page.locator(root).count(), 1, 'fresh demo document auto-starts');
+    assert.equal(await page.locator(`${root} .tip`).count(), 0, 'hint does not repeat');
+    assert.equal(await page.locator('#demo-personality').inputValue(), 'feral');
+    assert.equal(await page.locator('#demo-intensity').inputValue(), '79');
+    assert.equal(await page.locator('#demo-follow').isChecked(), true);
+    assert.equal(await page.locator('#demo-pause').innerText(), 'Pause', 'pause is per document');
+    const tab = await context.newPage();
+    await tab.goto(`${base}/reference.html`);
+    assert.equal(await tab.locator('#demo-personality').inputValue(), 'feral');
+    await tab.locator('#demo-personality').selectOption('curious');
+    assert.equal(
+      await page.locator('#demo-personality').inputValue(),
+      'feral',
+      'live tabs keep their choices',
+    );
+    await page.goto(`${base}/reference.html?theme=night`);
+    assert.equal(await page.locator('#demo-personality').inputValue(), 'curious');
+    assert.equal(await page.locator(`${root} .tip`).count(), 0);
+  } finally {
+    await context.close();
+  }
+});
+
+test('corrupt and denied preference storage cannot block demo controls or restoration', async () => {
+  for (const stored of ['null', '{bad json', '{"personality":"unknown","intensity":200}']) {
+    const page = await browser.newPage({ reducedMotion: 'reduce' });
+    try {
+      await page.addInitScript(
+        (value) => localStorage.setItem('cr4wler.preferences.v1', value),
+        stored,
+      );
+      await page.goto(base);
+      assert.equal(await page.locator(root).count(), 1);
+      assert.equal(await page.locator('#demo-personality').inputValue(), 'curious');
+      await page.locator('#demo-restore').click();
+      assert.equal(await page.locator(root).count(), 0);
+    } finally {
+      await page.close();
+    }
+  }
+  const page = await browser.newPage({ reducedMotion: 'reduce' });
+  try {
+    await page.addInitScript(() => {
+      Storage.prototype.getItem = Storage.prototype.setItem = () => {
+        throw Error('Denied');
+      };
+    });
+    await page.goto(base);
+    await page.locator('#demo-personality').selectOption('dreamy');
+    await page.locator('#demo-restore').click();
+    assert.equal(await page.locator(root).count(), 0);
+    await page.locator('#demo-summon').click();
+    assert.equal(await page.locator(root).count(), 1);
+  } finally {
+    await page.close();
+  }
+});
+
+test('popup saved preferences survive reopening inactive tabs and failure never reports active', async () => {
+  const page = await popupFixture({ toolbar: false });
+  try {
+    await page.locator('[data-personality="dreamy"]').click();
+    await page.locator('#follow-mouse').check();
+    await page.locator('#intensity').fill('78');
+    await page.reload();
+    assert.equal(
+      await page.locator('[data-personality="dreamy"]').getAttribute('aria-pressed'),
+      'true',
+    );
+    assert.equal(await page.locator('#intensity').inputValue(), '78');
+    assert.equal(await page.locator('#follow-mouse').isChecked(), true);
+    await page.locator('#summon').click();
+    await page.locator('#pause').waitFor({ state: 'visible' });
+    await page.waitForFunction(() => !document.querySelector('#pause').disabled);
+    await page.evaluate(() => {
+      chrome.tabs.sendMessage = async () => {
+        throw Error('Reloaded');
+      };
+    });
+    await page.locator('#pause').click();
+    await page.waitForFunction(() => document.querySelector('#summon').disabled === false);
+    assert.equal(await page.locator('#pause').isDisabled(), true);
+    assert.match(await page.locator('#status').innerText(), /Reload this page/);
+    assert.doesNotMatch(await page.locator('#summon').innerText(), /is here/);
+  } finally {
+    await page.close();
+  }
+});

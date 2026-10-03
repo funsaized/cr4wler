@@ -1,6 +1,17 @@
 * {
   box-sizing: border-box;
 }
+.follow-toggle .touch-guidance {
+  display: none;
+}
+@media (any-hover: none) and (any-pointer: coarse) {
+  .follow-toggle .pointer-guidance {
+    display: none;
+  }
+  .follow-toggle .touch-guidance {
+    display: block;
+  }
+}
 html {
   scroll-behavior: auto;
 }
@@ -480,4 +491,20 @@ a:focus-visible {
 :root[data-theme='night'] .lab-controls {
   border: 1px solid #393046;
   box-shadow: none;
+}
+
+.lab-controls .type-description,
+.lab-controls .restore-help {
+  color: #c6b9d7;
+  font-size: 11px;
+}
+.lab-controls select,
+.demo-secondary button,
+label.follow-toggle {
+  min-height: 44px;
+}
+.lab-controls .status,
+.follow-toggle small,
+.lab-controls label {
+  color: #c1b3cf;
 }

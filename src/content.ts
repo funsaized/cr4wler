@@ -7,7 +7,7 @@ if (!scope.__cr4wler) {
   scope.__cr4wler = engine;
   chrome.runtime.onMessage.addListener((message: Command, _sender, respond) => {
     if (message?.type !== 'CR4WLER') return;
-    if (message.action === 'summon') respond(engine.summon(message.settings));
+    if (message.action === 'summon') respond(engine.summon(message.settings, message.firstUse));
     else if (message.action === 'restore') respond(engine.restore());
     else if (message.action === 'pause') respond(engine.pause());
     else if (message.action === 'configure') respond(engine.configure(message.settings ?? {}));

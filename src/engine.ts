@@ -16,7 +16,14 @@ import { RuntimeQuality } from './runtime-quality';
 import { PageSurfaces } from './surfaces';
 import { BITMAP_PIXEL_LIMIT, readMaterial } from './materials';
 import { materialGeometry, materialExtent } from './paint-geometry';
-import { defaults, settingsFrom, type Settings, type Status } from './types';
+import {
+  defaults,
+  settingsFrom,
+  spiderTypes,
+  touchOnlyMedia,
+  type Settings,
+  type Status,
+} from './types';
 import {
   layoutShards,
   mount,
@@ -63,11 +70,29 @@ interface Fragment extends Projection {
 const styles = `
 :host{all:initial!important;position:fixed!important;inset:0!important;z-index:2147483647!important;pointer-events:none!important;contain:strict!important;color-scheme:dark!important;display:block!important;}
 *{box-sizing:border-box}canvas,.pieces{position:absolute;inset:0;pointer-events:none}canvas{width:100%;height:100%}.piece{position:absolute;display:block;transform-origin:0 50%;pointer-events:none;user-select:none;white-space:pre}.shard{position:absolute;display:block;left:0;top:0;white-space:pre;transform-origin:0 50%;text-shadow:.65px .65px 0 #07102225;pointer-events:none}
-.dock{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;background:#10101cf2;color:#d9d9e9;border:1px solid #45425e;border-radius:100px;padding:10px 12px 10px 18px;box-shadow:0 8px 40px #0005;font:12px/1.4 system-ui,sans-serif;pointer-events:auto;white-space:nowrap}
-.dot{width:6px;height:6px;border-radius:50%;background:#bdffa3;box-shadow:0 0 9px #bdffa355}.wordmark{font-weight:700;letter-spacing:.5px}.activity{color:#b3afc9;min-width:145px}button{font:inherit;cursor:pointer;color:#eeeefa;border:1px solid #45425e;background:#232132;border-radius:100px;padding:7px 12px}button:hover{border-color:#b6a7ff;background:#383148}button:focus-visible{outline:2px solid #b6ff96;outline-offset:3px}.restore{color:#baff9a}.tip{position:absolute;bottom:87px;left:50%;transform:translateX(-50%);max-width:90vw;color:#bbb7d0;background:#11121df2;border:1px solid #393448;padding:10px 18px;border-radius:9px;font:12px/1.5 system-ui,sans-serif;text-align:center}.hide{display:none}@media(max-width:600px){.activity{font-size:10px;min-width:0;max-width:145px;white-space:normal}.dock{gap:7px;padding-left:12px;max-width:96vw}.tip{width:86vw}.wordmark{font-size:11px}}
+.controls{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:12px;width:max-content;max-width:96vw}.dock{display:flex;align-items:center;gap:12px;max-width:100%;background:#10101cf2;color:#d9d9e9;border:1px solid #45425e;border-radius:100px;padding:10px 12px 10px 18px;box-shadow:0 8px 40px #0005;font:12px/1.4 system-ui,sans-serif;pointer-events:auto;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:#bdffa3;box-shadow:0 0 9px #bdffa355}.wordmark{font-weight:700;letter-spacing:.5px}.activity{color:#c5c1d8;min-width:145px;max-width:260px;white-space:normal}button{font:inherit;cursor:pointer;color:#eeeefa;border:1px solid #45425e;background:#232132;border-radius:100px;padding:7px 12px}button:hover{border-color:#b6a7ff;background:#383148}button:focus-visible{outline:2px solid #b6ff96;outline-offset:3px}.restore{color:#baff9a}.tip{pointer-events:auto;display:flex;align-items:center;gap:12px;width:max-content;max-width:90vw;color:#bbb7d0;background:#11121df2;border:1px solid #393448;padding:10px 18px;border-radius:9px;font:12px/1.5 system-ui,sans-serif;text-align:center}.tip button{flex-shrink:0;min-height:44px}.hide,.touch-guidance{display:none}@media(max-width:600px){.controls{width:calc(100vw - 24px);max-width:480px}.activity{font-size:11px;min-width:0;max-width:none;line-height:1.4;overflow-wrap:anywhere}.dock{display:grid;grid-template-columns:minmax(0,1fr) auto auto;width:100%;gap:8px;padding:7px;border-radius:18px}.dock button{padding:9px 10px;min-width:64px;min-height:44px}.dot,.wordmark{display:none}.tip{width:100%;max-width:100%;font-size:11px;padding:9px}}@media ${touchOnlyMedia}{.pointer-guidance{display:none}.touch-guidance{display:inline}}
 `;
 export class Cr4wler {
   constructor(private readonly idleSeed?: number) {}
+  private listeners = new Set<(status: Status) => void>();
+  private reportedStatus = '';
+  private hintShown = false;
+  private focusReturn: HTMLElement | null = null;
+  private touchOnly = matchMedia(touchOnlyMedia);
+  subscribe(listener: (status: Status) => void) {
+    this.listeners.add(listener);
+    listener(this.status());
+    return () => this.listeners.delete(listener);
+  }
+  private notify() {
+    if (!this.listeners.size) return;
+    const status = this.status();
+    const signature = JSON.stringify(status);
+    if (signature === this.reportedStatus) return;
+    this.reportedStatus = signature;
+    for (const listener of this.listeners) listener(status);
+  }
   private host: HTMLDivElement | null = null;
   private root: ShadowRoot | null = null;
   private pieces: HTMLDivElement | null = null;
@@ -206,7 +231,7 @@ export class Cr4wler {
     this.updateActivity();
     return this.status();
   }
-  summon(value?: Partial<Settings>) {
+  summon(value?: Partial<Settings>, firstUse = false) {
     this.configure(value ?? {});
     if (this.host) return this.status();
     this.abort = new AbortController();
@@ -229,6 +254,8 @@ export class Cr4wler {
     this.pointerInputAnchor = null;
     this.manualAnchor = null;
     this.host = document.createElement('div');
+    this.focusReturn =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.host.dataset.cr4wlerIgnore = '';
     this.host.dataset.cr4wlerRoot = '';
     this.root = this.host.attachShadow({ mode: 'open' });
@@ -248,21 +275,27 @@ export class Cr4wler {
     canvas.setAttribute('aria-hidden', 'true');
     this.root.append(canvas);
     const dock = document.createElement('div');
+    const controls = document.createElement('div');
+    controls.className = 'controls';
     dock.className = 'dock';
     dock.setAttribute('role', 'region');
     dock.setAttribute('aria-label', 'Cr4wler controls');
     // This is our own static control markup, never page HTML.
     dock.innerHTML =
-      '<span class="dot"></span><span class="wordmark">cr4wler</span><span class="activity">coming down…</span><button class="pause" type="button">Pause</button><button class="restore" type="button">Reset <span aria-hidden="true">↗</span></button>';
-    this.root.append(dock);
+      '<span class="dot" aria-hidden="true"></span><span class="wordmark">cr4wler</span><span class="activity">coming down…</span><button class="pause" type="button">Pause</button><button class="restore" type="button" title="Remove the visitor and its effects; keep your page edits">Restore</button>';
+    controls.append(dock);
     this.activity = dock.querySelector('.activity');
     this.pauseButton = dock.querySelector('.pause');
-    this.tip = document.createElement('div');
-    this.tip.className = 'tip';
-    this.tip.textContent = this.reduced.matches
-      ? 'Reduced motion is on. A quiet visitor. Reset or Esc restores the page.'
-      : 'Tiny acts of mischief. The aftermath stays as you scroll. Reset or Esc removes the effects.';
-    this.root.append(this.tip);
+    if (firstUse && !this.hintShown) {
+      this.hintShown = true;
+      this.tip = document.createElement('div');
+      this.tip.className = 'tip';
+      this.tip.setAttribute('role', 'note');
+      this.tip.innerHTML =
+        '<span><span class="pointer-guidance">Enable <b>Follow my cursor</b>, then hover to guide.</span><span class="touch-guidance">Your spider explores on its own.<br><b>Pause</b> keeps it still.</span><br><b>Restore / Esc</b> removes the visitor and its effects.</span><button type="button" aria-label="Dismiss first-use hint">Got it</button>';
+      controls.prepend(this.tip);
+    }
+    this.root.append(controls);
     document.documentElement.append(this.host);
     this.spider = new Spider(canvas, this.idleSeed);
     this.surfaceOffset = { x: scrollX, y: scrollY };
@@ -285,6 +318,15 @@ export class Cr4wler {
       this.materialMaskStyle = rule instanceof CSSStyleRule ? rule.style : null;
     }
     const signal = this.abort.signal;
+    this.tip?.querySelector('button')?.addEventListener(
+      'click',
+      () => {
+        this.pauseButton?.focus({ preventScroll: true });
+        this.tip?.remove();
+        this.tip = null;
+      },
+      { signal },
+    );
     this.pauseButton?.addEventListener('click', () => this.pause(), { signal });
     dock.querySelector('.restore')?.addEventListener('click', () => this.restore(), { signal });
     document.addEventListener(
@@ -509,6 +551,7 @@ export class Cr4wler {
     return this.status();
   }
   restore() {
+    const returnFocus = document.activeElement === this.host;
     this.clearFollowIntent();
     this.scanRevision++;
     cancelAnimationFrame(this.raf);
@@ -556,6 +599,10 @@ export class Cr4wler {
     this.geometryDirty = this.layoutDirty = false;
     this.movedScrollers.clear();
     this.mode = 'arrive';
+    this.notify();
+    if (returnFocus && this.focusReturn?.isConnected)
+      this.focusReturn.focus({ preventScroll: true });
+    this.focusReturn = null;
     return this.status();
   }
   private palette() {
@@ -1484,6 +1531,7 @@ export class Cr4wler {
     this.selectCandidate(intent.target, 'hover');
   }
   private updateActivity() {
+    this.notify();
     if (this.host) {
       const status = this.status();
       this.host.dataset.phase = status.phase;
@@ -1525,7 +1573,7 @@ export class Cr4wler {
     }
     if (!this.activity) return;
     this.activity.textContent = this.limitReached
-      ? '512 marks · Reset to explore again'
+      ? '512 marks · Restore to explore again'
       : this.paused
         ? `${this.fragments.length} marks · paused`
         : this.reduced.matches
@@ -1550,9 +1598,11 @@ export class Cr4wler {
                             ? this.mode === 'notice'
                               ? 'something caught its eye…'
                               : 'investigating…'
-                            : this.settings.followMouse
+                            : this.settings.followMouse && !this.touchOnly.matches
                               ? `${this.fragments.length} marks · hover to choose`
                               : `${this.fragments.length} marks · exploring`;
+    const type = spiderTypes[this.settings.personality];
+    this.activity.textContent = `${type.cue} ${this.settings.personality[0].toUpperCase() + this.settings.personality.slice(1)} · ${this.activity.textContent}`;
   }
   /** At most nine local hit tests per navigation frame; no document scan. */
   private recoveryLanding(anchor: Point): Point {
@@ -1665,7 +1715,6 @@ export class Cr4wler {
       this.time += dt;
       this.phaseTime += dt;
     }
-    if (this.time > 9) this.tip?.classList.add('hide');
     if (
       !quiet &&
       !this.paused &&

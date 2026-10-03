@@ -52,7 +52,7 @@
               This is <strong>Cr4wler</strong>. A little guest in your browser. It will inspect a
               phrase, find a good handhold, and
               <a href="#collection">gently rearrange your reality</a>. Nothing important goes
-              missing. Reset brings every word home.
+              missing. Restore removes the visitor and its effects.
             </p>
           </div>
           <div class="note" data-cr4wler-ignore>
@@ -156,28 +156,31 @@
           <option value="dreamy">☾ Dreamy — orb-weaver</option>
           <option value="feral">↯ Feral — jumping spider</option>
         </select>
+        <p id="demo-description" class="type-description" role="status">
+          Long legs. Precise little bites.
+        </p>
         <div class="slider-label">
-          <label for="demo-intensity">MISCHIEF LEVEL</label><output id="demo-level">55%</output>
+          <label for="demo-intensity">INTENSITY</label><output id="demo-level">55%</output>
         </div>
         <input id="demo-intensity" type="range" min="0" max="100" value="55" />
         <label class="follow-toggle" for="demo-follow"
-          ><span>Follow my cursor<small>Hover chooses. Page edges keep it moving.</small></span
+          ><span
+            >Follow my cursor<small class="pointer-guidance"
+              >Hover chooses. Page edges keep it moving.</small
+            ><small class="touch-guidance"
+              >Cursor guide needs a mouse or trackpad. Touch: your spider explores on its
+              own.</small
+            ></span
           ><input type="checkbox" id="demo-follow" role="switch" /></label
         ><button id="demo-summon" class="primary">Summon your spider <span>↗</span></button>
+        <p class="restore-help">Restore / Esc removes the visitor and its effects.</p>
         <div class="demo-secondary">
           <button id="demo-pause" disabled>Pause</button
-          ><button id="demo-restore" disabled>Reset page</button>
+          ><button id="demo-restore" disabled>Restore</button>
         </div>
         <p id="demo-status" role="status" class="small">
           A growing trail. A completely fresh start with Esc.
         </p>
-        <div class="tutorial">
-          <div><b>01</b><span>Your visitor is already here. Pause or reset any time.</span></div>
-          <div><b>02</b><span>Hover. Lock. Strike. Edges keep it crawling.</span></div>
-          <div>
-            <b>03</b><span>Press <kbd>Esc</kbd>. Everything returns.</span>
-          </div>
-        </div>
         <div class="local-note">◎ ON YOUR DEVICE. IN THIS MOMENT.</div>
       </div>
     </div>

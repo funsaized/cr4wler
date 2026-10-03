@@ -11,11 +11,8 @@
       <a class="brand" href="playground.html" target="_blank"
         ><span class="mark">✳</span> cr4wler<span class="version">POC / 004</span></a
       >
-      <p class="eyebrow">A LITTLE WEB MISCHIEF</p>
-      <h1>Your tab.<br />Its playground.</h1>
-      <p class="intro">
-        Meet your eight-legged creative director.<br />Excellent taste. Questionable manners.
-      </p>
+      <h1>Meet your spider.</h1>
+      <p class="intro">Eight legs. Excellent taste. Questionable manners.</p>
       <div class="specimen" aria-hidden="true">
         <canvas id="specimen-preview" width="318" height="132"></canvas>
         <span id="specimen-type">WIDOW</span>
@@ -28,23 +25,29 @@
         ><button data-personality="dreamy" aria-pressed="false">Dreamy <span>☾</span></button
         ><button data-personality="feral" aria-pressed="false">Feral <span>↯</span></button>
       </div>
-      <p id="type-description" class="type-description">
-        Long-legged stalker. Round abdomen, precise locks.
+      <p id="type-description" class="type-description" role="status">
+        Long legs. Precise little bites.
       </p>
       <div class="setting-label intensity-label">
-        <label for="intensity">Mischief level</label><output id="level">Playful</output>
+        <label for="intensity">Intensity</label><output id="level">Playful</output>
       </div>
-      <input type="range" id="intensity" min="0" max="100" value="55" aria-label="Mischief level" />
+      <input type="range" id="intensity" min="0" max="100" value="55" aria-label="Intensity" />
       <div class="range-label"><span>polite guest</span><span>art school dropout</span></div>
       <label class="follow-toggle" for="follow-mouse"
-        ><span>Follow my cursor<small>Hover a word. Use page edges to crawl.</small></span
+        ><span
+          >Follow my cursor<small class="pointer-guidance"
+            >Hover a word. Use page edges to crawl.</small
+          ><small class="touch-guidance"
+            >Cursor guide needs a mouse or trackpad. Touch: your spider explores on its own.</small
+          ></span
         ><input type="checkbox" id="follow-mouse" role="switch"
       /></label>
       <button id="summon" class="primary">Summon your spider <span>↗</span></button>
+      <p class="restore-help">Restore / Esc removes the visitor and its effects.</p>
       <div class="secondary">
-        <button id="pause" disabled>Pause</button><button id="restore" disabled>Reset page</button>
+        <button id="pause" disabled>Pause</button><button id="restore" disabled>Restore</button>
       </div>
-      <p id="status" role="status">Only this tab. Reset or Esc brings every word back.</p>
+      <p id="status" role="status">No visitor. Summon when you’re ready.</p>
     </main>
     <footer>
       <a id="playground" href="playground.html" target="_blank">Try the playground <span>↗</span></a

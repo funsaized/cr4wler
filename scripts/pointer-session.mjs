@@ -142,6 +142,9 @@ export async function runPointerSession(page, controls, dir, prefix) {
   await controls.summon();
   await page.bringToFront();
   await page.waitForSelector('[data-cr4wler-root]');
+  // Complete first-use guidance before aiming at fixture text under its control surface.
+  const hint = page.locator('[data-cr4wler-root] .tip button');
+  if (await hint.count()) await hint.click();
   // Exact synthetic fixture ids make the recording assertions independent of text.
   const targets = await page.evaluate(() => {
     const links = [...document.querySelectorAll('#reference-volume-8 li>a:first-of-type')];

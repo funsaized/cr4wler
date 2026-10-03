@@ -1,6 +1,6 @@
 # Privacy
 
-cr4wler 0.3.0 performs a local visual effect on a page you explicitly choose.
+cr4wler 0.4.1 performs a local visual effect on a page you explicitly choose. The bundled demo starts automatically.
 
 - **Permissions:** `activeTab` gives temporary access after a toolbar gesture. `scripting` injects the effect into that tab's main frame. No permanent website access is requested.
 - **Page text:** a bounded scan reads short eligible text ranges in the current viewport and copies them into inert visual fragments. That text is not sent to a background worker or any server. It is not logged, persisted, analyzed by AI, or used for training.
@@ -8,8 +8,8 @@ cr4wler 0.3.0 performs a local visual effect on a page you explicitly choose.
 - **Protected controls:** forms, inputs, editors, submitters, dialogs, live regions, iframes, and recognized sensitive widgets are excluded. Plain type=button controls outside forms may receive an inert visual treatment; their handlers are never invoked. The heuristic cannot identify every sensitive page; activation remains your choice.
 - **Actions:** cr4wler never clicks site controls, follows site links, submits forms, changes field values, or issues requests to websites.
 - **Pointer control:** optional cursor following reads only local pointer position and eligible material at that position. Deliberate top/bottom edge hovering scrolls the viewport in bounded bursts. Manual scrolling, pause, blur, leaving, disabling follow and reduced motion stop that behavior. Pointer movement is not recorded or transmitted by the extension.
-- **Storage:** no cookies, local storage, extension storage, accounts, analytics, telemetry, or identifiers are used. Current settings and animation state exist only in memory.
+- **Storage:** extension pages and the standalone demo use their own origin's localStorage for temperament, intensity, cursor-follow preference and a first-use hint flag. Injected content scripts never write to a visited website's storage. No page text, image, mark, pointer history or browsing history is persisted. Activity and Pause exist only in document memory. There are no cookies, accounts, analytics, telemetry or tracking identifiers. Clear that origin's data to reset preferences; see [README lifecycle rules](README.md#a-small-set-of-controls).
 - **Network:** the extension has no network functionality. All code, styles, icons, and the playground ship in the package. The playground's View source link opens GitHub only if you click it.
-- **Restore:** Escape or Reset removes the overlay, CSS highlights and owned material masks, preserving current page styles, content and user edits. Navigating away unloads the page controller; resetting releases its source and bitmap references. Up to 512 short captured records remain in page memory while you scroll; none are written to disk. Pausing freezes the effect until you resume or restore it.
+- **Restore:** Escape or Restore removes the overlay, CSS highlights and owned material masks, preserving current page styles, content and user edits. Navigating away unloads the page controller; restoration releases its source and bitmap references. Up to 512 short captured records remain in page memory while you scroll; none are written to disk. Pausing freezes the effect until you resume or restore it.
 
 Report a privacy issue without including real page text, private URLs, or screenshots containing sensitive information. See [CONTRIBUTING.md](CONTRIBUTING.md).
