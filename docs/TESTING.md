@@ -72,14 +72,24 @@ Native browser UI zoom from 100% to 110% was verified. CDP page scale is separat
 
 ## README media provenance
 
-The [original video](cr4wler-demo.webm) reuses the approved final 15.84s normal-speed material session, byte-for-byte: 1440×1000, 25fps, VP8, SHA-256 `eec9eeb712e46e98dedab0be563e0ab69ff67ebb7c5c79370beaedf1e8590dcd`. It shows the installed visitor on the synthetic material fixture. The [inline GIF](cr4wler-demo.gif) uses the 1.40s–15.84s excerpt at 720×500, sampled at 10fps with a 96-color palette and ordered dithering. The initial inactive page and offscreen arrival were trimmed so the loop starts with the dock and spider visible, avoiding the brief bright-page flash. Its 144 frames retain 14.44s wall-clock duration: 100ms per frame and a final 140ms hold, looping indefinitely. The loop still cuts back to its opening shot; no cropping, interpolation or playback-speed change was applied. The original video is unchanged. These reviewed pixels are reused demonstration media, not a new release acceptance capture; current installed/native checks remain separate.
+The [inline GIF](cr4wler-demo.gif) and [linked video](cr4wler-demo.webm) show the same contiguous 5.20s–14.20s excerpt of the approved installed visitor session on the synthetic material fixture. It excludes malformed source frames at 2.04s and 4.28s, their brief color transition, and a page disappearance at 14.32s–14.44s. The heading and protected form row stay at fixed coordinates in all 225 source and video frames and all 90 GIF frames.
 
-Reproduce the GIF with FFmpeg (the reviewed encode used FFmpeg 7.1.5):
+The GIF is 720×500, sampled at 10fps with a 96-color palette and ordered dithering. Its 90 frames retain 9s wall-clock duration: 100ms per frame, looping indefinitely. The loop cuts back to its opening shot. The video is 1440×1000, 25fps, VP8, exactly 9s, re-encoded without a spatial crop, interpolation or playback-speed change; SHA-256 `33f98553a40008eda898ae707f42bd5278a3efa0f231886f8667f6ffde54ceb5`.
+
+The [original 15.84s capture](https://github.com/funsaized/cr4wler/blob/1323e8df45452c13d53bf1ecc497f67a109ef270/docs/cr4wler-demo.webm) remains in Git history: 1440×1000, 25fps, VP8, SHA-256 `eec9eeb712e46e98dedab0be563e0ab69ff67ebb7c5c79370beaedf1e8590dcd`. That archived source includes the capture artifacts excluded from both public demo formats. These reviewed pixels are reused demonstration media, not a new release acceptance capture; current installed/native checks remain separate.
+
+Reproduce both formats with FFmpeg (the reviewed encode used FFmpeg 7.1.5):
 
 ```sh
-ffmpeg -i docs/cr4wler-demo.webm \
-  -filter_complex '[0:v]trim=start=1.4,setpts=PTS-STARTPTS,fps=10,scale=720:500:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle' \
-  -loop 0 -final_delay 14 docs/cr4wler-demo.gif
+mkdir -p artifacts
+git show 1323e8df45452c13d53bf1ecc497f67a109ef270:docs/cr4wler-demo.webm > artifacts/cr4wler-demo-original.webm
+ffmpeg -i artifacts/cr4wler-demo-original.webm \
+  -filter_complex '[0:v]trim=start=5.2:end=14.2,setpts=PTS-STARTPTS,fps=10,scale=720:500:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle' \
+  -loop 0 -final_delay 10 docs/cr4wler-demo.gif
+ffmpeg -i artifacts/cr4wler-demo-original.webm \
+  -vf 'trim=start=5.2:end=14.2,setpts=PTS-STARTPTS' \
+  -c:v libvpx -crf 10 -b:v 1M -deadline good -cpu-used 2 \
+  -an -r 25 -fps_mode cfr docs/cr4wler-demo.webm
 ```
 
 The earlier 32.92s whole-browser GitHub capture used source `dc2d77e814a72d151ca1cba935c1cf24675e9f8c`. Its [GIF](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/docs/cr4wler-demo.gif), [WebM](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/docs/github-demo.webm), [capture CI](https://github.com/funsaized/cr4wler/actions/runs/37044012741), and [capture script](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/scripts/github-demo.mjs) remain recoverable with their original provenance in Git history.
