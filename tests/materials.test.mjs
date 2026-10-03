@@ -628,7 +628,10 @@ test('post-attack source or ancestor paint changes release stale masks and prese
           },
           { ancestor, style },
         );
-        await page.waitForTimeout(100);
+        await page.waitForFunction(() => runtime.fragments.length === 0, null, {
+          polling: 'raf',
+          timeout: 1500,
+        });
         assert.equal(await page.evaluate(() => runtime.fragments.length), 0, `${id}/${name}`);
         assert.equal(await page.locator('[data-cr4wler-root] .piece').count(), 0, `${id}/${name}`);
         const state = await page.locator('#' + id).evaluate(
