@@ -337,7 +337,10 @@ test(
       assert.equal(await page.evaluate(() => runtime.fragments.length), 0);
       await gesture(page);
       await page.evaluate(() => scrollTo(0, 160));
-      await page.waitForTimeout(600);
+      await page.waitForFunction(() => !runtime.spider.recovering, null, {
+        polling: 'raf',
+        timeout: 1500,
+      });
       const rig = await page.evaluate(() => runtime.spider.diagnostics);
       assert.equal(rig.idle, null);
       assert.ok(

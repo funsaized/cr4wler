@@ -125,6 +125,25 @@ visibility checks do not establish native background visual behavior. Performanc
 runs remain separate from captures. Prior executor dense-frame tails of
 100–150ms remain a series optimization concern; this item makes no 60 FPS claim.
 
+`tests/recovery.test.mjs` checks ordinary scroll continuity versus missing/moved
+stance, one entrance through continued wheel bursts and reversal, quiet-time
+rearming, duration, finite fixed reach, Pause, Reset, per-stage species changes,
+controlled backgrounding, resize and static reduced motion. Real browser checks
+retain document/nested navigation ownership and resume on the next pointer input.
+Feral's measured gap hops keep their prior supported touchdown path.
+
+Run `npm run build && xvfb-run -a -s "-screen 0 1440x1080x24" node scripts/recovery-check.mjs`
+(or use an existing desktop DISPLAY) for headed installed-MV3 item-7 pixels on `pointer.html?autostart=off`. Output is in `artifacts/item7/recovery/`.
+Each normal clip includes an uninterrupted real wheel burst/reversal followed by
+new pointer pursuit; its 3× slow clip repeats actual captured pixels. Separate
+stage screenshots use the real engine Pause to freeze anticipation, flight and
+landing. Diagnostic traces verify bounded limbs, one recovery, input feedback and
+released selectors/grips; they are distinct from screenshot/video evidence.
+The harness also exercises PageDown, actual native scrollbar drag, nested wheel,
+resize, CDP page-scale zoom, controlled visibility and reduced motion. CDP zoom
+is not native browser UI zoom; controlled visibility is not native background
+visual proof. Capture costs are not performance measurements.
+
 The attack capture focuses the dock before short preparation windows and activates
 Pause with Enter. This exercises the real dock control while avoiding Playwright's
 pointer-click stability wait consuming Feral's 90ms anticipation. Native toolbar

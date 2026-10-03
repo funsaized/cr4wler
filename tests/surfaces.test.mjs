@@ -228,7 +228,10 @@ for (const personality of ['curious', 'dreamy', 'feral']) {
               throw new Error('invalid rig');
             contacts = Math.max(contacts, d.legs.filter((l) => l.contact).length);
             maxBone = Math.max(maxBone, d.maxBoneLength / d.boneLimit);
-            minSupport = Math.min(minSupport, d.legs.filter((l) => l.phase === 'stance').length);
+            // Real stance loss now releases into one entrance. Walking keeps
+            // four supports; an airborne recovery deliberately has none.
+            if (!spider.recovering)
+              minSupport = Math.min(minSupport, d.legs.filter((l) => l.phase === 'stance').length);
             surfaceReleases = d.surfaceReleases;
           }
         };

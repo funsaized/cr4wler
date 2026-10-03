@@ -41,6 +41,8 @@ export interface SpiderOptions {
   pursuitSpeed?: number;
   /** Page movement in viewport pixels; consume each scroll delta exactly once. */
   surfaceDelta?: Point;
+  /** Includes native/nested motion even while all page contacts are detached. */
+  pageMoving?: boolean;
   surfaces?: readonly PageSurface[];
   /** The engine grants idle time only between hunts and real input. */
   idle?: boolean;
@@ -293,6 +295,9 @@ export class Spider {
     from: Point;
     to: Point;
     feet: Point[];
+    goal: Point;
+    edge?: Point;
+    angle: number;
     anticipation: number;
     flight: number;
     landing: number;
@@ -301,9 +306,12 @@ export class Spider {
   private hopHeight = 0;
   private hopCooldown = 0;
   private recoveries = 0;
+  private scrollRecoveryArmed = true;
+  private scrollQuiet = 0;
   private releasedContacts = 0;
   private silkAnchor = 0;
   private silkAmount = 1;
+  private silkOrigin: Point | null = null;
   private surfaceIndex = new Map<string, PageSurface>();
   private surfaceSnapshot: readonly PageSurface[] | undefined;
   private surfaceReleases = 0;
@@ -361,7 +369,14 @@ export class Spider {
           p.x = this.body.x + (p.x - this.body.x) * ratio;
           p.y = this.body.y + (p.y - this.body.y) * ratio;
         }
-      if (this.recovery) this.recover(this.body, true);
+      if (this.recovery) {
+        if (this.recovery.reason === 'hunt') this.recover(this.body, true);
+        else {
+          this.recovery.feet = this.recovery.feet.map((p) => ({ x: p.x * ratio, y: p.y * ratio }));
+          this.recovery.to = this.safeLanding(this.recovery.to);
+          this.recovery.goal = this.safeLanding(this.recovery.goal);
+        }
+      }
       if (this.legs.some((l) => !this.withinReach(l.foot))) this.resetStance();
     }
   }
@@ -388,6 +403,25 @@ export class Spider {
   get recovering(): boolean {
     return !!this.recovery;
   }
+  get recoveryLanding(): Point | null {
+    return this.recovery ? { ...this.recovery.goal } : null;
+  }
+  /** Retarget a detached entrance without changing its clock or route origin. */
+  retargetRecovery(anchor: Point): void {
+    const r = this.recovery;
+    if (!r || r.reason !== 'scroll' || r.elapsed > r.anticipation + r.flight) return;
+    r.goal = this.safeLanding(anchor);
+  }
+  get recoveryMargin(): number {
+    return Math.min(this.reachLimit + 12, this.width * 0.25, this.height * 0.25);
+  }
+  private safeLanding(anchor: Point): Point {
+    const margin = this.recoveryMargin;
+    return {
+      x: clamp(anchor.x, margin, this.width - margin),
+      y: clamp(anchor.y, margin, Math.max(margin, this.height - margin - 45)),
+    };
+  }
   get recoveryReason(): 'scroll' | 'hunt' | '' {
     return this.recovery?.reason ?? '';
   }
@@ -413,6 +447,15 @@ export class Spider {
       recovery: this.recoveryPhase,
       reason: this.recoveryReason,
       recoveries: this.recoveries,
+      entrance: this.recovery?.reason === 'scroll' ? this.options.personality : null,
+      recoveryElapsed: this.recovery?.elapsed ?? 0,
+      recoveryDuration: this.recovery
+        ? this.recovery.anticipation + this.recovery.flight + this.recovery.landing
+        : 0,
+      recoveryLanding: this.recoveryLanding,
+      recoveryArmed: this.scrollRecoveryArmed,
+      thread: this.silkAmount,
+      rotation: this.angle,
       releasedContacts: this.releasedContacts,
       surfaceReleases: this.surfaceReleases,
       pageMovement: this.pageMovement,
@@ -464,7 +507,7 @@ export class Spider {
     return { x: this.body.x + dx * t, y: this.body.y + dy * t };
   }
   needsRecovery(delta: Point = { x: 0, y: 0 }, surfaces?: readonly PageSurface[]): boolean {
-    if (!this.initialized || this.recovery) return false;
+    if (!this.initialized || this.recovery || !this.scrollRecoveryArmed) return false;
     const outside =
       this.age > 1.5 &&
       (this.body.x < 25 ||
@@ -477,12 +520,14 @@ export class Spider {
         ? new Map(surfaces.map((s) => [s.id, s]))
         : this.surfaceIndex;
     let attached = 0;
+    let invalid = 0;
     const threatened = this.legs.filter((l) => {
       const contact = l.contact ?? l.landing;
       const surface = contact && index.get(contact.id);
       if (contact && surface) {
         attached++;
-        return (
+        const unusable =
+          surface.blocked?.some((f) => Math.abs(f - contact.fraction) < 0.001) ||
           contact.fraction < surface.min ||
           contact.fraction > surface.max ||
           distance(
@@ -491,15 +536,18 @@ export class Spider {
               y: mix(surface.a.y, surface.b.y, contact.fraction),
             },
             this.body,
-          ) > this.reachLimit
-        );
+          ) > this.reachLimit;
+        if (unusable) invalid++;
+        return unusable;
       }
+      if (contact) invalid++;
       return (
         distance({ x: l.foot.x + delta.x, y: l.foot.y + delta.y }, this.body) > this.reachLimit
       );
     }).length;
     return (
       outside ||
+      invalid >= 4 ||
       (moved > this.reachLimit * 0.42 && (attached < 4 || threatened >= 4)) ||
       (moved > this.reachLimit * 0.2 && threatened >= 4)
     );
@@ -511,11 +559,17 @@ export class Spider {
     reason: 'scroll' | 'hunt' = 'scroll',
     support?: { leg: number; contact: Contact },
   ): void {
+    if (this.recovery && !calm) return;
     this.interruptIdle();
-    const to = {
-      x: clamp(anchor.x, 65, Math.max(65, this.width - 65)),
-      y: clamp(anchor.y, 95, Math.max(95, this.height - 115)),
-    };
+    if (reason === 'scroll')
+      this.options = { ...this.options, grip: undefined, selector: undefined };
+    const to =
+      reason === 'scroll'
+        ? this.safeLanding(anchor)
+        : {
+            x: clamp(anchor.x, 65, Math.max(65, this.width - 65)),
+            y: clamp(anchor.y, 95, Math.max(95, this.height - 115)),
+          };
     this.gripLeg = -1;
     this.weightShift = { x: 0, y: 0 };
     this.lean = { x: 0, y: 0 };
@@ -523,6 +577,7 @@ export class Spider {
     this.velocity.x = this.velocity.y = 0;
     this.holding = false;
     this.silkAmount = 0;
+    this.silkOrigin = null;
     this.releasedContacts += 8;
     if (calm) {
       this.recovery = null;
@@ -531,7 +586,10 @@ export class Spider {
       this.resetStance();
       return;
     }
-    if (this.recovery) return;
+    if (reason === 'scroll') {
+      this.scrollRecoveryArmed = false;
+      this.scrollQuiet = 0;
+    }
     const feral = this.options.personality === 'feral';
     const dreamy = this.options.personality === 'dreamy';
     this.recoveries++;
@@ -540,21 +598,63 @@ export class Spider {
       elapsed: 0,
       from: { ...this.body },
       to,
+      goal: { ...to },
+      angle: this.angle,
+      edge: reason === 'scroll' && !feral ? this.returnEdge(to) : undefined,
       feet: this.feet.map((p) => {
         const b = this.bounded(p);
         return { x: b.x - this.body.x, y: b.y - this.body.y };
       }),
-      anticipation: feral ? 0.055 : dreamy ? 0.13 : 0.09,
-      flight: feral ? 0.16 : dreamy ? 0.34 : 0.25,
-      landing: feral ? 0.085 : dreamy ? 0.17 : 0.12,
+      anticipation: feral
+        ? reason === 'scroll'
+          ? 0.065
+          : 0.055
+        : reason === 'scroll'
+          ? 0.16
+          : dreamy
+            ? 0.13
+            : 0.09,
+      flight: feral
+        ? reason === 'scroll'
+          ? 0.22
+          : 0.16
+        : reason === 'scroll'
+          ? dreamy
+            ? 0.42
+            : 0.32
+          : dreamy
+            ? 0.34
+            : 0.25,
+      landing: feral
+        ? reason === 'scroll'
+          ? 0.1
+          : 0.085
+        : reason === 'scroll'
+          ? dreamy
+            ? 0.2
+            : 0.16
+          : dreamy
+            ? 0.17
+            : 0.12,
       support,
     };
     this.legs.forEach((l, i) => {
+      if (reason === 'scroll' && (l.contact || l.landing)) this.surfaceReleases++;
       l.contact = l.landing = undefined;
       if (support?.leg === i) l.landing = support.contact;
       l.stepping = false;
       l.lift = 0;
     });
+  }
+  /** Exit through a nearby top/side edge; the return always descends from above. */
+  private returnEdge(to: Point): Point {
+    const b = this.body,
+      outside = this.reachLimit + 30;
+    if (b.y <= Math.min(b.x, this.width - b.x)) return { x: b.x, y: -outside };
+    return {
+      x: b.x < this.width / 2 ? -outside : this.width + outside,
+      y: Math.min(b.y, to.y - 110),
+    };
   }
   private resetStance(): void {
     this.legs.forEach((l) => {
@@ -937,6 +1037,10 @@ export class Spider {
   }
   private advanceRecovery(dt: number): void {
     const r = this.recovery!;
+    if (r.reason === 'scroll') {
+      this.advanceScrollRecovery(dt);
+      return;
+    }
     r.elapsed += dt;
     const flight = clamp((r.elapsed - r.anticipation) / r.flight, 0, 1);
     const land = clamp((r.elapsed - r.anticipation - r.flight) / r.landing, 0, 1);
@@ -985,6 +1089,98 @@ export class Spider {
         leg.contact = r.support.released ? undefined : r.support.contact;
         leg.released = !!r.support.released;
       }
+    }
+  }
+  private advanceScrollRecovery(dt: number): void {
+    const r = this.recovery!;
+    r.elapsed += dt;
+    const feral = this.options.personality === 'feral';
+    const dreamy = this.options.personality === 'dreamy';
+    const prepare = smooth(clamp(r.elapsed / r.anticipation, 0, 1));
+    const flight = clamp((r.elapsed - r.anticipation) / r.flight, 0, 1);
+    const land = clamp((r.elapsed - r.anticipation - r.flight) / r.landing, 0, 1);
+    // The landing follows motion at a bounded speed until contact begins, then holds.
+    if (flight < 1) {
+      const separation = distance(r.to, r.goal);
+      const amount = separation ? Math.min(1 - Math.exp(-dt * 12), (dt * 220) / separation) : 1;
+      r.to.x = mix(r.to.x, r.goal.x, amount);
+      r.to.y = mix(r.to.y, r.goal.y, amount);
+    }
+    this.hopHeight = 0;
+    this.suspension = 0;
+    if (feral) {
+      const arc = Math.sin(flight * Math.PI) * Math.min(58 * this.scale, r.from.y - 35);
+      this.body.x = mix(r.from.x, r.to.x, smooth(flight));
+      this.body.y = mix(r.from.y, r.to.y, smooth(flight)) - arc;
+      this.crouch = flight === 0 ? prepare : flight < 1 ? 1 - flight * 0.7 : (1 - land) * 0.8;
+      this.silkAmount = 0;
+    } else {
+      const edge = r.edge!;
+      // A short offscreen hold is part of this single clock, never another entrance.
+      const descent = smooth(clamp((flight - 0.09) / 0.91, 0, 1));
+      const sway =
+        Math.sin(descent * Math.PI * (dreamy ? 2 : 1)) *
+        Math.sin(descent * Math.PI) *
+        (dreamy ? 18 : 5) *
+        this.scale;
+      this.body.x =
+        flight === 0 ? mix(r.from.x, edge.x, prepare) : mix(edge.x, r.to.x, descent) + sway;
+      this.body.y = flight === 0 ? mix(r.from.y, edge.y, prepare) : mix(edge.y, r.to.y, descent);
+      this.angle = r.angle + (dreamy ? Math.sin(descent * Math.PI * 2) * 0.16 * (1 - descent) : 0);
+      this.crouch = flight === 0 ? prepare * 0.65 : (1 - land) * (dreamy ? 0.8 : 0.45);
+      this.silkOrigin = { x: clamp(edge.x, 0, this.width), y: Math.max(0, edge.y) };
+      this.silkAmount = flight > 0 ? 1 - smooth(clamp((land - 0.65) / 0.35, 0, 1)) : 0;
+    }
+    this.legs.forEach((l, i) => {
+      const pose = this.idealFoot(l);
+      const tuck = feral ? 0.38 : dreamy ? 0.46 : 0.55;
+      const fold = flight > 0 ? 1 : prepare;
+      // Feral opens before touchdown; Widow searches in front while rear support lands.
+      const spread = feral
+        ? smooth(clamp((flight - 0.72) / 0.28, 0, 1))
+        : dreamy
+          ? smooth(clamp((land - 0.3) / 0.7, 0, 1))
+          : smooth(clamp((flight - 0.78) / 0.22 + land * 0.65 - (3 - l.row) * 0.12, 0, 1));
+      const local = {
+        x: mix(r.feet[i]!.x, (pose.x - this.body.x) * tuck, fold),
+        y: mix(r.feet[i]!.y, (pose.y - this.body.y) * tuck, fold),
+      };
+      let endpoint = {
+        x: mix(this.body.x + local.x, pose.x, spread),
+        y: mix(this.body.y + local.y, pose.y, spread),
+      };
+      if (!feral && !dreamy && l.row === 0 && flight > 0.6 && land < 0.55)
+        endpoint.y -= Math.sin((flight - 0.6) * Math.PI * 5) * 7 * this.scale * (1 - land);
+      const placement =
+        land > (dreamy ? 0.7 : feral ? 0.2 : l.row >= 2 ? 0.15 : 0.6)
+          ? this.placement(this.bounded(pose), l)
+          : null;
+      if (l.contact) {
+        const contact = this.contactPoint(l.contact);
+        if (contact) endpoint = contact;
+        else {
+          l.contact = undefined;
+          this.surfaceReleases++;
+        }
+      } else if (placement) {
+        endpoint = placement.point;
+        l.contact = placement.contact;
+      }
+      const p = this.bounded(endpoint);
+      for (const q of [l.foot, l.from, l.to]) Object.assign(q, p);
+      l.lift = 1 - spread;
+      l.progress = 1;
+    });
+    if (land === 1) {
+      this.recovery = null;
+      this.hopHeight = this.crouch = this.silkAmount = 0;
+      this.silkOrigin = null;
+      this.angle = r.angle;
+      this.hopCooldown = 0.25;
+      this.legs.forEach((l) => {
+        l.lift = 0;
+        l.rested = 0;
+      });
     }
   }
   /** The exact articulated emitter used by the beam and the head renderer. */
@@ -1039,6 +1235,23 @@ export class Spider {
     const wasQuiet = this.options.reducedMotion;
     const changedType = wasInitialized && this.options.personality !== opts.personality;
     this.options = opts;
+    const delta = opts.surfaceDelta ?? { x: 0, y: 0 };
+    const ids = opts.surfaces !== this.surfaceSnapshot ? this.contactIds : [];
+    const movingContact =
+      ids.length &&
+      opts.surfaces?.some((s) => {
+        const old = this.surfaceIndex.get(s.id);
+        return (
+          old && ids.includes(s.id) && (distance(old.a, s.a) > 0.5 || distance(old.b, s.b) > 0.5)
+        );
+      });
+    if (dt > 0) {
+      this.scrollQuiet =
+        Math.hypot(delta.x, delta.y) > 0.5 || opts.pageMoving || movingContact
+          ? 0
+          : this.scrollQuiet + dt;
+      if (!this.recovery && this.scrollQuiet >= 0.24) this.scrollRecoveryArmed = true;
+    }
     if (opts.surfaces !== this.surfaceSnapshot) {
       this.surfaceSnapshot = opts.surfaces;
       this.surfaceIndex = new Map((opts.surfaces ?? []).map((s) => [s.id, s]));
@@ -1080,10 +1293,11 @@ export class Spider {
       this.gripLeg = -1;
       this.gripCaptured = false;
       this.recovery = null;
-      this.hopHeight = 0;
+      this.hopHeight = this.crouch = this.silkAmount = 0;
+      this.silkOrigin = null;
+      Object.assign(this.body, this.safeLanding(this.body));
       this.resetStance();
     }
-    const delta = opts.surfaceDelta ?? { x: 0, y: 0 };
     if (
       delta.x ||
       delta.y ||
@@ -1099,6 +1313,8 @@ export class Spider {
         { x: this.body.x, y: clamp(this.body.y + Math.sign(delta.y) * 90, 120, this.height - 150) },
         dt === 0 || opts.reducedMotion,
       );
+      // Release at the last valid pose; integration begins on the next frame.
+      if (this.recovery) return;
     }
     // The rig is detached during a hop. Scrolling cannot drag its loose feet.
     if (wasInitialized && !this.recovery) {
@@ -1156,6 +1372,8 @@ export class Spider {
       Object.assign(this.body, this.destination);
       this.velocity.x = this.velocity.y = this.angle = this.headAngle = 0;
       this.suspension = this.crouch = this.alert = this.silkAmount = 0;
+      this.recovery = null;
+      this.silkOrigin = null;
       this.look.x = this.look.y = 0;
       this.gripLeg = -1;
       this.weightShift = { x: 0, y: 0 };
@@ -1185,12 +1403,20 @@ export class Spider {
     }
     // Paused geometry refreshes must not schedule a step or advance any pose state.
     if (dt === 0) {
-      if (this.recovery || this.legs.some((l) => !this.withinReach(l.foot)))
+      if (!this.recovery && this.legs.some((l) => !this.withinReach(l.foot)))
         this.recover(this.body, true);
       return;
     }
     this.hopCooldown = Math.max(0, this.hopCooldown - dt);
     if (this.recovery) {
+      Object.assign(this.attention, lookAt);
+      const dx = lookAt.x - this.body.x,
+        dy = lookAt.y - this.body.y;
+      const length = Math.max(1, Math.hypot(dx, dy));
+      const localX = (dx * Math.cos(this.angle) + dy * Math.sin(this.angle)) / length;
+      const eyeMix = 1 - Math.exp(-dt * profile.eyeResponse);
+      this.look.x = mix(this.look.x, localX * 5, eyeMix);
+      this.headAngle = mix(this.headAngle, clamp(localX * 0.58, -0.58, 0.58), eyeMix);
       this.advanceRecovery(dt);
       return;
     }
@@ -1675,10 +1901,11 @@ export class Spider {
       ctx.strokeStyle = '#b0e9ff';
       ctx.lineWidth = 0.65;
       ctx.beginPath();
-      ctx.moveTo(this.silkAnchor, 0);
+      const origin = this.silkOrigin ?? { x: this.silkAnchor, y: 0 };
+      ctx.moveTo(origin.x, origin.y);
       ctx.bezierCurveTo(
-        this.silkAnchor,
-        this.body.y * 0.3,
+        origin.x,
+        mix(origin.y, this.body.y, 0.3),
         this.body.x - 7,
         this.body.y * 0.65,
         this.body.x,

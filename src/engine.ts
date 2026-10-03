@@ -77,6 +77,7 @@ export class Cr4wler {
   private abort = new AbortController();
   private raf = 0;
   private resizeDirty = false;
+  private pageMotionPending = false;
   private quality = new RuntimeQuality();
   private pageSurfaces = new PageSurfaces();
   private boundsRevision = 0;
@@ -366,6 +367,7 @@ export class Cr4wler {
     window.addEventListener(
       'scroll',
       (e) => {
+        this.pageMotionPending = true;
         if (e.target instanceof Element && e.target !== document.scrollingElement && !this.paused) {
           const own = this.ownScroll;
           if (
@@ -1552,8 +1554,41 @@ export class Cr4wler {
                               ? `${this.fragments.length} marks · hover to choose`
                               : `${this.fragments.length} marks · exploring`;
   }
+  /** At most nine local hit tests per navigation frame; no document scan. */
+  private recoveryLanding(anchor: Point): Point {
+    const margin =
+      this.spider?.recoveryMargin ?? Math.min(110, innerWidth * 0.25, innerHeight * 0.25);
+    const bounded = (p: Point) => ({
+      x: clamp(p.x, margin, innerWidth - margin),
+      y: clamp(p.y, margin, Math.max(margin, innerHeight - margin - 45)),
+    });
+    const preferred = bounded(anchor);
+    for (const [x, y] of [
+      [0, 0],
+      [-90, 0],
+      [90, 0],
+      [0, -90],
+      [0, 90],
+      [-90, -90],
+      [90, -90],
+      [-90, 90],
+      [90, 90],
+    ]) {
+      const p = bounded({ x: preferred.x + x!, y: preferred.y + y! });
+      const hit = document.elementFromPoint(p.x, p.y);
+      if (
+        !hit ||
+        (hit !== this.host &&
+          !hit.closest(
+            'input,textarea,select,button,a,[contenteditable],[data-cr4wler-ignore],[data-cr4wler-root]',
+          ))
+      )
+        return p;
+    }
+    return preferred;
+  }
   private beginRecovery(delta: Point) {
-    if (!this.spider) return;
+    if (!this.spider || this.spider.recovering || this.mode === 'recover') return;
     this.cancelCandidate();
     this.hover = null;
     this.selection?.clear();
@@ -1570,10 +1605,7 @@ export class Cr4wler {
     this.invalidateScan();
     this.nextChoice = this.time + 0.12;
     const p = this.spider.position;
-    this.destination = {
-      x: clamp(p.x, 110, Math.max(110, innerWidth - 110)),
-      y: clamp(p.y + Math.sign(delta.y) * 90, 125, Math.max(125, innerHeight - 160)),
-    };
+    this.destination = this.recoveryLanding({ x: p.x, y: p.y + Math.sign(delta.y) * 90 });
     this.spider.recover(this.destination, this.paused || this.reduced.matches);
     this.updateActivity();
   }
@@ -1645,6 +1677,8 @@ export class Cr4wler {
       void this.scan();
     const profile = huntProfiles[this.settings.personality];
     const externalDelta = this.takeSurfaceDelta();
+    const pageMoving = this.pageMotionPending;
+    this.pageMotionPending = false;
     // All movement observed before our own bounded edge step is external intent.
     // Programmatic scroll, scrollbar drags and browser navigation yield just like wheel/touch.
     if (
@@ -1670,13 +1704,28 @@ export class Cr4wler {
       if (this.geometryDirty) this.refreshGeometry();
       if (
         this.spider.needsRecovery(surfaceDelta, this.readSurfaces(surfaceTime)) ||
-        (this.current && !this.targetFresh(this.current.target))
+        (!this.spider.recovering && this.current && !this.targetFresh(this.current.target))
       )
         this.beginRecovery(surfaceDelta);
+      if (
+        this.mode === 'recover' &&
+        this.spider.recovering &&
+        (pageMoving || surfaceDelta.x || surfaceDelta.y)
+      ) {
+        const landing = this.spider.recoveryLanding ?? this.destination;
+        // Scroll changes the intention, never the route clock. Nested motion keeps
+        // the same viewport landing and only rechecks its local obstruction.
+        this.destination = this.recoveryLanding({
+          x: landing.x + surfaceDelta.x * 0.18,
+          y: landing.y + surfaceDelta.y * 0.18,
+        });
+        this.spider.retargetRecovery(this.destination);
+      }
       if (this.mode === 'recover' && !this.spider.recovering) {
         this.mode = 'scan';
         this.phaseTime = 0;
         this.nextScan = this.time;
+        this.updateHover();
         this.updateActivity();
       }
       if (this.mode === 'arrive' && this.phaseTime > profile.arrive) {
@@ -1821,7 +1870,13 @@ export class Cr4wler {
         }
       }
       // Queue latest attention while the committed selector finishes in <=420ms.
-      if (!this.current && !this.candidate && this.hover && !this.occupied(this.hover.target)) {
+      if (
+        this.mode !== 'recover' &&
+        !this.current &&
+        !this.candidate &&
+        this.hover &&
+        !this.occupied(this.hover.target)
+      ) {
         const target = this.hover.target;
         selector = { rect: target.rect, progress: 0, phase: 'scan', color: this.palette()[0] };
       }
@@ -1887,6 +1942,7 @@ export class Cr4wler {
     this.spider.update(quiet ? 0 : dt, this.time, destination, {
       ...spiderOptions,
       surfaceDelta,
+      pageMoving,
     });
     this.spider.render();
     if (this.time >= this.nextTelemetry || quiet) {
