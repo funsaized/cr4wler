@@ -25,8 +25,12 @@ export interface Status extends Settings {
   phase?:
     | 'arrive'
     | 'scan'
+    | 'notice'
+    | 'investigate'
     | 'lock'
+    | 'prepare'
     | 'strike'
+    | 'settle'
     | 'aftermath'
     | 'limit'
     | 'quiet'

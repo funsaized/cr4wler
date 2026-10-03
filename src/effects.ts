@@ -37,6 +37,8 @@ export interface Projection {
   shards: Shard[];
   shardLimit?: number;
   progress: number;
+  /** Shares the attack clock; absent means a settled legacy/manual projection. */
+  settleProgress?: number;
   clip: Clip;
   el: HTMLSpanElement | null;
   personality?: Personality;
@@ -311,7 +313,15 @@ function progress(record: Projection, i: number): number {
   const release = 0.42 + stagger * 0.4;
   // Brief tension lets the reaching claw arrive before the break.
   if (record.progress < release) return -Math.sin((record.progress / release) * Math.PI) * 0.035;
-  return ease(clamp((record.progress - release) / (1 - release), 0, 1));
+  const t = ease(clamp((record.progress - release) / (1 - release), 0, 1));
+  const settle = record.settleProgress ?? 1;
+  // Only three pieces drift or hang briefly. Every offset returns to its seeded
+  // persistent scar; no perpetual fragment loop or additional animation clock.
+  const drift =
+    record.progress === 1 && i < 3
+      ? Math.sin(settle * Math.PI) * (1 - settle) * (i % 2 ? -0.09 : 0.12)
+      : 0;
+  return t + drift;
 }
 /** The reaching claw and material share this one projection, including tension. */
 export function gripPosition(record: Projection): { x: number; y: number } {
@@ -360,8 +370,9 @@ export function place(record: Projection): void {
 /** Write-only animation. Geometry is measured only on acquisition and layout events. */
 export function paint(record: Projection): void {
   if (!record.el) return;
-  record.el.dataset.phase = record.progress < 1 ? 'strike' : 'aftermath';
-  record.el.style.willChange = record.progress < 1 ? 'transform' : 'auto';
+  const active = record.progress < 1 || (record.settleProgress ?? 1) < 1;
+  record.el.dataset.phase = record.progress < 1 ? 'strike' : active ? 'settle' : 'aftermath';
+  record.el.style.willChange = active ? 'transform' : 'auto';
   for (let i = 0; i < record.shards.length; i++) {
     const shard = record.shards[i];
     const el = record.el.children[i] as HTMLElement;

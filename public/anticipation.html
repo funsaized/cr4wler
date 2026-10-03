@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>cr4wler — anticipation study</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f5f0e6;
+        color: #344842;
+        font:
+          24px/1.5 Georgia,
+          serif;
+      }
+      header {
+        margin: 40px 64px;
+        font: 14px/1.5 system-ui;
+      }
+      main {
+        margin: 240px 160px 100px;
+        min-height: 1400px;
+        display: flex;
+        gap: 160px;
+        align-items: start;
+      }
+      p {
+        margin: 0;
+        width: 420px;
+      }
+      #nested {
+        width: 460px;
+        height: 280px;
+        overflow: auto;
+        padding: 20px;
+        border: 1px solid #8d6751;
+      }
+      #target-a {
+        color: #8d6751;
+      }
+      #target-b {
+        margin-top: 20px;
+        color: #3e687d;
+      }
+      .spacer {
+        height: 480px;
+      }
+    </style>
+  </head>
+  <body>
+    <header data-cr4wler-ignore>
+      Anticipation study · two real text sources · scrollable left frame
+    </header>
+    <main>
+      <div id="nested">
+        <p id="target-a">
+          Amber letters linger along the quiet paper, waiting for a measured visitor.
+        </p>
+        <div class="spacer" data-cr4wler-ignore></div>
+      </div>
+      <p id="target-b">Blue fragments hold their own rhythm beside the patiently turning page.</p>
+    </main>
+    <script src="playground.js"></script>
+  </body>
+</html>

@@ -52,6 +52,10 @@ Timing runs omit video/screenshots. Installed-extension recordings are correctne
 
 ## Capture and artifact retention
 
+`tests/attack.test.mjs` checks the shared notice → investigate → lock → prepare → strike → settle hunt, including the exact text range selected before commitment. Named preparation times in `hunt-profiles.ts` are 200ms for Curious, 90ms for Feral and 420ms for Dreamy. Pointer replacement cancels uncommitted preparation; a committed impact finishes before latest intent starts, while at most three existing fragments briefly settle. Pause freezes the hunt and impact clocks; changed/removed/hidden sources and manual/nested scroll safely abandon or finish owned state.
+
+For focused installed-extension pixels, run `npm run build && node scripts/attack-check.mjs`. It records three normal and 3× slow sequences, actual preparation/impact/aftermath screenshots, exact footprints and interruption evidence on `anticipation.html` under `artifacts/item4/attack/`. Recording labels are fixture instrumentation; slow playback repeats captured frames without interpolation. Use the full installed-extension matrix above for other materials and page contacts.
+
 Keep generated output under ignored `artifacts/`:
 
 | Producer                  | Output                                                               |

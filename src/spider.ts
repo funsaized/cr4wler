@@ -27,7 +27,8 @@ export interface SpiderOptions {
   selector?: {
     rect: { x: number; y: number; width: number; height: number };
     progress: number;
-    phase: 'scan' | 'lock' | 'strike';
+    phase: 'scan' | 'lock' | 'prepare' | 'strike' | 'settle';
+    aim?: Point;
     color: string;
   };
   surface?: 'light' | 'dark';
@@ -860,6 +861,13 @@ export class Spider {
       this.gripCaptured = false;
     }
     // A captured point is already in current viewport coordinates, including any scroll.
+    if (!opts.grip && this.gripLeg >= 0) {
+      // Cancellation and zero-dt geometry refresh can release a prepared claw.
+      this.legs[this.gripLeg]!.rested = 4;
+      this.gripLeg = -1;
+      this.gripCaptured = false;
+      this.gripReach = 0;
+    }
     if (this.gripCaptured && this.gripLeg >= 0 && opts.grip) {
       Object.assign(this.legs[this.gripLeg]!.foot, opts.grip.point);
     }
@@ -963,7 +971,11 @@ export class Spider {
       this.advanceRecovery(dt);
       return;
     }
-    const urgency = opts.pursuing ? 1.12 : 1;
+    const investigating = opts.selector?.phase === 'scan';
+    const preparing = opts.selector?.phase === 'prepare';
+    const settling = opts.selector?.phase === 'settle';
+    const attackProgress = opts.selector?.progress ?? 0;
+    const urgency = investigating ? 0.72 : opts.pursuing ? 1.12 : 1;
     const maxSpeed = profile.speed * (0.84 + intensity * 0.24) * urgency;
     const approach = dreamy ? 5 : feral ? 17 : 10;
     let wantedSpeed = Math.min(
@@ -1038,7 +1050,7 @@ export class Spider {
     const travelHeading = speed > 25 ? Math.atan2(walkingVX, -walkingVY) : heading;
     const turn = angleDelta(travelHeading, this.angle);
     const turnStep = clamp(
-      turn * (1 - Math.exp(-dt * profile.turnResponse)),
+      turn * (1 - Math.exp(-dt * profile.turnResponse * (investigating ? 0.45 : 1))),
       -profile.turnRate * dt,
       profile.turnRate * dt,
     );
@@ -1055,13 +1067,17 @@ export class Spider {
       clamp(angleDelta(heading, this.angle), -0.48, 0.48),
       eyeMix,
     );
-    const compression = feral
-      ? this.holding
-        ? 1
-        : 0.16 + this.alert * 0.45
-      : dreamy
-        ? -0.2
-        : this.alert * 0.25;
+    const compression = preparing
+      ? (feral ? 1.15 : dreamy ? 0.45 : 0.6) * smooth(attackProgress)
+      : settling
+        ? -Math.sin(attackProgress * Math.PI) * (feral ? 0.5 : 0.25)
+        : feral
+          ? this.holding
+            ? 1
+            : 0.16 + this.alert * 0.45
+          : dreamy
+            ? -0.2
+            : this.alert * 0.25;
     this.crouch = mix(this.crouch, compression, 1 - Math.exp(-dt * (feral ? 24 : 8)));
 
     // Keep a grip on its original limb until release, even across a sharp body pivot.
@@ -1702,6 +1718,9 @@ export class Spider {
     const p = clamp(Number.isFinite(selector.progress) ? selector.progress : 0, 0, 1);
     const scan = phase === 'scan' && !quiet;
     const strike = phase === 'strike' && !quiet;
+    const settling = phase === 'settle';
+    if (settling && (quiet || p >= 0.65)) return;
+    const fade = settling ? 1 - smooth(p / 0.65) : 1;
     const acquisition = scan ? smooth(clamp(p / 0.84, 0, 1)) : 1;
     const pad = 4 + (1 - acquisition) * 13;
     const shiftX = scan ? Math.sin(p * Math.PI * 4) * (1 - acquisition) * 9 : 0;
@@ -1719,22 +1738,22 @@ export class Spider {
     ctx.fillStyle = color;
     ctx.globalAlpha = quiet ? 0.018 : 0.018 + envelope * 0.022;
     ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-    ctx.globalAlpha = this.options.surface === 'light' ? 0.65 : 0.45;
+    ctx.globalAlpha = (this.options.surface === 'light' ? 0.65 : 0.45) * fade;
     ctx.strokeStyle = '#070d1a';
     ctx.lineWidth = 3.5;
     this.brackets(left, top, right, bottom, arm);
     ctx.stroke();
-    ctx.globalAlpha = scan ? 0.88 : 1;
+    ctx.globalAlpha = (scan ? 0.72 : 0.92) * fade;
     ctx.strokeStyle = color;
     ctx.lineWidth = strike ? 1.55 : 1.25;
     ctx.stroke();
-    ctx.globalAlpha = quiet ? 0.32 : scan ? 0.28 : 0.44;
+    ctx.globalAlpha = (quiet ? 0.32 : scan ? 0.28 : 0.44) * fade;
     ctx.lineWidth = 0.65;
     ctx.setLineDash(scan ? [2, 5] : []);
     ctx.strokeRect(left, top, right - left, bottom - top);
     ctx.setLineDash([]);
     // Fine external ticks make the lock read as a measured area, without covering the text.
-    ctx.globalAlpha = 0.75;
+    ctx.globalAlpha = 0.75 * fade;
     ctx.lineWidth = 0.8;
     ctx.beginPath();
     for (let i = 0; i < 3; i++) {
@@ -1750,7 +1769,7 @@ export class Spider {
     ctx.lineTo(right + 5, cy + 3);
     ctx.stroke();
     if (!scan) {
-      ctx.globalAlpha = 0.88;
+      ctx.globalAlpha = 0.88 * fade;
       ctx.strokeStyle = this.options.surface === 'light' ? '#152139' : '#eaffff';
       ctx.lineWidth = 0.65;
       ctx.beginPath();
@@ -1767,16 +1786,14 @@ export class Spider {
       ctx.lineTo(mix(left, right, quiet ? 1 : phase === 'lock' ? smooth(p) : 1), bottom + 10);
       ctx.stroke();
     }
-    if (!quiet) {
+    if (!quiet && !settling) {
       const sweep = mix(
         0.5 - 0.5 * Math.cos(p * Math.PI * 4),
         0.5,
         smooth(clamp((p - 0.72) / 0.28, 0, 1)),
       );
-      const aim = {
-        x: scan
-          ? mix(rect.x, rect.x + rect.width, sweep)
-          : cx + (strike ? Math.sin(p * Math.PI * 2) * Math.min(22, rect.width * 0.22) : 0),
+      const aim = selector.aim ?? {
+        x: scan ? mix(rect.x, rect.x + rect.width, sweep) : cx,
         y: cy,
       };
       if (scan || strike) {
@@ -1807,7 +1824,7 @@ export class Spider {
       ctx.stroke();
       ctx.strokeStyle = color;
       ctx.globalAlpha = strike ? 0.9 : scan ? 0.46 : 0.66;
-      ctx.lineWidth = strike ? 1.15 : 0.8;
+      ctx.lineWidth = strike ? 1.15 : scan ? 0.8 : 0.55;
       ctx.stroke();
       if (strike) {
         ctx.strokeStyle = '#edffff';
