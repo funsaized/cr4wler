@@ -3,6 +3,20 @@ export interface Point {
   x: number;
   y: number;
 }
+/** Cached viewport geometry only; the rig never holds DOM nodes or reads layout. */
+export interface PageSurface {
+  id: string;
+  kind: 'text' | 'card' | 'image' | 'button';
+  a: Point;
+  b: Point;
+  min: number;
+  max: number;
+  blocked?: readonly number[];
+}
+interface Contact {
+  id: string;
+  fraction: number;
+}
 export interface SpiderOptions {
   intensity: number;
   personality: 'curious' | 'feral' | 'dreamy';
@@ -24,6 +38,7 @@ export interface SpiderOptions {
   pursuing?: boolean;
   /** Page movement in viewport pixels; consume each scroll delta exactly once. */
   surfaceDelta?: Point;
+  surfaces?: readonly PageSurface[];
 }
 
 interface Leg {
@@ -42,6 +57,9 @@ interface Leg {
   knee: Point;
   ankle: Point;
   lift: number;
+  contact?: Contact;
+  landing?: Contact;
+  released?: boolean;
 }
 
 interface MotionProfile {
@@ -182,6 +200,7 @@ export class Spider {
     anticipation: number;
     flight: number;
     landing: number;
+    support?: { leg: number; contact: Contact; point?: Point; released?: boolean };
   } | null = null;
   private hopHeight = 0;
   private hopCooldown = 0;
@@ -189,6 +208,10 @@ export class Spider {
   private releasedContacts = 0;
   private silkAnchor = 0;
   private silkAmount = 1;
+  private surfaceIndex = new Map<string, PageSurface>();
+  private surfaceSnapshot: readonly PageSurface[] | undefined;
+  private surfaceReleases = 0;
+  private pageMovement = 'fallback';
   private options: SpiderOptions = { intensity: 0.6, personality: 'curious', reducedMotion: false };
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -248,6 +271,14 @@ export class Spider {
   get feet(): Point[] {
     return this.legs.map((leg) => ({ ...leg.foot }));
   }
+  get contactIds(): string[] {
+    return this.legs.flatMap((l) =>
+      [l.contact?.id, l.landing?.id].filter((id): id is string => !!id),
+    );
+  }
+  get surfaceContacts(): Contact[] {
+    return this.legs.flatMap((l) => [l.contact, l.landing].filter((c): c is Contact => !!c));
+  }
   get recovering(): boolean {
     return !!this.recovery;
   }
@@ -277,6 +308,8 @@ export class Spider {
       reason: this.recoveryReason,
       recoveries: this.recoveries,
       releasedContacts: this.releasedContacts,
+      surfaceReleases: this.surfaceReleases,
+      pageMovement: this.pageMovement,
       maxReach: Math.max(...this.feet.map((p) => distance(p, this.body))),
       reachLimit: this.reachLimit,
       body: this.position,
@@ -292,6 +325,10 @@ export class Spider {
               : 'stance',
         role: l.row === 0 ? 'reach' : l.row === 3 ? 'push' : 'support',
         lift: l.lift,
+        contact: l.contact
+          ? { ...l.contact, kind: this.surfaceIndex.get(l.contact.id)?.kind }
+          : null,
+        landing: l.landing ? { ...l.landing } : null,
       })),
       maxBoneLength: Math.max(
         ...this.legs.flatMap((l) => [distance(l.hip, l.knee), distance(l.knee, l.ankle)]),
@@ -319,7 +356,7 @@ export class Spider {
     const t = length > radius ? radius / length : 1;
     return { x: this.body.x + dx * t, y: this.body.y + dy * t };
   }
-  needsRecovery(delta: Point = { x: 0, y: 0 }): boolean {
+  needsRecovery(delta: Point = { x: 0, y: 0 }, surfaces?: readonly PageSurface[]): boolean {
     if (!this.initialized || this.recovery) return false;
     const outside =
       this.age > 1.5 &&
@@ -328,18 +365,45 @@ export class Spider {
         this.body.y < 30 ||
         this.body.y > this.height - 30);
     const moved = Math.hypot(delta.x, delta.y);
-    const threatened = this.legs.filter(
-      (l) =>
-        distance({ x: l.foot.x + delta.x, y: l.foot.y + delta.y }, this.body) > this.reachLimit,
-    ).length;
+    const index =
+      surfaces && surfaces !== this.surfaceSnapshot
+        ? new Map(surfaces.map((s) => [s.id, s]))
+        : this.surfaceIndex;
+    let attached = 0;
+    const threatened = this.legs.filter((l) => {
+      const contact = l.contact ?? l.landing;
+      const surface = contact && index.get(contact.id);
+      if (contact && surface) {
+        attached++;
+        return (
+          contact.fraction < surface.min ||
+          contact.fraction > surface.max ||
+          distance(
+            {
+              x: mix(surface.a.x, surface.b.x, contact.fraction),
+              y: mix(surface.a.y, surface.b.y, contact.fraction),
+            },
+            this.body,
+          ) > this.reachLimit
+        );
+      }
+      return (
+        distance({ x: l.foot.x + delta.x, y: l.foot.y + delta.y }, this.body) > this.reachLimit
+      );
+    }).length;
     return (
       outside ||
-      moved > this.reachLimit * 0.42 ||
+      (moved > this.reachLimit * 0.42 && (attached < 4 || threatened >= 4)) ||
       (moved > this.reachLimit * 0.2 && threatened >= 4)
     );
   }
   /** Release contacts before any page delta can turn into an impossible reach. */
-  recover(anchor: Point, calm = false, reason: 'scroll' | 'hunt' = 'scroll'): void {
+  recover(
+    anchor: Point,
+    calm = false,
+    reason: 'scroll' | 'hunt' = 'scroll',
+    support?: { leg: number; contact: Contact },
+  ): void {
     const to = {
       x: clamp(anchor.x, 65, Math.max(65, this.width - 65)),
       y: clamp(anchor.y, 95, Math.max(95, this.height - 115)),
@@ -375,14 +439,19 @@ export class Spider {
       anticipation: feral ? 0.055 : dreamy ? 0.13 : 0.09,
       flight: feral ? 0.16 : dreamy ? 0.34 : 0.25,
       landing: feral ? 0.085 : dreamy ? 0.17 : 0.12,
+      support,
     };
-    this.legs.forEach((l) => {
+    this.legs.forEach((l, i) => {
+      l.contact = l.landing = undefined;
+      if (support?.leg === i) l.landing = support.contact;
       l.stepping = false;
       l.lift = 0;
     });
   }
   private resetStance(): void {
     this.legs.forEach((l) => {
+      l.contact = l.landing = undefined;
+      l.released = false;
       const p = this.bounded(this.idealFoot(l), this.reachLimit * 0.88);
       for (const q of [l.foot, l.from, l.to]) Object.assign(q, p);
       l.stepping = false;
@@ -390,6 +459,221 @@ export class Spider {
       l.lift = 0;
       l.rested = l.row * 0.025;
     });
+  }
+
+  private contactPoint(contact: Contact, center: Point = this.body): Point | null {
+    const surface = this.surfaceIndex.get(contact.id);
+    if (
+      !surface ||
+      contact.fraction < surface.min ||
+      contact.fraction > surface.max ||
+      surface.blocked?.some((f) => Math.abs(f - contact.fraction) < 0.001)
+    )
+      return null;
+    const p = {
+      x: mix(surface.a.x, surface.b.x, contact.fraction),
+      y: mix(surface.a.y, surface.b.y, contact.fraction),
+    };
+    return distance(p, center) <= this.reachLimit ? p : null;
+  }
+
+  private get contactSearch(): number {
+    return Math.min(
+      this.reachLimit * 0.3,
+      (this.options.personality === 'dreamy'
+        ? 43
+        : this.options.personality === 'feral'
+          ? 22
+          : 36) * this.scale,
+    );
+  }
+
+  private placement(point: Point, leg: Leg): { point: Point; contact?: Contact } {
+    let best = this.contactSearch;
+    let result: { point: Point; contact?: Contact } = { point };
+    for (const surface of this.surfaceIndex.values()) {
+      const dx = surface.b.x - surface.a.x,
+        dy = surface.b.y - surface.a.y;
+      const square = dx * dx + dy * dy;
+      if (square < 1) continue;
+      const fraction = clamp(
+        ((point.x - surface.a.x) * dx + (point.y - surface.a.y) * dy) / square,
+        surface.min,
+        surface.max,
+      );
+      const p = { x: surface.a.x + dx * fraction, y: surface.a.y + dy * fraction };
+      const gap = distance(point, p);
+      if (gap >= best || distance(p, this.body) > this.reachLimit * 0.89) continue;
+      if (surface.blocked?.some((f) => Math.abs(f - fraction) * Math.sqrt(square) < 8 * this.scale))
+        continue;
+      // Keep opposite limbs distinct, and don't keep replanting at an exhausted edge.
+      if (
+        this.legs.some(
+          (other) =>
+            other !== leg && distance(other.stepping ? other.to : other.foot, p) < 11 * this.scale,
+        )
+      )
+        continue;
+      if (distance(leg.foot, point) > this.contactSearch && distance(leg.foot, p) < 5 * this.scale)
+        continue;
+      best = gap;
+      result = { point: p, contact: { id: surface.id, fraction } };
+    }
+    return result;
+  }
+
+  /** Only committed contacts follow their individual surfaces. Invalid geometry
+   * starts a lift from the last valid point, never an impossible attachment. */
+  private followSurfaces() {
+    for (const leg of this.legs) {
+      if (leg.contact) {
+        const p = this.contactPoint(leg.contact);
+        if (p) Object.assign(leg.foot, p);
+        else {
+          leg.contact = undefined;
+          leg.released = true;
+          this.surfaceReleases++;
+        }
+      }
+      if (leg.landing) {
+        const p = this.contactPoint(leg.landing);
+        if (p) Object.assign(leg.to, p);
+        else {
+          leg.landing = undefined;
+          Object.assign(leg.from, leg.foot);
+          Object.assign(leg.to, this.bounded(this.idealFoot(leg), this.reachLimit * 0.86));
+          leg.progress = 0;
+          leg.duration = Math.max(0.06, this.profile.stepTime * 0.7);
+          this.surfaceReleases++;
+        }
+      }
+    }
+  }
+
+  /** A small tangent bias helps traverse a line without delaying a new pointer
+   * destination. Leaving a boundary immediately restores free-plane steering. */
+  private surfaceDirection(dx: number, dy: number): Point {
+    const remaining = Math.hypot(dx, dy);
+    const contacts = this.legs.filter((l) => l.contact);
+    this.pageMovement =
+      contacts.length >= 2 && remaining < 12 ? 'perch' : contacts.length ? 'traverse' : 'fallback';
+    if (remaining < 30 || !contacts.length || this.options.grip) return { x: dx, y: dy };
+    const direction = { x: dx / remaining, y: dy / remaining };
+    for (const leg of contacts) {
+      const s = this.surfaceIndex.get(leg.contact!.id);
+      if (!s) continue;
+      const length = distance(s.a, s.b);
+      const tx = (s.b.x - s.a.x) / length,
+        ty = (s.b.y - s.a.y) / length;
+      const alignment = direction.x * tx + direction.y * ty;
+      if (Math.abs(alignment) < 0.9) continue;
+      const end = alignment > 0 ? s.max : s.min;
+      const room = Math.abs(end - leg.contact!.fraction) * length;
+      if (room < 12) continue; // An edge never becomes a wall that traps the body.
+      const bias = this.options.personality === 'dreamy' ? 0.18 : 0.1;
+      return {
+        x: mix(dx, tx * Math.sign(alignment) * remaining, bias),
+        y: mix(dy, ty * Math.sign(alignment) * remaining, bias),
+      };
+    }
+    return { x: dx, y: dy };
+  }
+
+  private surfaceHop(dx: number, dy: number): { to: Point; leg: number; contact: Contact } | null {
+    const remaining = Math.hypot(dx, dy);
+    if (remaining < 70) return null;
+    const vx = dx / remaining,
+      vy = dy / remaining;
+    for (const leg of this.legs) {
+      if (!leg.contact) continue;
+      const s = this.surfaceIndex.get(leg.contact.id);
+      if (!s) continue;
+      const length = distance(s.a, s.b);
+      const alignment = ((s.b.x - s.a.x) * vx + (s.b.y - s.a.y) * vy) / length;
+      if (Math.abs(alignment) < 0.85) continue;
+      const end = alignment > 0 ? s.max : s.min;
+      if (Math.abs(end - leg.contact.fraction) * length > 60 * this.scale) continue;
+      const edge = { x: mix(s.a.x, s.b.x, end), y: mix(s.a.y, s.b.y, end) };
+      for (const next of this.surfaceIndex.values()) {
+        if (next.id === s.id || next.kind !== s.kind) continue;
+        const square = (next.b.x - next.a.x) ** 2 + (next.b.y - next.a.y) ** 2;
+        const length = Math.sqrt(square);
+        if (length < 1) continue;
+        const tx = (next.b.x - next.a.x) / length,
+          ty = (next.b.y - next.a.y) / length;
+        const alignment = tx * vx + ty * vy;
+        if (Math.abs(alignment) < 0.85) continue;
+        const t = clamp(
+          ((edge.x - next.a.x) * (next.b.x - next.a.x) +
+            (edge.y - next.a.y) * (next.b.y - next.a.y)) /
+            Math.max(1, square),
+          next.min,
+          next.max,
+        );
+        const p = { x: mix(next.a.x, next.b.x, t), y: mix(next.a.y, next.b.y, t) };
+        const gap = distance(edge, p),
+          forward = (p.x - edge.x) * vx + (p.y - edge.y) * vy;
+        if (gap < 14 || gap > 65 * this.scale || forward < gap * 0.85) continue;
+        // Land over the visible destination, preserving the body's offset from
+        // the line. A direction-only distance can stop in the gap or overshoot
+        // a narrow/clipped edge. Wait until this actual landing fits the budget.
+        const inset = Math.min(6 * this.scale, ((next.max - next.min) * length) / 2);
+        const fraction = clamp(t + (Math.sign(alignment) * inset) / length, next.min, next.max);
+        const offset = (this.body.x - edge.x) * -ty + (this.body.y - edge.y) * tx;
+        const to = {
+          x: mix(next.a.x, next.b.x, fraction) - ty * offset,
+          y: mix(next.a.y, next.b.y, fraction) + tx * offset,
+        };
+        const travel = distance(this.body, to);
+        if (
+          travel > 95 * this.scale ||
+          travel < 12 ||
+          distance(to, this.destination) >= remaining ||
+          to.x < 65 ||
+          to.x > this.width - 65 ||
+          to.y < 95 ||
+          to.y > this.height - 115
+        )
+          continue;
+        let support: { to: Point; leg: number; contact: Contact } | null = null;
+        let best = this.contactSearch * 1.6;
+        for (const [index, candidate] of this.legs.entries()) {
+          const ideal = this.idealFoot(candidate);
+          const future = { x: ideal.x + to.x - this.body.x, y: ideal.y + to.y - this.body.y };
+          const normalDrift = (future.x - next.a.x) * -ty + (future.y - next.a.y) * tx;
+          if (Math.abs(normalDrift) > this.contactSearch * 1.5) continue;
+          const supportedTo = { x: to.x + ty * normalDrift, y: to.y - tx * normalDrift };
+          if (
+            distance(this.body, supportedTo) > 95 * this.scale ||
+            distance(supportedTo, this.destination) >= remaining ||
+            supportedTo.x < 65 ||
+            supportedTo.x > this.width - 65 ||
+            supportedTo.y < 95 ||
+            supportedTo.y > this.height - 115
+          )
+            continue;
+          future.x += supportedTo.x - to.x;
+          future.y += supportedTo.y - to.y;
+          const f = clamp(
+            ((future.x - next.a.x) * tx + (future.y - next.a.y) * ty) / length,
+            next.min,
+            next.max,
+          );
+          const contact = { id: next.id, fraction: f };
+          const point = this.contactPoint(contact, supportedTo);
+          if (!point || distance(point, supportedTo) > this.reachLimit * 0.89) continue;
+          const drift = distance(future, point) + Math.abs(normalDrift);
+          if (drift < best) {
+            best = drift;
+            support = { to: supportedTo, leg: index, contact };
+          }
+        }
+        if (!support) continue;
+        this.pageMovement = 'cross';
+        return support;
+      }
+    }
+    return null;
   }
   private advanceRecovery(dt: number): void {
     const r = this.recovery!;
@@ -404,9 +688,20 @@ export class Spider {
     const height =
       this.options.personality === 'feral' ? 27 : this.options.personality === 'dreamy' ? 17 : 22;
     this.hopHeight = Math.sin(flight * Math.PI) * height * this.scale;
+    if (r.support && !r.support.released) {
+      const point = this.contactPoint(r.support.contact, r.to);
+      if (point) r.support.point = point;
+      else {
+        this.legs[r.support.leg]!.landing = undefined;
+        r.support.released = true;
+        this.surfaceReleases++;
+      }
+    }
+    const support = r.support?.point;
     this.legs.forEach((l, i) => {
-      const ideal = this.idealFoot(l);
-      const tucked = { x: (ideal.x - this.body.x) * 0.48, y: (ideal.y - this.body.y) * 0.48 };
+      const pose = this.idealFoot(l);
+      const ideal = r.support?.leg === i && support ? support : pose;
+      const tucked = { x: (pose.x - this.body.x) * 0.48, y: (pose.y - this.body.y) * 0.48 };
       const fold = flight > 0 ? 1 : prepare;
       const local = { x: mix(r.feet[i]!.x, tucked.x, fold), y: mix(r.feet[i]!.y, tucked.y, fold) };
       const touchdown = smooth(clamp(land * 1.25 - l.row * 0.07, 0, 1));
@@ -424,6 +719,12 @@ export class Spider {
       this.hopHeight = this.crouch = 0;
       this.hopCooldown = 0.2;
       this.resetStance();
+      if (r.support && support) {
+        const leg = this.legs[r.support.leg]!;
+        for (const p of [leg.foot, leg.from, leg.to]) Object.assign(p, support);
+        leg.contact = r.support.released ? undefined : r.support.contact;
+        leg.released = !!r.support.released;
+      }
     }
   }
   /** The exact articulated emitter used by the beam and the head renderer. */
@@ -478,6 +779,10 @@ export class Spider {
     const wasQuiet = this.options.reducedMotion;
     const changedType = wasInitialized && this.options.personality !== opts.personality;
     this.options = opts;
+    if (opts.surfaces !== this.surfaceSnapshot) {
+      this.surfaceSnapshot = opts.surfaces;
+      this.surfaceIndex = new Map((opts.surfaces ?? []).map((s) => [s.id, s]));
+    }
     this.clock = opts.reducedMotion ? 0 : time;
     const profile = this.profile;
     const intensity = clamp(opts.intensity, 0, 1);
@@ -518,7 +823,7 @@ export class Spider {
       this.resetStance();
     }
     const delta = opts.surfaceDelta ?? { x: 0, y: 0 };
-    if (wasInitialized && this.needsRecovery(delta)) {
+    if (wasInitialized && this.needsRecovery(delta, opts.surfaces)) {
       this.recover(
         { x: this.body.x, y: clamp(this.body.y + Math.sign(delta.y) * 90, 120, this.height - 150) },
         dt === 0 || opts.reducedMotion,
@@ -534,12 +839,19 @@ export class Spider {
       }
       for (const leg of this.legs)
         for (const p of [leg.foot, leg.from, leg.to]) {
+          if (
+            (p === leg.foot && (leg.contact || leg.landing)) ||
+            (p === leg.from && leg.landing) ||
+            (p === leg.to && leg.landing)
+          )
+            continue;
           p.x += dx;
           p.y += dy;
         }
       this.gripFrom.x += dx;
       this.gripFrom.y += dy;
     }
+    if (!this.recovery) this.followSurfaces();
     if (opts.grip && !this.withinReach(opts.grip.point)) {
       // A page may move a committed fragment offscreen. Release; never scale bones to it.
       this.options = { ...opts, grip: undefined };
@@ -567,6 +879,7 @@ export class Spider {
       this.holding = false;
       this.burstAge = 0;
       for (const leg of this.legs) {
+        leg.contact = leg.landing = undefined;
         if (!wasInitialized || !wasQuiet) {
           const pose = this.idealFoot(leg);
           Object.assign(leg.foot, pose);
@@ -626,12 +939,26 @@ export class Spider {
       }
     } else this.holding = false;
 
-    if (feral && !entering && !opts.grip && remaining > 175 && this.hopCooldown === 0) {
+    const crossing =
+      feral && !entering && !opts.grip && this.hopCooldown === 0 ? this.surfaceHop(dx, dy) : null;
+    if (
+      crossing ||
+      (feral &&
+        !opts.surfaces?.length &&
+        !entering &&
+        !opts.grip &&
+        remaining > 175 &&
+        this.hopCooldown === 0)
+    ) {
       const travel = Math.min(155 * this.scale, remaining - 60);
       this.recover(
-        { x: this.body.x + (dx / remaining) * travel, y: this.body.y + (dy / remaining) * travel },
+        crossing?.to ?? {
+          x: this.body.x + (dx / remaining) * travel,
+          y: this.body.y + (dy / remaining) * travel,
+        },
         false,
         'hunt',
+        crossing ?? undefined,
       );
       this.advanceRecovery(dt);
       return;
@@ -646,8 +973,10 @@ export class Spider {
     );
     if (this.holding) wantedSpeed = 0;
     if (entering) wantedSpeed = Math.min(wantedSpeed, 700);
-    const desiredVX = remaining > 0.05 ? (dx / remaining) * wantedSpeed : 0;
-    const desiredVY = remaining > 0.05 ? (dy / remaining) * wantedSpeed : 0;
+    const route = this.surfaceDirection(dx, dy);
+    const routeLength = Math.max(0.05, Math.hypot(route.x, route.y));
+    const desiredVX = remaining > 0.05 ? (route.x / routeLength) * wantedSpeed : 0;
+    const desiredVY = remaining > 0.05 ? (route.y / routeLength) * wantedSpeed : 0;
     const deltaX = desiredVX - this.velocity.x;
     const deltaY = desiredVY - this.velocity.y;
     const deltaSpeed = Math.hypot(deltaX, deltaY);
@@ -761,6 +1090,7 @@ export class Spider {
       const leg = this.legs[i]!;
       leg.rested += dt;
       if (i === this.gripLeg && opts.grip) {
+        leg.contact = leg.landing = undefined;
         if (leg.stepping) movingFeet--;
         leg.stepping = false;
         leg.lift = 0;
@@ -779,6 +1109,7 @@ export class Spider {
       }
       const ideal = this.idealFoot(leg);
       if (entering || opts.descending) {
+        leg.contact = leg.landing = undefined;
         const hanging = opts.descending ? 0.8 : 1 - smooth(clamp((this.age - 0.55) / 0.8, 0, 1));
         ideal.x = mix(ideal.x, this.body.x + leg.side * (21 + leg.row * 10) * this.scale, hanging);
         ideal.y = mix(ideal.y, this.body.y + (61 + leg.row * 17) * this.scale, hanging);
@@ -809,6 +1140,9 @@ export class Spider {
         if (leg.progress >= 1) {
           // Exact contact assignment, never velocity-driven dragging of a planted foot.
           Object.assign(leg.foot, leg.to);
+          leg.contact = leg.landing;
+          leg.landing = undefined;
+          leg.released = false;
           leg.stepping = false;
           leg.rested = 0;
           leg.lift = 0;
@@ -841,9 +1175,23 @@ export class Spider {
             Math.abs(
               (leg.ideal.x - leg.foot.x) * walkingVY - (leg.ideal.y - leg.foot.y) * walkingVX,
             ) / Math.max(1, speed);
-          const needsStep = trail > stride || lateral > stride * 1.5 || (reach > 0.88 && trail > 0);
-          const adjustment = speed < 12 && leg.rested > 0.15 && drift > 5 * this.scale;
-          if (!needsStep && !adjustment) continue;
+          const leavingSurface =
+            !!leg.contact &&
+            reach > 0.88 &&
+            (this.body.x - leg.foot.x) * walkingVX + (this.body.y - leg.foot.y) * walkingVY > 0;
+          const needsStep =
+            trail > stride ||
+            lateral > stride * 1.5 ||
+            (reach > 0.88 && trail > 0) ||
+            leavingSurface;
+          const contactComfort = leg.contact ? this.contactSearch + 6 * this.scale : 5 * this.scale;
+          const placement =
+            !leg.contact && !leg.released && speed < 12
+              ? this.placement(this.bounded(leg.ideal, this.reachLimit * 0.86), leg)
+              : null;
+          const adjustment =
+            speed < 12 && leg.rested > 0.15 && (drift > contactComfort || !!placement?.contact);
+          if (!needsStep && !adjustment && !leg.released) continue;
           // Adjacent ipsilateral feet never swing together; each side retains two supports.
           const unavailable = this.legs.filter(
             (other, index) => other.side === leg.side && (other.stepping || index === this.gripLeg),
@@ -887,7 +1235,17 @@ export class Spider {
           localY * Math.cos(rotation) +
           walkingVY * lead * outside;
         Object.assign(leg.to, this.bounded(leg.to, this.reachLimit * 0.86));
+        const landing = this.placement(leg.to, leg);
+        Object.assign(leg.to, landing.point);
+        leg.landing = landing.contact;
+        leg.contact = undefined;
+        leg.released = false;
         leg.duration = stepTime;
+        if (landing.contact && pace < 0.4) {
+          // Deliberate reaches/probes are still scheduled by the support gait.
+          leg.duration *= dreamy ? 1.2 : feral ? 1 : 1.12;
+          if (leg.row === 0) this.pageMovement = dreamy ? 'reach' : feral ? 'traverse' : 'probe';
+        }
         leg.progress = 0;
         leg.stepping = true;
         this.lastStep = next;
@@ -901,6 +1259,7 @@ export class Spider {
         // Surface displacement or silk arrival can invalidate a contact independently
         // of walking. Release into a short lift; normal travel is constrained above.
         this.releasedContacts++;
+        leg.contact = leg.landing = undefined;
         Object.assign(leg.foot, this.bounded(leg.foot, this.reachLimit * 0.995));
         Object.assign(leg.from, leg.foot);
         Object.assign(leg.to, this.bounded(this.idealFoot(leg), this.reachLimit * 0.86));

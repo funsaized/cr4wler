@@ -10,6 +10,7 @@ import {
 } from './targets';
 import { huntProfiles } from './hunt-profiles';
 import { RuntimeQuality } from './runtime-quality';
+import { PageSurfaces } from './surfaces';
 import { defaults, settingsFrom, type Settings, type Status } from './types';
 import {
   layoutShards,
@@ -58,6 +59,7 @@ export class Cr4wler {
   private raf = 0;
   private resizeDirty = false;
   private quality = new RuntimeQuality();
+  private pageSurfaces = new PageSurfaces();
   private boundsRevision = 0;
   private boundsCache = new WeakMap<Target, number>();
   private nextBoundsCheck = 0;
@@ -164,6 +166,7 @@ export class Cr4wler {
     this.abort = new AbortController();
     this.discovery = new AbortController();
     this.quality = new RuntimeQuality();
+    this.pageSurfaces = new PageSurfaces();
     this.boundsCache = new WeakMap();
     this.nextBoundsCheck = 0;
     this.paused = false;
@@ -446,6 +449,7 @@ export class Cr4wler {
     this.resizeDirty = false;
     this.boundsCache = new WeakMap();
     this.lastSpiderOptions = null;
+    this.pageSurfaces.clear();
     this.targets = [];
     this.fragments = [];
     this.current = null;
@@ -530,6 +534,8 @@ export class Cr4wler {
     record.el?.remove();
     record.el = null;
     this.fragments = this.fragments.filter((f) => f !== record);
+    if (!this.fragments.some((f) => f.target.node === record.target.node))
+      this.pageSurfaces.unmask(record.target.node);
     if (!this.fragments.some((f) => f.target.element === record.target.element))
       this.resizeObserver?.unobserve(record.target.element);
     if (this.current === record) {
@@ -758,16 +764,30 @@ export class Cr4wler {
       color: record.color,
     };
   }
-  /** Paused geometry still follows the page, without advancing any gait clock. */
+  /** Bounded page contacts share one read clock throughout a frame. */
+  private readSurfaces(time = this.time, destination = this.destination) {
+    if (!this.spider || this.reduced.matches) return [];
+    return this.pageSurfaces.update(
+      time,
+      this.boundsRevision,
+      this.spider.position,
+      destination,
+      this.spider.feet,
+      this.spider.contactIds,
+      this.spider.surfaceContacts,
+    );
+  }
+  /** Paused geometry follows the page without advancing any gait clock. */
   private syncRestingSurface() {
     if (!this.spider || !this.lastSpiderOptions) return;
     const surfaceDelta = this.takeSurfaceDelta();
-    if (!surfaceDelta.x && !surfaceDelta.y && !this.spider.needsRecovery()) return;
+    const surfaces = this.readSurfaces();
     const record = this.current;
     const target = record?.target ?? this.candidate;
     this.spider.update(0, this.time, this.spider.position, {
       ...this.lastSpiderOptions,
       surfaceDelta,
+      surfaces,
       grip: record ? this.strikeGrip(record) : undefined,
       selector:
         target && this.targetFresh(target) && this.lastSpiderOptions.selector
@@ -885,6 +905,7 @@ export class Cr4wler {
     this.current = record;
     this.cancelCandidate();
     this.highlight.add(target.range);
+    this.pageSurfaces.mask(target.node);
     this.resizeObserver?.observe(target.element);
     this.mode = 'strike';
     this.phaseTime = 0;
@@ -1183,6 +1204,16 @@ export class Cr4wler {
   private frame = (now: number) => {
     this.raf = 0;
     if (!this.host || !this.spider || this.hidden) return;
+    // Every surface read in this frame uses one clock, including after physics
+    // time advances. Otherwise the polling boundary can be crossed twice.
+    const surfaceTime = this.time;
+    // CSS animation fallback shares the same read phase as event invalidations.
+    if (!this.paused && !this.reduced.matches && this.time >= this.nextBoundsCheck) {
+      this.nextBoundsCheck = this.time + 0.15;
+      this.boundsRevision++;
+      if (this.pointerActive) this.pointerDirty = true;
+    }
+    this.readSurfaces(surfaceTime);
     if (this.resizeDirty) {
       this.resizeDirty = false;
       this.resize();
@@ -1196,12 +1227,6 @@ export class Cr4wler {
     const elapsed = Math.max(0, (now - this.previous) / 1000);
     const dt = Math.min(elapsed, 0.033);
     if (!this.reduced.matches) this.quality.sample(elapsed * 1000);
-    // CSS animations do not emit mutations. Bound the fallback recheck to ~7Hz.
-    if (this.time >= this.nextBoundsCheck) {
-      this.nextBoundsCheck = this.time + 0.15;
-      this.boundsRevision++;
-      if (this.pointerActive) this.pointerDirty = true;
-    }
     const strikeAtFrameStart = this.current;
     this.previous = now;
     const quiet = this.reduced.matches;
@@ -1245,7 +1270,7 @@ export class Cr4wler {
       surfaceDelta = { x: externalDelta.x + ownDelta.x, y: externalDelta.y + ownDelta.y };
       if (this.geometryDirty) this.refreshGeometry();
       if (
-        this.spider.needsRecovery(surfaceDelta) ||
+        this.spider.needsRecovery(surfaceDelta, this.readSurfaces(surfaceTime)) ||
         (this.current && !this.targetFresh(this.current.target))
       )
         this.beginRecovery(surfaceDelta);
@@ -1355,6 +1380,7 @@ export class Cr4wler {
           }
         : undefined,
       pursuing: !!this.candidate && this.candidateSource === 'hover',
+      surfaces: this.readSurfaces(surfaceTime, destination),
     };
     this.lastSpiderOptions = spiderOptions;
     this.spider.update(quiet ? 0 : dt, this.time, destination, {
