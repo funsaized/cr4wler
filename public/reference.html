@@ -95,7 +95,7 @@
           <option value="feral">↯ Feral — jumping spider</option>
         </select>
         <p id="demo-description" class="type-description" role="status">
-          Long legs. Precise little bites.
+          Long legs. Tiny detective. Every precise little bite is strictly for research.
         </p>
         <div class="slider-label">
           <label for="demo-intensity">INTENSITY</label><output id="demo-level">55%</output>
@@ -104,18 +104,19 @@
           class="follow-toggle"
           for="demo-follow"
           ><span
-            >Follow my cursor<small class="pointer-guidance"
-              >Hover chooses. Page edges keep it moving.</small
-            ><small class="touch-guidance"
-              >Cursor guide needs a mouse or trackpad. Touch: your spider explores on its
-              own.</small
+            >Follow my cursor<small class="pointer-guidance" data-copy="pointerHelp"
+              >Hover to nominate a nibble. Page edges scroll.</small
+            ><small class="touch-guidance" data-copy="touchHelp"
+              >No pointer? Your spider forages solo. Cursor guide needs a mouse or trackpad.</small
             ></span
           ><input type="checkbox" id="demo-follow" role="switch" /></label
         ><button id="demo-summon" class="primary">Summon your spider <span>↗</span></button>
-        <p class="restore-help">Restore / Esc removes the visitor and its effects.</p>
+        <p class="restore-help" data-copy="restoreHelp">
+          Restore / Esc sends your guest home and removes its effects.
+        </p>
         <div class="demo-secondary">
-          <button id="demo-pause" disabled>Pause</button
-          ><button id="demo-restore" disabled>Restore</button>
+          <button id="demo-pause" data-copy="pause" disabled>Pause</button
+          ><button id="demo-restore" data-copy="restore" disabled>Restore</button>
         </div>
         <p id="demo-status" role="status" class="status">
           A growing trail. A completely fresh start with Esc.

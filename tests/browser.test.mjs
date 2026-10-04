@@ -54,7 +54,7 @@ test('site first navigation automatically welcomes one visitor with active contr
       assert.equal(await page.locator('#demo-summon').isDisabled(), true);
       assert.equal(await page.locator('#demo-pause').isEnabled(), true);
       assert.equal(await page.locator('#demo-restore').isEnabled(), true);
-      assert.match(await page.locator('#demo-summon').innerText(), /Your spider is here/);
+      assert.match(await page.locator('#demo-summon').innerText(), /Your tiny menace is here/);
       assert.match(await page.locator('#demo-status').innerText(), /Active · Exploring/);
       assert.equal(await page.evaluate(() => __cr4wlerPlayground.engine.status().active), true);
     } finally {
@@ -760,8 +760,8 @@ test('mobile dock uses the available width with tappable buttons and a separate 
       for (const species of ['curious', 'dreamy', 'feral']) {
         await page.locator('#demo-personality').selectOption(species);
         for (const activity of [
-          `${species} · 0 marks · paused`,
-          `${species} · 512 marks · Restore to explore again`,
+          `${species} · 0 marks · paused · eight feet up`,
+          `${species} · 512 marks · scrapbook full · Restore to explore again`,
           `${species} · quiet visitor · highlights unavailable`,
         ]) {
           await page.locator(`${root} .activity`).evaluate((element, text) => {
@@ -824,11 +824,11 @@ test('guidance follows input capability rather than viewport size, and touch nev
       const hint = await page.locator(`${root} .tip`).innerText();
       const follow = await page.locator('.follow-toggle').innerText();
       if (touch) {
-        assert.match(hint, /explores on its own/);
+        assert.match(hint, /forages on its own/);
         assert.match(hint, /Pause/);
         assert.doesNotMatch(hint, /Enable.*Follow/);
         assert.match(follow, /mouse or trackpad/);
-        assert.match(follow, /Touch.*explores/);
+        assert.match(follow, /No pointer.*forages solo/);
         await page.locator('#demo-follow').check();
         assert.match(await page.locator('#demo-status').innerText(), /Exploring.*pointer/);
         await page.evaluate(() => {
@@ -839,7 +839,7 @@ test('guidance follows input capability rather than viewport size, and touch nev
         assert.equal(await page.locator(root).getAttribute('data-pointer-active'), 'false');
       } else {
         assert.match(hint, /Enable.*Follow my cursor/);
-        assert.match(follow, /Hover chooses/);
+        assert.match(follow, /Hover to nominate/);
       }
       await page.locator(`${root} .tip button`).focus();
       await page.keyboard.press('Enter');

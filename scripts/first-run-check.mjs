@@ -236,7 +236,7 @@ try {
         if (long) {
           // Layout-only stress copy from an existing limit message; clocks/geometry stay real.
           await activity.evaluate((el, species) => {
-            el.textContent = `${species} · 512 marks · Restore to explore again`;
+            el.textContent = `${species} · 512 marks · scrapbook full · Restore to explore again`;
           }, species);
         }
         const bounds = await mobile.locator('[data-cr4wler-root]').evaluate((host) => {

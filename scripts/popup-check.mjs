@@ -126,7 +126,7 @@ async function nativePopup(id, site) {
       recordPopupClose(JSON.stringify({
         calls: ++calls,
         targetId: ${JSON.stringify(target.targetId)},
-        confirmedActive: document.querySelector('#summon').textContent.includes('Your spider is here'),
+        confirmedActive: document.querySelector('#summon').textContent.includes('Your tiny menace is here'),
         toolbarView: chrome.extension.getViews({type:'popup'}).includes(window)
       }));
       nativeClose();

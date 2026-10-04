@@ -1,14 +1,9 @@
+import { copy, spiderTypes } from './vocabulary';
+import { intensityLabel, statusLabel, paintCopy, paintSummon } from './messaging';
 import { Spider } from './spider';
-import {
-  spiderTypes,
-  intensityLabel,
-  statusLabel,
-  touchOnlyMedia,
-  type Command,
-  type Settings,
-  type Status,
-} from './types';
+import { touchOnlyMedia, type Command, type Settings, type Status } from './types';
 import { loadPreferences, savePreferences, needsHint, rememberHint } from './preferences';
+paintCopy();
 const settings: Settings = loadPreferences();
 let targetId: number | undefined;
 let live = false;
@@ -47,11 +42,9 @@ function paint(s: Status) {
   }
   live = s.active;
   summon.disabled = s.active || summoning;
-  summon.innerHTML = s.active
-    ? 'Your spider is here <span>✦</span>'
-    : 'Summon your spider <span>↗</span>';
+  paintSummon(summon, s.active);
   pause.disabled = restore.disabled = !s.active;
-  pause.textContent = s.paused ? 'Resume' : 'Pause';
+  pause.textContent = s.paused ? copy.resume : copy.pause;
   status.textContent = statusLabel(s, matchMedia(touchOnlyMedia).matches);
   paintSettings();
 }
@@ -59,7 +52,7 @@ function failed(message: string) {
   live = false;
   pause.disabled = restore.disabled = true;
   summon.disabled = false;
-  summon.innerHTML = 'Summon your spider <span>↗</span>';
+  paintSummon(summon, false);
   status.textContent = message;
 }
 let commands: Promise<Status | undefined> = Promise.resolve(undefined);
@@ -97,11 +90,7 @@ async function perform(
   } catch {
     if (request !== revision) return;
     if (action === 'status' || (action === 'configure' && !live)) return;
-    failed(
-      action === 'summon' && !injected
-        ? 'This page is off limits or unavailable. Try a regular website or the playground.'
-        : 'Your spider could not start or respond. Reload this page, then try Summon again.',
-    );
+    failed(action === 'summon' && !injected ? copy.unavailable : copy.failed);
   }
 }
 async function launch() {
@@ -162,7 +151,7 @@ const tabReady = chrome.tabs
   .then(([tab]) => {
     targetId = tab?.id;
   })
-  .catch(() => failed('No available tab. Open a regular website or the playground.'));
+  .catch(() => failed(copy.noTab));
 void tabReady.then(() => {
   if (revision === openingRevision) return send('status');
 });

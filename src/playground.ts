@@ -1,12 +1,7 @@
+import { copy, spiderTypes } from './vocabulary';
+import { intensityLabel, statusLabel, paintCopy, paintSummon } from './messaging';
 import { Cr4wler } from './engine';
-import {
-  spiderTypes,
-  intensityLabel,
-  statusLabel,
-  touchOnlyMedia,
-  type Settings,
-  type Status,
-} from './types';
+import { touchOnlyMedia, type Settings, type Status } from './types';
 import { loadPreferences, savePreferences, needsHint, rememberHint } from './preferences';
 
 type PlaygroundState = {
@@ -27,6 +22,7 @@ state.disposeBindings = () => {
 };
 
 function initialize() {
+  paintCopy();
   if (new URLSearchParams(location.search).get('theme') === 'night') {
     document.documentElement.dataset.theme = 'night';
     const themeLink = document.querySelector<HTMLAnchorElement>('#archive-theme');
@@ -119,10 +115,8 @@ function initialize() {
     level.textContent = intensityLabel(s.intensity);
     summon.disabled = s.active;
     pause.disabled = restore.disabled = !s.active;
-    pause.textContent = s.paused ? 'Resume' : 'Pause';
-    summon.innerHTML = s.active
-      ? 'Your spider is here <span>✦</span>'
-      : 'Summon your spider <span>↗</span>';
+    pause.textContent = s.paused ? copy.resume : copy.pause;
+    paintSummon(summon, s.active);
     status.textContent = statusLabel(s, touchOnly.matches);
     const badge = document.querySelector('#demo-state');
     if (badge)

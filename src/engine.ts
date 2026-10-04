@@ -1,3 +1,5 @@
+import { copy, dockCopy, spiderTypes } from './vocabulary';
+import { createActivityVoice, paintCopy } from './messaging';
 import { Spider, type Point, type SpiderOptions } from './spider';
 import {
   scanTargets,
@@ -16,14 +18,7 @@ import { RuntimeQuality } from './runtime-quality';
 import { PageSurfaces } from './surfaces';
 import { BITMAP_PIXEL_LIMIT, readMaterial } from './materials';
 import { materialGeometry, materialExtent } from './paint-geometry';
-import {
-  defaults,
-  settingsFrom,
-  spiderTypes,
-  touchOnlyMedia,
-  type Settings,
-  type Status,
-} from './types';
+import { defaults, settingsFrom, touchOnlyMedia, type Settings, type Status } from './types';
 import {
   layoutShards,
   mount,
@@ -75,6 +70,7 @@ const styles = `
 `;
 export class Cr4wler {
   constructor(private readonly idleSeed?: number) {}
+  private activityVoice = createActivityVoice();
   private listeners = new Set<(status: Status) => void>();
   private reportedStatus = '';
   private hintShown = false;
@@ -282,7 +278,9 @@ export class Cr4wler {
     dock.setAttribute('aria-label', 'Cr4wler controls');
     // This is our own static control markup, never page HTML.
     dock.innerHTML =
-      '<span class="dot" aria-hidden="true"></span><span class="wordmark">cr4wler</span><span class="activity">coming down…</span><button class="pause" type="button">Pause</button><button class="restore" type="button" title="Remove the visitor and its effects; keep your page edits">Restore</button>';
+      '<span class="dot" aria-hidden="true"></span><span class="wordmark">cr4wler</span><span class="activity"></span><button class="pause" type="button" data-copy="pause">Pause</button><button class="restore" type="button" data-copy="restore">Restore</button>';
+    paintCopy(dock);
+    dock.querySelector('.restore')!.setAttribute('title', copy.restoreTitle);
     controls.append(dock);
     this.activity = dock.querySelector('.activity');
     this.pauseButton = dock.querySelector('.pause');
@@ -292,7 +290,8 @@ export class Cr4wler {
       this.tip.className = 'tip';
       this.tip.setAttribute('role', 'note');
       this.tip.innerHTML =
-        '<span><span class="pointer-guidance">Enable <b>Follow my cursor</b>, then hover to guide.</span><span class="touch-guidance">Your spider explores on its own.<br><b>Pause</b> keeps it still.</span><br><b>Restore / Esc</b> removes the visitor and its effects.</span><button type="button" aria-label="Dismiss first-use hint">Got it</button>';
+        '<span><span class="pointer-guidance" data-copy="hintPointer"></span><span class="touch-guidance" data-copy="hintTouch"></span><br><span data-copy="restoreHelp"></span></span><button type="button" aria-label="Dismiss first-use hint" data-copy="dismissHint"></button>';
+      paintCopy(this.tip);
       controls.prepend(this.tip);
     }
     this.root.append(controls);
@@ -540,7 +539,7 @@ export class Cr4wler {
     if (!this.host) return this.status();
     this.paused = !this.paused;
     this.clearFollowIntent(true);
-    if (this.pauseButton) this.pauseButton.textContent = this.paused ? 'Resume' : 'Pause';
+    if (this.pauseButton) this.pauseButton.textContent = this.paused ? copy.resume : copy.pause;
     this.updateActivity();
     if (this.paused) {
       cancelAnimationFrame(this.raf);
@@ -1572,37 +1571,32 @@ export class Cr4wler {
       this.host.dataset.personality = this.settings.personality;
     }
     if (!this.activity) return;
-    this.activity.textContent = this.limitReached
-      ? '512 marks · Restore to explore again'
+    const voice = (activity: Parameters<typeof this.activityVoice>[0]) =>
+      this.activityVoice(activity, this.settings.personality);
+    const activity = this.limitReached
+      ? `${this.fragments.length} ${dockCopy.limit}`
       : this.paused
-        ? `${this.fragments.length} marks · paused`
+        ? `${this.fragments.length} ${dockCopy.paused}`
         : this.reduced.matches
-          ? 'quiet company'
+          ? dockCopy.quiet
           : !this.highlight
-            ? 'quiet visitor · highlights unavailable'
+            ? dockCopy.unavailable
             : this.edgeVelocity
-              ? 'edge crawl · move inward to stop'
-              : this.mode === 'recover'
-                ? 'finding its feet…'
-                : this.mode === 'arrive'
-                  ? 'coming down…'
-                  : this.mode === 'lock'
-                    ? 'target locked'
-                    : this.mode === 'prepare'
-                      ? 'readying its front claw…'
-                      : this.mode === 'settle'
-                        ? 'letting the fragments settle…'
-                        : this.mode === 'strike'
-                          ? `${this.current?.effect ?? 'type'} in progress`
-                          : this.candidate
-                            ? this.mode === 'notice'
-                              ? 'something caught its eye…'
-                              : 'investigating…'
-                            : this.settings.followMouse && !this.touchOnly.matches
-                              ? `${this.fragments.length} marks · hover to choose`
-                              : `${this.fragments.length} marks · exploring`;
+              ? dockCopy.edge
+              : this.mode === 'recover' ||
+                  this.mode === 'arrive' ||
+                  this.mode === 'lock' ||
+                  this.mode === 'prepare' ||
+                  this.mode === 'settle' ||
+                  this.mode === 'strike'
+                ? voice(this.mode)
+                : this.candidate
+                  ? voice(this.mode === 'notice' ? 'notice' : 'investigate')
+                  : this.settings.followMouse && !this.touchOnly.matches
+                    ? `${this.fragments.length} ${dockCopy.following}`
+                    : `${this.fragments.length} marks · ${voice('scan')}`;
     const type = spiderTypes[this.settings.personality];
-    this.activity.textContent = `${type.cue} ${this.settings.personality[0].toUpperCase() + this.settings.personality.slice(1)} · ${this.activity.textContent}`;
+    this.activity.textContent = `${type.cue} ${this.settings.personality[0].toUpperCase() + this.settings.personality.slice(1)} · ${activity}`;
   }
   /** At most nine local hit tests per navigation frame; no document scan. */
   private recoveryLanding(anchor: Point): Point {

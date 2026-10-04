@@ -14,3 +14,5 @@ Preserve the permission boundary: no permanent host access, background browsing,
 Prefer meaningful browser behavior checks over assertions that duplicate implementation. Keep scans, fragments, rendering resolution, and per-frame work bounded. Test keyboard control and reduced motion. Do not attach private website content to issues or recordings; reproduce with the controlled playground or a minimal synthetic fixture.
 
 For a suspected privacy or security issue, use the repository's private security reporting route if enabled, or contact its owner privately. Do not post sensitive details in a public issue. Contributions are licensed under MIT.
+
+User-facing runtime copy lives in `src/vocabulary.ts`: shared guidance, temperament descriptions, intensity labels, and short activity phrase banks. `src/messaging.ts` selects phrases on activity or temperament changes, without timers or randomness. Add variants to the relevant bank; keep Pause, Resume, Restore, accessibility guidance, and recovery instructions explicit. Static popup/playground text can opt into shared copy with `data-copy`; keep its HTML fallback readable.
