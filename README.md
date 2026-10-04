@@ -8,7 +8,7 @@ A small Chrome extension that puts a neon spider on the page you're reading. It 
 
 ## Install
 
-This is an **experimental preview**. For now, you'll need a Chrome profile that allows unpacked extensions; it isn't on the Chrome Web Store.
+The Chrome Web Store submission is pending review. For now, this is an **experimental preview**: you'll need a Chrome profile that allows unpacked extensions.
 
 1. Download [cr4wler-0.4.1.zip](https://github.com/funsaized/cr4wler/releases/download/v0.4.1/cr4wler-0.4.1.zip) and extract it into a folder you will keep. Choose this asset, rather than GitHub's source-code archives. No build tools are needed.
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and select the extracted folder containing `manifest.json`.
