@@ -2,9 +2,9 @@
 
 A small Chrome extension that puts a neon spider on the page you're reading. It walks around, picks at words, breaks pictures into tiles and bends cards. Press **Escape** to clear the mess and keep reading.
 
-[![Animated demo: a neon jumping spider walks, loosens image tiles and bends a card.](docs/cr4wler-demo.gif)](docs/cr4wler-demo.webm)
+[![Animated demo: a jumping spider tears letters and loosens image tiles; a long-legged widow continues the trail, then Restore clears the page.](docs/cr4wler-demo.gif)](docs/cr4wler-demo.webm)
 
-A 9-second excerpt, looping at normal speed with frames sampled at 10fps. [Watch the same nine-second demo at 25fps](docs/cr4wler-demo.webm).
+A 25-second visit, at normal speed. Feral's jumping spider gives way to Curious's widow through the temperament control, one visitor at a time. [Watch the same demo at 25fps](docs/cr4wler-demo.webm).
 
 [Download v0.4.1](https://github.com/funsaized/cr4wler/releases/tag/v0.4.1) · [Changelog](CHANGELOG.md) · [Privacy](PRIVACY.md)
 

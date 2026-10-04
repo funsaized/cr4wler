@@ -72,24 +72,24 @@ Native browser UI zoom from 100% to 110% was verified. CDP page scale is separat
 
 ## README media provenance
 
-The [inline GIF](cr4wler-demo.gif) and [linked video](cr4wler-demo.webm) show the same contiguous 5.20s–14.20s excerpt of the approved installed visitor session on the synthetic material fixture. It excludes malformed source frames at 2.04s and 4.28s, their brief color transition, and a page disappearance at 14.32s–14.44s. The heading and protected form row stay at fixed coordinates in all 225 source and video frames and all 90 GIF frames.
+The [GIF](cr4wler-demo.gif) and [video](cr4wler-demo.webm) show the same 25.44-second visit on a local synthetic field-notes page, using the bundled cabin illustration. The unchanged standalone playground engine was built from `d36583fb2beb488514b65e0027b257e5498848a3`; its `playground.js` SHA-256 was `45058fe51474ed95ca6b2cb16ba578e5fcda368dfc2703a1b4d72ecb56efe61c`. This is demonstration media, separate from installed-extension acceptance evidence.
 
-The GIF is 720×500, sampled at 10fps with a 96-color palette and ordered dithering. Its 90 frames retain 9s wall-clock duration: 100ms per frame, looping indefinitely. The loop cuts back to its opening shot. The video is 1440×1000, 25fps, VP8, exactly 9s, re-encoded without a spatial crop, interpolation or playback-speed change; SHA-256 `33f98553a40008eda898ae707f42bd5278a3efa0f231886f8667f6ffde54ceb5`.
+Real controls summon Feral, guide its text/image/card hunts, switch to Curious, and Restore. There is one visitor at a time. Both 356×214 same-origin loaded images produced 256×154 bitmap snapshots without fallback. Feral separates four of nine tiles; Curious moves one. Both effects remain visible through the later travel and text hunts. No runtime, animation clock, geometry or effect was changed for the recording.
 
-The [original 15.84s capture](https://github.com/funsaized/cr4wler/blob/1323e8df45452c13d53bf1ecc497f67a109ef270/docs/cr4wler-demo.webm) remains in Git history: 1440×1000, 25fps, VP8, SHA-256 `eec9eeb712e46e98dedab0be563e0ab69ff67ebb7c5c79370beaedf1e8590dcd`. That archived source includes the capture artifacts excluded from both public demo formats. These reviewed pixels are reused demonstration media, not a new release acceptance capture; current installed/native checks remain separate.
+PNG screencasting began after fonts, images and layout settled at a fixed 1120×800 viewport. The original 1,412 frames, capture timestamps, scene and read-only traces are retained with the review evidence outside the repository. Timestamp ordering corrects capture-event delivery order; encoding samples or repeats actual frames at normal speed, without interpolation, spatial cropping or cuts. The closing restored frame is held to the output frame boundary, and the loop returns to the opening shot.
 
-Reproduce both formats with FFmpeg (the reviewed encode used FFmpeg 7.1.5):
+All 636 video frames and 424 GIF frames were decoded and checked for dimensions, fixed page anchors and gray/blank/resize corruption. The article's before/Restore comparison differs in only five of 492,480 pixels, by one color-channel level; its DOM restores exactly. GitHub desktop/mobile previews and timestamped contact sheets accompany the external review evidence.
+
+The GIF is 840×600 at 16⅔fps, with 60ms frame delays, a 128-color palette and ordered dithering: 4,577,057 bytes, SHA-256 `1b593c09ed395b48f21a802f55e7eadb5fee175acd0152741e4ab55e40234e62`. The VP9 WebM is 1120×800 at 25fps: 7,703,109 bytes, SHA-256 `3bfc271884cdba683bd2aa1106336d7f1075a133c26eecdf8d67e4df8694ee06`.
+
+To reproduce the encodes with the retained timestamp-ordered PNG capture, put its `frames/` directory and `ordered.ffconcat` in `artifacts/readme-source/` (FFmpeg 7.1.5 was used):
 
 ```sh
-mkdir -p artifacts
-git show 1323e8df45452c13d53bf1ecc497f67a109ef270:docs/cr4wler-demo.webm > artifacts/cr4wler-demo-original.webm
-ffmpeg -i artifacts/cr4wler-demo-original.webm \
-  -filter_complex '[0:v]trim=start=5.2:end=14.2,setpts=PTS-STARTPTS,fps=10,scale=720:500:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle' \
-  -loop 0 -final_delay 10 docs/cr4wler-demo.gif
-ffmpeg -i artifacts/cr4wler-demo-original.webm \
-  -vf 'trim=start=5.2:end=14.2,setpts=PTS-STARTPTS' \
-  -c:v libvpx -crf 10 -b:v 1M -deadline good -cpu-used 2 \
+ffmpeg -f concat -safe 0 -i artifacts/readme-source/ordered.ffconcat \
+  -vf 'fps=25,trim=end=25.44,setpts=PTS-STARTPTS' \
+  -c:v libvpx-vp9 -crf 24 -b:v 0 -row-mt 1 -deadline good -cpu-used 2 \
   -an -r 25 -fps_mode cfr docs/cr4wler-demo.webm
+ffmpeg -i docs/cr4wler-demo.webm \
+  -filter_complex '[0:v]fps=50/3,scale=840:600:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle' \
+  -loop 0 -final_delay 6 docs/cr4wler-demo.gif
 ```
-
-The earlier 32.92s whole-browser GitHub capture used source `dc2d77e814a72d151ca1cba935c1cf24675e9f8c`. Its [GIF](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/docs/cr4wler-demo.gif), [WebM](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/docs/github-demo.webm), [capture CI](https://github.com/funsaized/cr4wler/actions/runs/37044012741), and [capture script](https://github.com/funsaized/cr4wler/blob/23773248ace4c46a12b8a694b06ced31212d463a/scripts/github-demo.mjs) remain recoverable with their original provenance in Git history.
