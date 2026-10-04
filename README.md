@@ -1,10 +1,8 @@
 # cr4wler
 
-A small Chrome extension that puts a neon spider on the page you're reading. It walks around, picks at words, breaks pictures into tiles and bends cards. Press **Escape** to clear the mess and keep reading.
+A small Chrome extension that puts a neon spider on the page you're reading. It walks around and picks at elements. Add a little whimsey to your browsing. Press **Escape** to clear the mess and keep reading.
 
 [![Animated demo: a jumping spider tears letters and loosens image tiles; a long-legged widow continues the trail, then Restore clears the page.](docs/cr4wler-demo.gif)](docs/cr4wler-demo.webm)
-
-A 25-second visit, at normal speed. Feral's jumping spider gives way to Curious's widow through the temperament control, one visitor at a time. [Watch the same demo at 25fps](docs/cr4wler-demo.webm).
 
 [Download v0.4.1](https://github.com/funsaized/cr4wler/releases/tag/v0.4.1) · [Changelog](CHANGELOG.md) · [Privacy](PRIVACY.md)
 
@@ -28,25 +26,25 @@ Restore active sessions and close those tabs. Replace the contents of your exist
 
 ## Controls
 
-- **Temperament:** Curious is a long-legged widow with precise bites. Dreamy is a rounded orb-weaver that moves slowly and peels gently. Feral is a jumping spider with quick pounces and shredding. Switching changes the spider and its next hunt; the existing trail stays.
+- **Temperament:** Curious is a long-legged widow with precise bites. Dreamy is a rounded orb-weaver that moves slowly and peels gently. Feral is a jumping spider with quick pounces and shredding.
 - **Intensity:** how hard the next effects hit.
-- **Follow my cursor:** hover near something to guide the next hunt. Move away to change its mind. A strike that has already started finishes first. The spider never clicks a page control.
+- **Follow my cursor:** hover near something to guide the next hunt. Move away to change its mind. The spider never clicks a page control.
 - **Pause / Resume:** stops or continues the spider. Existing fragments stay in place while you scroll.
 - **Restore / Escape:** removes the spider and its effects, preserving edits you or the page made during the visit.
 
-With cursor follow on, hold the pointer near the top or bottom edge to scroll the nearest eligible container. Move toward the center to stop. Each visit stops after six seconds or 1,800px; move again or leave and return to continue. Your wheel, touch, keyboard and scrollbar take priority. Pause, leaving the page and reduced motion stop this scrolling too.
+With cursor follow on, hold the pointer near the top or bottom edge to scroll the nearest eligible container. Move toward the center to stop. Each visit stops after six seconds or 1,800px. To continue move again or guide your spider to leave and return. User actions (wheel, touch, keyboard and scrollbar) take priority.
 
-Cursor guidance needs a mouse or trackpad. The controls also support keyboard use. With reduced motion enabled, the spider stays still and starts no new hunts or edge scrolling.
+With reduced motion enabled, the spider stays still and starts no new hunts or edge scrolling.
 
-Settings are saved locally; each active tab keeps its own settings. Reloading or navigating a website clears its spider and trail, so summon again from the toolbar. The extension and bundled playground share preferences; a hosted playground has its own. Page content, fragments and Pause state aren't saved.
+Settings are saved locally; each active tab keeps its own settings. Reloading or navigating a website clears its spider and trail, so summon again from the toolbar.
 
-## What happens to the page?
+## Technically what is happening to the page?
 
-The effects live in a Shadow DOM overlay. The extension doesn't rewrite the page's HTML or trigger its actions. Words tear into fragments, already-loaded same-origin pictures loosen into tiles, simple cards flex and thin rules recoil. Unsupported or cross-origin images get an outline instead. No image is fetched for an effect.
+The effects live in a Shadow DOM overlay. The extension doesn't rewrite the page's HTML or trigger its actions. Words tear into fragments, loaded same-origin pictures loosen into tiles, simple cards flex and thin rules recoil.
 
-Forms, inputs, editors, dialogs, live regions, iframes and recognized sensitive widgets are skipped. That recognition can't catch every private widget. Page authors can exclude any subtree with `data-cr4wler-ignore`. Plain buttons outside forms may get a visual treatment without invoking their handlers.
+Forms, inputs, editors, dialogs, live regions, iframes and recognized sensitive widgets are skipped. Page subtree's can be excluded with `data-cr4wler-ignore`. Plain buttons outside forms may get hunted, but handlers are never invoked.
 
-The only extension permissions are **`activeTab` and `scripting`**. You grant access to a tab by summoning from the toolbar. It has no permanent host permissions, runtime network services, trackers or telemetry. Text and sampled pixels stay in document memory; only preferences and the first-use hint are saved on the extension or demo origin. It writes no storage on visited sites. [Privacy details](PRIVACY.md).
+The only extension permissions are **`activeTab` and `scripting`**. You grant access to a tab by summoning from the toolbar. It has no permanent host permissions, runtime network services, trackers or telemetry. Text and sampled pixels stay in document memory; it writes no storage on visited sites. [Privacy details](PRIVACY.md).
 
 ## Build and try it locally
 
@@ -86,12 +84,6 @@ Packaging needs Python 3 and writes the installable ZIP and SHA-256 checksum int
 
 The shared lifecycle is in `src/engine.ts`, the spider's anatomy and gait in `src/spider.ts`, and page discovery and geometry in `src/targets.ts` and `src/surfaces.ts`. [Contributing](CONTRIBUTING.md) covers the working conventions; [Testing](docs/TESTING.md) explains what each check covers.
 
-## Where it still needs work
-
-The manifest allows Chrome 105+, but the automated browser checks use Chromium 153. Other browser versions and representative hardware GPUs still need testing.
-
-Dense scroll/resize/zoom cases can still produce roughly 100ms frame tails on the tested SwiftShader software renderer. The measured reduction in surface CPU work doesn't make this a steady 60 FPS extension. [Performance notes](docs/RUNTIME-PERFORMANCE.md) have the numbers and reproduction steps.
-
-Native background suspension, same-ID changed-bundle updates and physical touch devices remain unverified. Native zoom from 100% to 110% was checked locally. The five-minute retention run reached 129 marks and showed cleanup stabilizing; it doesn't establish indefinite memory behavior or a session at every cap. Sessions stop adding marks at 512 records and ask you to Restore instead of silently dropping the trail. [Testing limits and manual checks](docs/TESTING.md#performance-and-limits).
+## Inspiration
 
 Inspiration behind the implementation: [rybinfx](https://x.com/rybinfx/status/2105700296760688790?s=20).
