@@ -1,5 +1,9 @@
 # Changelog
 
+## Chrome Web Store publication
+
+cr4wler is now available on the [Chrome Web Store](https://chromewebstore.google.com/detail/cr4wler-%E2%80%94-a-little-web-mi/bnocpddjakljegjfehmjcpjbbilonmnf). Store installation is the recommended path; the GitHub release ZIP remains available for manual installation. See [Install and upgrade](README.md#install).
+
 ## 0.4.1 — first public preview
 
 Experimental GitHub prerelease. The existing package, lockfile and Chrome manifest all use `0.4.1`; this first tag preserves that version. Install the release ZIP unpacked in a permitted Chrome profile. See [Install and upgrade](README.md#install).
@@ -19,4 +23,4 @@ Dense mixed scroll/resize/zoom workloads still have roughly 100ms frame tails on
 
 Native background suspension, same-ID changed-bundle updates, physical touch devices, representative GPUs and full-cap/indefinite active-session memory remain unverified. Native 100%→110% zoom was checked locally; the five-minute, 129-mark retention check supports bounded cleanup stabilization only. See [Testing](docs/TESTING.md) and [Performance](docs/RUNTIME-PERFORMANCE.md) for evidence and manual checks.
 
-No Chrome Web Store distribution is included. Browser policy can block unpacked extensions, and restricted pages cannot host the effect.
+The initial GitHub preview shipped as an unpacked ZIP; Chrome Web Store availability is noted above. Browser policy can block unpacked extensions, and restricted pages cannot host the effect.

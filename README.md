@@ -4,23 +4,30 @@ A small Chrome extension that puts a neon spider on the page you're reading. It 
 
 [![Animated demo: a jumping spider tears letters and loosens image tiles; a long-legged widow continues the trail, then Restore clears the page.](docs/cr4wler-demo.gif)](docs/cr4wler-demo.webm)
 
-[Download v0.4.1](https://github.com/funsaized/cr4wler/releases/tag/v0.4.1) · [Changelog](CHANGELOG.md) · [Privacy](PRIVACY.md)
+[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/cr4wler-%E2%80%94-a-little-web-mi/bnocpddjakljegjfehmjcpjbbilonmnf) · [Download v0.4.1 ZIP](https://github.com/funsaized/cr4wler/releases/tag/v0.4.1) · [Changelog](CHANGELOG.md) · [Privacy](PRIVACY.md)
 
 ## Install
 
-The Chrome Web Store submission is pending review. For now, this is an **experimental preview**: you'll need a Chrome profile that allows unpacked extensions.
+1. Open [cr4wler on the Chrome Web Store](https://chromewebstore.google.com/detail/cr4wler-%E2%80%94-a-little-web-mi/bnocpddjakljegjfehmjcpjbbilonmnf), click **Add to Chrome**, and confirm the installation.
+2. Open a website, click cr4wler in Chrome's **Extensions** menu or pin it to the toolbar, then click **Summon your spider**. The popup closes once the spider launches. Reopen it to change settings, or use the little dock on the page.
+
+Chrome's own pages and other restricted pages won't work. If a launch fails, the popup stays open with guidance so you can retry.
+
+### Install from a ZIP
+
+You can also install the GitHub release manually in a Chrome profile that allows unpacked extensions.
 
 1. Download [cr4wler-0.4.1.zip](https://github.com/funsaized/cr4wler/releases/download/v0.4.1/cr4wler-0.4.1.zip) and extract it into a folder you will keep. Choose this asset, rather than GitHub's source-code archives. No build tools are needed.
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and select the extracted folder containing `manifest.json`.
 3. Open a website, click cr4wler in the toolbar, then **Summon your spider**. The popup closes once the spider launches. Reopen it to change settings, or use the little dock on the page.
 
-Chrome's own pages and other restricted pages won't work. If a launch fails, the popup stays open with guidance so you can retry.
-
 To verify the download, grab [cr4wler-0.4.1.zip.sha256](https://github.com/funsaized/cr4wler/releases/download/v0.4.1/cr4wler-0.4.1.zip.sha256) too. In the folder with both files, run `sha256sum -c cr4wler-0.4.1.zip.sha256` on Linux, or `shasum -a 256 -c cr4wler-0.4.1.zip.sha256` on macOS.
 
 ### Updating
 
-Restore active sessions and close those tabs. Replace the contents of your existing extension folder with the new ZIP's contents, click **Reload** on its card in `chrome://extensions`, then reopen or refresh website tabs before summoning again. Keep the same folder and extension ID to retain preferences. The changed-bundle update path still needs a check in a normal browser profile; see the limits below.
+**Chrome Web Store:** Chrome handles extension updates automatically.
+
+**Unpacked ZIP:** Restore active sessions and close those tabs. Replace the contents of your existing extension folder with the new ZIP's contents, click **Reload** on its card in `chrome://extensions`, then reopen or refresh website tabs before summoning again. Keep the same folder and extension ID to retain preferences. The changed-bundle update path still needs a check in a normal browser profile; see [Testing](docs/TESTING.md).
 
 <a id="a-small-set-of-controls"></a>
 
