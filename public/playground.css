@@ -38,11 +38,15 @@ nav {
   letter-spacing: 1.8px;
   color: #777080;
 }
-.repo {
+.store-link {
   margin-left: auto;
-  color: #b8afc8;
+  padding: 9px 12px;
+  border-radius: 4px;
+  background: #c9ffa4;
+  color: #101116;
   font: 11px monospace;
   text-decoration: none;
+  white-space: nowrap;
 }
 .layout {
   display: grid;
